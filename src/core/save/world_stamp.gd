@@ -274,17 +274,26 @@ const UNKNOWN := "unknown"
 ##     Every region big enough to keep a keeper gets its keeper's first station
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
 ##     and never within its keeper's reach of where the raft comes ashore
-##     (GenWorks.station_holds).
-## 48. The glass desert lays its strike fields: nine rods ruled three by three
+##     (GenWorks.station_holds). (Provisional; restamped at landing.)
+## 48. The lame leg's tread comes down on the Covenant's body (slice 3 step 7):
+##     the first wanted plant scores leg 1's body first, nearer where he comes
+##     ashore the better, and where nothing fits there it is sited home-first as
+##     before. A landmark that carries no load yields to a foot (the story is not
+##     cast to it, no keeper dens at its kind, it does not mark the landfall and
+##     no room is kept under it): the tread writes what it trod, and
+##     `Landmarks.sites` no longer stands it. A tread keeps off every keeper's
+##     reach, every placed site but a tip and every slip, and where he comes
+##     ashore as where he wakes. Every tread moves; seeds 1, 3 and 90210 hold a
+##     crater on the Covenant's body, 7 (water under the strata) and 42 (no room)
+##     fall through.
+## 49. The glass desert lays its strike fields: nine rods ruled three by three
 ##     on the survey bearing, fulgurite dug out between them, the survey at the
 ##     corners, one to each region big enough to keep the anvil, sited where a
 ##     den off the rods keeps every way its design declares
 ##     (GenWorks.station_holds, asked of the den the keeper takes). A walker's
-##     tread keeps off a keeper's first station (GenTreads `_built`): on seed 1
-##     the lame walker's two treads move, (1510, 790) -> (1486, 806) and
-##     (646, 1254) -> (606, 1294); seeds 7, 42 and 90210 keep theirs.
+##     tread keeps off a keeper's first station (GenTreads `_built`).
 ##     (Provisional; restamped at landing.)
-const GEN := 48
+const GEN := 49
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

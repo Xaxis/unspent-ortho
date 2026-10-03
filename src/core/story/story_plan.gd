@@ -86,6 +86,13 @@ const WALKER: Array[Dictionary] = [
 ]
 
 
+## Where the raft from home comes ashore: the world's landfall (StorySlot.LANDFALL),
+## for the crossing 49_cast places (StoryCrossing). Nobody stands there.
+const ASHORE: Array[Dictionary] = [
+	{"id": &"the_landfall", "needs": &"landfall", "ordered": false},
+]
+
+
 ## 2029, relived (docs/STORY.md). The Before is this same coast tile for tile
 ## (Realm.ERA, unspent-ortho-df), so each place of his old life is cast exactly
 ## where a 2098 place of the story stands (`mirror`): his house is the village he
@@ -107,6 +114,8 @@ static func slots() -> Array[StorySlot]:
 	for d: Dictionary in LOCALS:
 		out.append(StorySlot.make(d))
 	for d: Dictionary in WALKER:
+		out.append(StorySlot.make(d))
+	for d: Dictionary in ASHORE:
 		out.append(StorySlot.make(d))
 	for d: Dictionary in THEN:
 		out.append(StorySlot.make(d))

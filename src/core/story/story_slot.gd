@@ -35,8 +35,14 @@ const BLACK_SITE := &"black_site"
 ## crater rule the walker lead pins by (StoryCasting.crater_near), nearest the slot
 ## `near` names, on its body: the crater's people stand where the survey sends him.
 const TREAD := &"tread"
+## And the landfall: where the shortest water from home comes ashore on the next
+## body (GenBodies marks `landfall` and `from` on that body's row), the city that
+## is dealt there stands its clock by (LandmarkDef `wants`). The raft comes ashore
+## there (StoryCrossing.to_landfall); a world with no landfall casts none, and it
+## crosses the narrows.
+const LANDFALL := &"landfall"
 
-const NEEDS: Array[StringName] = [VILLAGE, WORKS, LANDMARK, PORTAL, BLACK_SITE, TREAD]
+const NEEDS: Array[StringName] = [VILLAGE, WORKS, LANDMARK, PORTAL, BLACK_SITE, TREAD, LANDFALL]
 
 var id: StringName = &""
 var needs: StringName = VILLAGE
