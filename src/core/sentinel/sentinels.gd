@@ -442,14 +442,29 @@ static func _lair_worked(world: WorldData, region: Dictionary, def: SentinelDef)
 			return best
 	if built:
 		return Vector2.INF
-	# NOBODY LAYS ITS STATIONS YET: it dens at the room nearest its region's heart
-	# where every way the ground alone answers can be done (`ways_closed`'s
-	# ground_only: its founder ground in reach, its craft's water in its guard),
-	# first with that ground where it sees a lure from the den (`lure_reach`),
-	# then anywhere in its reach. At the bare heart, seed 1's anvil had no sand
-	# in reach and its lure could never be played. Where no room in the region
-	# keeps them, the heart as it was, then the quietest room nearest it; none at
-	# all, and no keeper.
+	# NOBODY LAYS ITS STATIONS YET: it dens where the ground alone keeps its ways
+	# (`ground_den`). Where no room in the region keeps them, the heart as it
+	# was, then the quietest room nearest it; none at all, and no keeper.
+	var kept := ground_den(world, region, def, landings)
+	if kept.is_finite():
+		return kept
+	var centre: Vector2 = region.get("centre", Vector2.ZERO)
+	var heart := stand_near(world, centre, 1.4, sink)
+	if _den_ok(world, heart, def, landings):
+		return heart
+	return _room_nearest(world, region, def, sink, centre, landings, false)
+
+
+## Where a keeper of `def` dens in `region` by the ground alone: the room
+## nearest its heart where every way the ground answers can be done
+## (`ways_closed`'s ground_only: its founder ground in reach, its craft's water
+## in its guard), first with that ground where it sees a lure from the den
+## (`lure_reach`), then anywhere in its reach; INF where no room in the region
+## keeps them. At the bare heart, seed 1's anvil had no sand in reach and its
+## lure could never be played. A region with no such room cannot keep its
+## keeper at all, laid stations or none (tests/sentinel/test_station_ways.gd).
+static func ground_den(world: WorldData, region: Dictionary, def: SentinelDef, landings: Array[Vector2]) -> Vector2:
+	var sink := founders(def)
 	var centre: Vector2 = region.get("centre", Vector2.ZERO)
 	var heart := stand_near(world, centre, 1.4, sink)
 	var heart_ok := _den_ok(world, heart, def, landings)
@@ -459,9 +474,7 @@ static func _lair_worked(world: WorldData, region: Dictionary, def: SentinelDef)
 		var kept := _room_nearest(world, region, def, sink, centre, landings, true, near)
 		if kept.is_finite():
 			return kept
-	if heart_ok:
-		return heart
-	return _room_nearest(world, region, def, sink, centre, landings, false)
+	return Vector2.INF
 
 
 ## Where a keeper of `def` would den at a station laid at `p`: the nearest room
@@ -570,13 +583,18 @@ static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, land
 ## reach, on room off the ground it founders in, with a way out and the ground
 ## its move opens round it.
 static func _den_ok(world: WorldData, at: Vector2, def: SentinelDef, landings: Array[Vector2]) -> bool:
+	return den_clear(world, at, def, landings) and opens(world, at, def, OPENS_LEAST) >= OPENS_LEAST
+
+
+## `_den_ok` without its flood (`opens`): what a works stage asks of many
+## candidates before it floods any (GenWorks.station_may_hold).
+static func den_clear(world: WorldData, at: Vector2, def: SentinelDef, landings: Array[Vector2]) -> bool:
 	if at.distance_to(world.spawn) < CLEAR_OF_HOME:
 		return false
 	for l: Vector2 in landings:
 		if at.distance_to(l) <= def.reach:
 			return false
-	return _room_at(world, floori(at.x), floori(at.y), 1.4, founders(def)) and gets_out(world, at, def) \
-		and opens(world, at, def, OPENS_LEAST) >= OPENS_LEAST
+	return _room_at(world, floori(at.x), floori(at.y), 1.4, founders(def)) and gets_out(world, at, def)
 
 
 ## Rays a keeper's lair is looked out along, how far, and how many must get

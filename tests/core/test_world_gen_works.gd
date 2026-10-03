@@ -15,16 +15,14 @@ static func is_evidence(kind: int) -> bool:
 	return kind >= FIRST and not PropKind.WILD.has(kind)
 
 ## Kinds declared, modelled and taken from, that no stage of world gen lays YET:
-## the crags' five, the frost sea's four and the glass desert's three arrive in
-## two halves each (docs/LANDSCAPES.md, §2, §3), the kinds first and the
-## scatter bands, the survey bench, the barrow site, the soundings works row,
-## the floe camp and the crater site after, so for one wave
+## the frost sea's four and the glass desert's three arrive in two halves each
+## (docs/LANDSCAPES.md, §2, §3), the kinds first and the scatter bands, the
+## soundings works row, the floe camp and the crater site after, so for one wave
 ## they exist and stand nowhere. A kind here is a debt, and the commit that
 ## lays one takes it off this list, or the test below goes on passing over a
 ## kind nobody placed. `test_world_gen.gd`'s placed-anywhere claim and
 ## `tests/gear_economy/test_in_a_real_world.gd`'s raw check read this same list.
-const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.THEODOLITE_MAST,
-	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
+const NOT_YET_LAID: Array[int] = [
 	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE,
 	# A strike field digs a few fulgurites out between its rods, on the seeds
 	# whose cells take one; the glass's own scatter of them is still owed.

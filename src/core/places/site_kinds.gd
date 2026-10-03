@@ -100,6 +100,14 @@ const ROWS := {
 			[PropKind.DEBRIS, 4, 7.0], [PropKind.REEDS, 6, 8.0]],
 		"holds": &"copper", "behind": WATER, "guard": 0.1, "clear": 24.0,
 	},
+	&"barrow": {
+		# The crags: a mound with a cairn on it and a trilithon at its mouth, the
+		# dead round it. The challenge is the dark, not a machine. Holds `iron`.
+		"ground": KEEP, "radius": 5.0, "wants": ANY,
+		"props": [[PropKind.CAIRN, 1, 0.0], [PropKind.LINTEL, 1, 3.0],
+			[PropKind.GRAVE, 3, 4.0], [PropKind.STANDING_STONE, 1, 4.5]],
+		"holds": &"iron", "behind": OPEN, "guard": 0.0, "clear": 26.0,
+	},
 	&"flooded_hall": {
 		# The drowned city: a hall whose roof went and whose floor the sea took,
 		# its walls standing out of the black water to their broken heights, what

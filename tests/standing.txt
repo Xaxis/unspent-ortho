@@ -44,3 +44,9 @@
 # IS ALWAYS THE INTERSECTION: a line removed by EITHER side now passes, so
 # keeping it because the other side still had it would put a green test
 # back on the list and teach the gate to expect a failure that is gone.
+
+# 90210's region 23 is a coast of 9472 tiles with no sea within
+# GenWorks.SHORE_STEPS of any of it: the Reaper's intake has nowhere to stand
+# and the region keeps no keeper. A coast dealt to land the sea never reaches,
+# GenCountries' to answer (task #60), not the station rule's.
+test_station_ways:test_no_region_past_a_sliver_is_kept_out_of_its_keeper

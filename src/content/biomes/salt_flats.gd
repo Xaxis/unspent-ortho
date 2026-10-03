@@ -289,6 +289,11 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	return BiomeScatter.PASS
 
 
+## How many sites a station is laid at before it is given up
+## (`GenWorks.station_site`).
+const STATION_TRIES := 4
+
+
 ## The machines' works here (GenWorks.register, called from make()): the pans
 ## themselves. Bunded rectangles ruled across the flat on the survey bearing,
 ## a gate in every wall, the rake's rows still in the floor, and the conveyor
@@ -299,37 +304,53 @@ static func _works(L: Object) -> void:
 	# well inside the flat (blend 0.2): a pan half out in the next landscape is
 	# a gate nobody reads as the flats' own. Seed 1 at GEN 34 laid all five
 	# gates at blend 0.07-0.40 when the search allowed 0.4.
+	# A battery is the rake's station and stands only where its den keeps its
+	# ways (`_pans`); one refused is sited again, never dropped. 90210's open
+	# flats are crust, and their pan ground lies in the hollows: the first
+	# darts landed out of the rake's reach of it.
 	var pans: Array = []
 	for n in GenWorks._n(L, 2.0):
-		var p := GenWorks._site(L, 8, 1, floors, 34.0, 700, 0.2)
-		if p.x >= 0 and GenWorks._work(L, &"_pans", Vector2(p) + Vector2(0.5, 0.5)):
-			pans.append(L.w.landmarks.back())
+		for t in STATION_TRIES:
+			var p := GenWorks.station_site(L, 8, 1, floors, 34.0, 700, 0.2)
+			if p.x < 0:
+				break
+			if GenWorks._work(L, &"_pans", Vector2(p) + Vector2(0.5, 0.5)):
+				pans.append(L.w.landmarks.back())
+				break
 	# The intake that drained the sea into all this, standing on the rim of a
 	# battery with its pipe run heading out along the bund. ON THE RIM, not on a
 	# dart of its own: the rake dens on its brine house and the depot stands at
 	# the busiest pans, and the two are meant to be one place
 	# (test_in_game:test_what_a_broken_depot_spends_is_what_a_keeper_eats). A
 	# brine house thrown anywhere stood sixty tiles and more from any yard.
+	# The rake's first station, so every region big enough to keep the rake
+	# gets one (`GenWorks._n_station`): a share of one gave it to the biggest
+	# region alone, and seed 1's second flat kept no rake.
 	var d: Vector2 = L.d
 	var nrm: Vector2 = L.nrm
-	for n in GenWorks._n(L, 1.0):
+	for n in GenWorks._n_station(L, 1.0):
 		var stood := false
 		for m: Dictionary in pans:
 			var half: Vector2 = m.half
 			for side: float in [1.0, -1.0]:
 				if not stood:
 					stood = GenWorks._work(L, &"_brine_house", (m.pos as Vector2) + nrm * side * (half.y + 5.0) - d * half.x * 0.5)
-		if stood:
-			continue
-		var p := GenWorks._site(L, 5, 2, [], 40.0, 500, 0.5)
-		if p.x >= 0:
-			GenWorks._work(L, &"_brine_house", Vector2(p) + Vector2(0.5, 0.5))
+		for t in STATION_TRIES:
+			if stood:
+				break
+			var p := GenWorks.station_site(L, 5, 2, [], 40.0, 500, 0.5)
+			if p.x < 0:
+				break
+			stood = GenWorks._work(L, &"_brine_house", Vector2(p) + Vector2(0.5, 0.5))
 
 
 static func _pans(L: Object, at: Vector2, _a: Array) -> bool:
 	var rng: RandomNumberGenerator = L.rng
 	var d: Vector2 = L.d
 	var nrm: Vector2 = L.nrm
+	if not GenWorks.station_first(L, at):
+		return false
+	var from: int = L.w.props.size()
 	var half := Vector2(rng.randf_range(8.0, 11.0), rng.randf_range(5.0, 7.0))
 	GenWorks._record(L.c, &"pans", at, d, half, GenWorks.CUT)
 	# The brine works that fed this battery: a pump house at the head of the
@@ -352,17 +373,23 @@ static func _pans(L: Object, at: Vector2, _a: Array) -> bool:
 		GenWorks._put(L, PropKind.SALT_HEAP, at + d * gx * 3.4 + nrm * rng.randf_range(-1.5, 1.5), 0.0, -99, 0.3)
 	GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 1.6), (-d).angle(), -99, 0.2)
 	GenWorks._about(L, PropKind.DEBRIS, at, 2, half.y, half.x)
-	return true
+	# The rake dens by its pans (a station), so they stand only where its den
+	# keeps its ways: asked before they were laid, or now off their larder where
+	# the den hangs on it (GenWorks.station_first, station_last).
+	return GenWorks.station_last(L, at, from, maxf(half.x, half.y))
 
 
 static func _brine_house(L: Object, at: Vector2, _a: Array) -> bool:
 	var d: Vector2 = L.d
+	var from: int = L.w.props.size()
 	var house := GenWorks._put_footed(L, PropKind.PUMP_HOUSE, at, d.angle(), 1.0)
-	if house == null:
+	if house == null or not GenWorks.station_first(L, house.pos):
 		return false
 	at = house.pos
 	GenWorks._record(L.c, &"brine_house", at, d, Vector2(4.0, 3.0))
 	GenWorks._run(L, PropKind.PIPE, at + d * 2.5, d, L.rng.randi_range(4, 6), 2.0, -99, 0.2)
 	GenWorks._about(L, PropKind.WATER_TANK, at, 1, 3.0, 5.0)
 	GenWorks._about(L, PropKind.GRAVE, at, 2, 5.0, 8.0)
-	return true
+	# The rake's first station: it stands only where its den keeps its ways
+	# (GenWorks.station_first, station_last).
+	return GenWorks.station_last(L, at, from, 4.0)

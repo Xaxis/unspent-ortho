@@ -183,6 +183,9 @@ class Lay:
 	## What `_site` learned of this landscape, per question asked of it: 1 when
 	## its strict search came up empty, 2 when the loose one did too.
 	var site_memo: Dictionary = {}
+	## The region being laid's cells of its keeper's founder ground
+	## (`_founder_near`), gathered on the first ask; null until then.
+	var founder_cells: Variant = null
 	## False while a work is composed a second time for `witness`: it reads the
 	## snapshot and keeps what it takes in `mine`, and writes no grid.
 	var writes := true
@@ -330,6 +333,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	lay.rng = Rng.make(c.s, 0x3058)
 	lay.site_rng = lay.rng
 	lay.site_memo.clear()
+	lay.founder_cells = null
 	lay.host = GenWorks
 	# The people's things are rows too, composed against the land as the works
 	# left it: they keep off the works' pieces, and off nothing else of their own.
@@ -389,6 +393,7 @@ static func _enter(L: Lay, def: BiomeDef, k: int) -> void:
 	# Thrown from the region's own key, never its id (GenCountries.region_key).
 	L.site_rng = Rng.make(L.c.s, Rng.hash_ints(0x3057, String(def.id).hash(), GenCountries.region_key(L.w, L.region)))
 	L.site_memo.clear()
+	L.founder_cells = null
 	L.rng = L.site_rng
 	L.m_region = L.w.landmarks.size()
 
@@ -445,16 +450,114 @@ static func station_holds(L: Lay, p: Vector2, laid := PackedVector2Array(), exte
 	var def := Sentinels.for_land(L.id)
 	if def == null:
 		return true
-	# Nor within its reach of where the raft comes ashore: the landing is safe
-	# ground (Sentinels._lair_worked).
-	var landings: Array[Vector2] = []
-	for row: Dictionary in L.w.continents:
-		if bool(row.get("landfall", false)) and row.has("from"):
-			landings.append(row["from"] as Vector2)
+	var landings := _landings(L)
 	if not laid.is_empty():
 		return Sentinels.station_den(L.w, p, def, landings, L.w.region_at(floori(p.x), floori(p.y)), laid, true, extent).is_finite()
 	var den := Sentinels.den_at(L.w, p, def, landings)
 	return den.is_finite() and Sentinels.ways_closed(L.w, den, def, true).is_empty()
+
+
+## THE CHEAP HALF OF THE STATION RULE, asked of many candidates so that
+## `station_holds` floods few: the room nearest `p` off its keeper's founder
+## ground is clear of home and of every landing, with a way out of it
+## (Sentinels.den_clear), and that ground lies somewhere in its reach. What it
+## refuses at `p`, `station_holds` without `laid` refuses too; what it passes
+## may still be refused. True where the landscape keeps no keeper.
+static func station_may_hold(L: Lay, p: Vector2) -> bool:
+	var def := Sentinels.for_land(L.id)
+	if def == null:
+		return true
+	if not _founder_near(L, def, p):
+		return false
+	var sink := Sentinels.founders(def)
+	var at := Sentinels.stand_near(L.w, p, 1.4, sink)
+	if not Sentinels.den_clear(L.w, at, def, _landings(L)):
+		return false
+	return sink.is_empty() or Sentinels.founder_tiles(L.w, at, def, 1, def.reach) > 0
+
+
+## Whether any of `def`'s founder ground may lie within its reach of `p`, read
+## off the region's cells of that ground (Sentinels._ground_cells, gathered once
+## per region): the cheapest refusal a station has, a few lookups, and on the
+## crags and the flats it refuses most candidates. A cell counts out to the
+## reach and one cell more, so it refuses only where the founder flood finds
+## none of that ground on the tiles the cells read (every other one).
+static func _founder_near(L: Lay, def: SentinelDef, p: Vector2) -> bool:
+	if Sentinels.founders(def).is_empty() or L.rects.is_empty():
+		return true
+	var cell := Sentinels.GROUND_CELL
+	var cells := _founder_cells(L, def)
+	var k := ceili(def.reach / float(cell)) + 1
+	var at := Vector2i(floori(p.x) / cell, floori(p.y) / cell)
+	for dy in range(-k, k + 1):
+		for dx in range(-k, k + 1):
+			if cells.has(at + Vector2i(dx, dy)):
+				return true
+	return false
+
+
+static func _founder_cells(L: Lay, def: SentinelDef) -> Dictionary:
+	if L.founder_cells == null:
+		L.founder_cells = Sentinels._ground_cells(L.w, (L.rects[0] as Rect2).grow(def.reach + Sentinels.GROUND_CELL), Sentinels.founders(def))
+	return L.founder_cells
+
+
+## Whether a station of the region's keeper can hold anywhere in the region
+## being laid: not when its founder ground lies nowhere within its reach of the
+## region (`_founder_cells` empty), where every station would be refused. Asked
+## before a station's search and its retries, so a region that cannot keep its
+## keeper pays nothing for them: seed 7's salt-flat slivers have no pan in reach.
+static func station_ground(L: Lay) -> bool:
+	var def := Sentinels.for_land(L.id)
+	if def == null or Sentinels.founders(def).is_empty() or L.rects.is_empty():
+		return true
+	return not _founder_cells(L, def).is_empty()
+
+
+## Whether a station's den hangs on its larder: its keeper starves, and
+## Sentinels.station_den sends the den off the larder. Then the rule is asked
+## once the work has laid it (`station_holds` with `laid`); else before the work
+## lays anything (`station_first`), so a refused site costs no laying.
+static func larder_decides(L: Lay) -> bool:
+	var def := Sentinels.for_land(L.id)
+	return def != null and def.way_of(SentinelWay.STARVE) != null
+
+
+## The rule asked before a station is laid at `p`, where its den does not hang
+## on its larder (`larder_decides`); true where it does, for `station_holds` to
+## answer once the larder is down.
+static func station_first(L: Lay, p: Vector2) -> bool:
+	return larder_decides(L) or station_holds(L, p)
+
+
+## The rule asked once a station's larder, every feed laid since prop `from`, is
+## down, where its den hangs on it (`larder_decides`); true where it does not,
+## `station_first` having answered.
+static func station_last(L: Lay, p: Vector2, from: int, extent: float) -> bool:
+	return not larder_decides(L) or station_holds(L, p, larder_since(L, from), extent)
+
+
+## Where rafts come ashore, which no keeper's den covers: the landing is safe
+## ground (Sentinels._lair_worked).
+static func _landings(L: Lay) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for row: Dictionary in L.w.continents:
+		if bool(row.get("landfall", false)) and row.has("from"):
+			out.append(row["from"] as Vector2)
+	return out
+
+
+## A station's site by `_site`'s darts (its arguments), the cheap half of the
+## station rule asked of the darts that pass the rest (`station_may_hold`, at
+## most STATION_LOOKS of them); (-1, -1) when none passes, or the region can
+## hold none of its keeper's stations (`station_ground`). One search, never one
+## per refusal.
+static func station_site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attempts: int, blend_max: float) -> Vector2i:
+	if not station_ground(L):
+		return Vector2i(-1, -1)
+	return _site(L, r, rise, grounds, apart, attempts, blend_max, true)
+
+
 
 
 ## The region being laid's share of `total` over its landscape's regions by
@@ -496,18 +599,20 @@ static func effort(c: GenContext) -> float:
 ## middle tile on one of `grounds` (any, if empty) and heart-side of any
 ## ecotone. The last part of the search settles for less room, rougher ground
 ## and any ground, so every landscape gets its works on every seed.
-static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attempts: int = 500, blend_max: float = 0.35) -> Vector2i:
+static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attempts: int = 500, blend_max: float = 0.35,
+		station := false) -> Vector2i:
 	var c := L.c
 	var w := L.w
 	attempts = roundi(attempts * effort(c))
 	var strict := int(attempts * 0.55)
+	var looked := 0
 	# WHAT A SEARCH LEARNED IS KEPT for the next one that asks the same thing.
 	# The land does not change while the works are laid and places only ever
 	# add, so a strict search that found nothing here will find nothing again
 	# (the archive asks four times running on a burning with no room for it),
 	# and a whole search that found nothing will too: each was 1-5 ms of darts
 	# at 256, most of the works stage on a seed whose landscapes are cramped.
-	var key := hash([r, rise, grounds, apart, attempts, blend_max])
+	var key := hash([r, rise, grounds, apart, attempts, blend_max, station])
 	var known: int = L.site_memo.get(key, 0)
 	if known == 2:
 		return Vector2i(-1, -1)
@@ -534,9 +639,95 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 		var room := apart if not loose else apart * 0.45
 		if GenScatter._near_village(w, Vector2(p), maxf(room, 14.0)) or _crowded(L, Vector2(p), room):
 			continue
+		if station:
+			if looked >= STATION_LOOKS:
+				return Vector2i(-1, -1)
+			looked += 1
+			if not station_may_hold(L, Vector2(p) + Vector2(0.5, 0.5)):
+				continue
 		return p
 	L.site_memo[key] = 2
 	return Vector2i(-1, -1)
+
+
+## THE FLATTEST ROOMS IN THE REGION BEING LAID, found by walking its own tiles
+## rather than throwing darts: none when nothing in it qualifies.
+##
+## **DARTS DO NOT FIND FLAT GROUND WHERE THERE IS ALMOST NONE.** `_site` asks for
+## a whole square within a level, and on the crags' terraces it ran through its
+## strict half without a hit and settled in the loose half for a square that
+## fell six levels corner to corner. Scoring every FLAT_STEP-th tile by how much
+## of the square of radius `r` round it shares its level takes the best there IS,
+## for a fixed walk instead of a search that runs longest exactly where it fails.
+## A candidate is of the region (`here`), off the stage's first occupancy
+## (`base`), water, roads and villages, on `grounds` (any when empty), within
+## `blend_max`, clear of where the player wakes by Sentinels.CLEAR_OF_HOME (no
+## keeper dens there), `apart` from this region's other works (`_crowded`) and
+## `village` from any village.
+## For a `station`, only rooms the cheap half of the station rule passes
+## (`station_may_hold`): the flattest squares of seed 7's biggest crags region
+## are pockets in the terraces, and the first 24 asked had no way out. The
+## caller asks the whole of the rule (`station_holds`) of them in order, and
+## stops at the first work that stands, so its floods are run only until then.
+## Up to `count` of them, flattest first.
+const FLAT_STEP := 3
+## How many rooms `flattest` asks the cheap half of the station rule of per one
+## it returns.
+const STATION_LOOKS := 10
+
+
+static func flattest(L: Lay, r: int, grounds: Array, apart: float, station := false, count := 1, blend_max: float = 0.35,
+		village := 18.0) -> Array[Vector2i]:
+	var c := L.c
+	var w := L.w
+	var out: Array[Vector2i] = []
+	if L.rects.is_empty() or (station and not station_ground(L)):
+		return out
+	var rect: Rect2 = L.rects[0]
+	var home_clear := Sentinels.CLEAR_OF_HOME + 2.0
+	var scored: Array = []
+	var y := maxi(int(rect.position.y), r + 1)
+	while y < mini(int(rect.end.y), c.size - r - 1):
+		var x := maxi(int(rect.position.x), r + 1)
+		while x < mini(int(rect.end.x), c.size - r - 1):
+			var i := y * c.size + x
+			if L.here(x, y) and L.base[i] == 0 and w.blend[i] <= blend_max and c.land[i] != 0 and c.water[i] == 0 \
+					and c.road[i] == 0 and (grounds.is_empty() or grounds.has(int(w.ground[i]))) \
+					and Vector2(x, y).distance_to(w.spawn) >= home_clear:
+				# Every other tile of the square: flatness ranks, it is not a count.
+				var l0 := w.level[i]
+				var score := 0
+				for dy in range(-r, r + 1, 2):
+					var row := i + dy * c.size
+					for dx in range(-r, r + 1, 2):
+						var j := row + dx
+						if w.level[j] == l0 and L.base[j] == 0 and c.water[j] == 0 and c.road[j] == 0 and c.village[j] == 0 and c.ramp[j] == 0:
+							score += 1
+				scored.append(Vector3i(x, y, score))
+			x += FLAT_STEP
+		y += FLAT_STEP
+	# Flattest first, ties in scan order; the dearer refusals only for those
+	# taken, the founder cells before any, and the cheap half of the station
+	# rule for at most STATION_LOOKS per room returned.
+	scored.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return a.z > b.z or (a.z == b.z and (a.y < b.y or (a.y == b.y and a.x < b.x))))
+	var def := Sentinels.for_land(L.id) if station else null
+	var looked := 0
+	for v: Vector3i in scored:
+		var at := Vector2(v.x, v.y)
+		if def != null and not _founder_near(L, def, at):
+			continue
+		if GenScatter._near_village(w, at, village) or _crowded(L, at, apart):
+			continue
+		if station:
+			if looked >= count * STATION_LOOKS:
+				break
+			looked += 1
+			if not station_may_hold(L, at + Vector2(0.5, 0.5)):
+				continue
+		out.append(Vector2i(v.x, v.y))
+		if out.size() >= count:
+			break
+	return out
 
 
 ## A tile to try: inside one of the laid type's own regions, chosen by size, or
@@ -650,6 +841,20 @@ static func _crowded(L: Lay, p: Vector2, d: float) -> bool:
 			continue
 		return true
 	return false
+
+
+## Where every feed of the landscape's keeper laid since prop `from` stands: a
+## work's own larder, handed to `station_holds` once the work has laid it.
+static func larder_since(L: Lay, from: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var def := Sentinels.for_land(L.id)
+	if def == null:
+		return out
+	for i in range(from, L.w.props.size()):
+		var p: WorldProp = L.w.props[i]
+		if def.feeds.has(p.kind):
+			out.append(p.pos)
+	return out
 
 
 ## This region's works rows of `kind` within d of p. Other regions' works are
@@ -776,6 +981,42 @@ static func _put_footed(L: Lay, kind: int, p: Vector2, rot: float, clear: float,
 	return null
 
 
+## A SOLID ON A STEP: at `q` or the nearest of a cross of tiles round it, out to
+## `reach` along the survey bearing and across it, on a tile no more than ONE
+## level off any of its four neighbours, standing across that step (`_put`'s
+## `berthed`). Null when none of them will take it.
+##
+## Where nearly every tile is on a one-level step (the crags' terraces, the
+## frost sea's ice), `_put`'s rule that a solid stands on ONE level refused every
+## mast of every bench, and `_put_footed`'s ring keeps to it. A tripod's legs
+## take a level's half unit; a cliff's two levels they do not.
+static func put_on_step(L: Lay, kind: int, q: Vector2, rot: float, clear: float = 0.0, reach: float = 1.6) -> WorldProp:
+	var c := L.c
+	var w := L.w
+	var offs: Array[Vector2] = [Vector2.ZERO]
+	var r := reach * 0.5
+	while r <= reach + 0.01:
+		offs.append_array([L.nrm * r, -L.nrm * r, L.d * r, -L.d * r])
+		r += reach * 0.5
+	for off: Vector2 in offs:
+		var at := q + off
+		var x := floori(at.x)
+		var y := floori(at.y)
+		if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
+			continue
+		var i := y * c.size + x
+		var steep := false
+		for k: int in [1, -1, c.size, -c.size]:
+			if absi(w.level[i + k] - w.level[i]) > 1:
+				steep = true
+		if steep:
+			continue
+		var prop := _put(L, kind, at, rot, -99, clear, true, true)
+		if prop != null:
+			return prop
+	return null
+
+
 ## A straight run of pieces from `a` along `dir`, `step` apart, each turned
 ## along the run; a piece that cannot stand leaves a gap, and `gaps` of them
 ## are left out anyway. Returns the ids placed.
@@ -846,15 +1087,18 @@ static func _sea_dir(c: GenContext, p: Vector2i, reach: int = 7) -> Vector2:
 
 
 ## A tile on the shore of the type being laid: level 1 (or 2 late in the
-## search), within 4 tiles of the sea, on one of `grounds`, heart-side of any
-## ecotone, away from other places.
+## search), within SHORE_STEPS of the sea, on one of `grounds`, heart-side of
+## any ecotone, away from other places.
+const SHORE_STEPS := 4
+
+
 static func _shore(L: Lay, grounds: Array, apart: float, attempts: int = 900) -> Vector2i:
 	var c := L.c
 	var w := L.w
 	for attempt in attempts:
 		var p := _dart(L)
 		var i := p.y * c.size + p.x
-		if w.level[i] < 1 or w.level[i] > (1 if attempt < attempts * 0.6 else 2) or c.sea_steps[i] > 4 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
+		if w.level[i] < 1 or w.level[i] > (1 if attempt < attempts * 0.6 else 2) or c.sea_steps[i] > SHORE_STEPS or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
 			continue
 		if not grounds.is_empty() and not grounds.has(int(w.ground[i])):
 			continue
@@ -867,6 +1111,26 @@ static func _shore(L: Lay, grounds: Array, apart: float, attempts: int = 900) ->
 			continue
 		return p
 	return Vector2i(-1, -1)
+
+
+## Whether `region` of a finished world holds a tile `_shore` could give: land
+## at level 1 or 2 within SHORE_STEPS steps of the sea (level 0 and below, and
+## off the map), read off the levels, since the stage's own steps
+## (GenContext.sea_steps) are gone by then.
+static func has_shore(world: WorldData, region: Dictionary) -> bool:
+	var id := int(region.get("id", -1))
+	var b: Rect2 = region.get("bounds", Rect2())
+	for y in range(floori(b.position.y), ceili(b.end.y)):
+		for x in range(floori(b.position.x), ceili(b.end.x)):
+			var l := world.level_at(x, y)
+			if l < 1 or l > 2 or world.region_at(x, y) != id:
+				continue
+			for dy in range(-SHORE_STEPS, SHORE_STEPS + 1):
+				var k := SHORE_STEPS - absi(dy)
+				for dx in range(-k, k + 1):
+					if not world.in_bounds(x + dx, y + dy) or world.level_at(x + dx, y + dy) <= 0:
+						return true
+	return false
 
 
 ## A few things scattered round a point, each where it can stand.
