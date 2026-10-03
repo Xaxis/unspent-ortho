@@ -278,7 +278,9 @@ func setup(g: Game) -> void:
 	lr.position = Vector3(0, 0.08, 0)
 	lantern.add_child(lr)
 	add_child(lantern)
-	_indexed_world = g.world
+	# The world's index was built beside its raise (RealmWarm) when it was raised
+	# for this game: taken, it is only caught up on what was laid since.
+	_adopt(_take_prepared(g.world), g.world)
 	_index_sources()
 	_update(0.0, true)
 
@@ -777,15 +779,7 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	var kept: Array = _index_of.get(game.world.get_instance_id(), [])
 	if kept.is_empty():
 		kept = _take_prepared(game.world)
-	if not kept.is_empty() and (kept[0] as WeakRef).get_ref() == game.world:
-		sources = kept[1]
-		_cells = kept[2]
-		_indexed = kept[3]
-	else:
-		sources = [] as Array[Dictionary]
-		_cells = {}
-		_indexed = 0
-	_indexed_world = game.world
+	_adopt(kept, game.world)
 	for i in _assigned.size():
 		_assigned[i] = null
 	for id: int in _glows.keys():
@@ -797,6 +791,20 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	_index_sources()
 	# The next frame does the assigning, rather than a second _update here.
 	_refresh = 0.0
+
+
+## `w`'s index from a kept or prepared entry [world ref, sources, cells, indexed],
+## or an empty one to build from the first prop.
+func _adopt(kept: Array, w: WorldData) -> void:
+	if not kept.is_empty() and (kept[0] as WeakRef).get_ref() == w:
+		sources = kept[1]
+		_cells = kept[2]
+		_indexed = kept[3]
+	else:
+		sources = [] as Array[Dictionary]
+		_cells = {}
+		_indexed = 0
+	_indexed_world = w
 
 
 ## Index every light source of the world from where it was left (`_indexed`).
