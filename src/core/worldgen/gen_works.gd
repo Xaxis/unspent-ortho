@@ -180,6 +180,10 @@ class Lay:
 	## with what `occ` held there before, so a work that gives up is taken back.
 	var key := 0
 	var in_work := false
+	## The world's prop count when the work being composed began (`_work`): its
+	## own props are the ones from here, which is how a station hands over its
+	## larder (`station_last`) without asking the world's size itself.
+	var work_from := 0
 	## What `_site` learned of this landscape, per question asked of it: 1 when
 	## its strict search came up empty, 2 when the loose one did too.
 	var site_memo: Dictionary = {}
@@ -530,11 +534,11 @@ static func station_first(L: Lay, p: Vector2) -> bool:
 	return larder_decides(L) or station_holds(L, p)
 
 
-## The rule asked once a station's larder, every feed laid since prop `from`, is
-## down, where its den hangs on it (`larder_decides`); true where it does not,
-## `station_first` having answered.
-static func station_last(L: Lay, p: Vector2, from: int, extent: float) -> bool:
-	return not larder_decides(L) or station_holds(L, p, larder_since(L, from), extent)
+## The rule asked once a station's larder, every feed the work has laid
+## (`Lay.work_from`), is down, where its den hangs on it (`larder_decides`); true
+## where it does not, `station_first` having answered.
+static func station_last(L: Lay, p: Vector2, extent: float) -> bool:
+	return not larder_decides(L) or station_holds(L, p, larder_since(L, L.work_from), extent)
 
 
 ## Where rafts come ashore, which no keeper's den covers: the landing is safe
@@ -774,6 +778,7 @@ static func _work(L: Lay, fn: StringName, at: Vector2, args: Array = []) -> bool
 	var m0 := w.landmarks.size()
 	var l0 := w.lines.size()
 	var lit0 := L.lit.size()
+	L.work_from = n0
 	L.in_work = true
 	L.mine.clear()
 	L.key = Rng.hash_ints(0x3057, String(L.id).hash(), String(fn).hash(), floori(at.x), floori(at.y), args.hash())
