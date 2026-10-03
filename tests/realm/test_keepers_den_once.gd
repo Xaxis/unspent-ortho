@@ -1,10 +1,10 @@
 extends TestCase
 ## A KEEPER DENS IN ONE PLACE FOR THE WHOLE GAME. A design may station at a
 ## landmark (the drip warden at a sump pump), and the landmarks' rows go into the
-## world's list when 22_landmarks reads them on the crossing; asked before that,
-## on the raise's worker (RealmWarm's works map), every warden denned at its
-## region's heart, and after it at a pump 100-500 tiles off. The rows are written
-## before anything on the raise asks, so every asker gets the one answer.
+## world's list when 22_landmarks reads them on the crossing; asked before that
+## (on the raise, or by 21_doors on the crossing, which comes first), every
+## warden denned at its region's heart, and after it at a pump 100-500 tiles off.
+## The rows are written on the raise, so every asker gets the one answer.
 
 
 

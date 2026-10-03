@@ -16,9 +16,10 @@ extends RefCounted
 ##                         the depots' (Works.record), in the order 20_realms,
 ##                         22_landmarks and 34_works write them at their setup,
 ##                         where they now find them written. A keeper stationed
-##                         at a landmark dens there only once its row is, and
-##                         every answer keyed on the list's length (Works.sites,
-##                         Sentinels' lairs) is worked out again each time it grows
+##                         at a landmark dens there only once its row is, so every
+##                         ask of its den gets the one answer, and every answer
+##                         keyed on the list's length (Works.sites, Sentinels'
+##                         lairs) holds from here on
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
 
