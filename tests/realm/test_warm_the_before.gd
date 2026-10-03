@@ -54,17 +54,10 @@ func test_no_gate_open_raises_no_before() -> void:
 	_clear()
 
 
-## On the web the raise only begins with room for it: a third world in a wasm
-## heap that never shrinks, where running out ends the player's game.
-func test_on_the_web_the_before_waits_for_room() -> void:
-	check(Realms.before_fits(1150.0, true), "a heap of 1,150 MB has room on the web")
-	check(not Realms.before_fits(1400.0, true), "one of 1,400 MB does not: the press raises it then")
-	check(Realms.before_fits(4000.0, false), "the desktop has no such wall")
-
-
-## A reader that fails or reads 0 (the engine's own counter, in the release build
-## the web ships) must never wave a raise through.
-func test_on_the_web_an_unread_heap_refuses() -> void:
-	check(not Realms.before_fits(0.0, true), "a heap read as 0 refuses")
-	check(not Realms.before_fits(-1.0, true), "an unreadable heap refuses")
-	eq(Realms.web_heap_mb(), -1.0, "off the web the page's heap cannot be read")
+## Never on the web: a third world in a wasm heap that never shrinks, which a
+## threaded game has already taken to 1,555 MB, and an out-of-memory there ends
+## the player's game. The guard it replaced read the engine's memory counter,
+## which is 0 in the release build the web ships, and let every raise through.
+func test_the_web_never_raises_it_early() -> void:
+	check(not Realms.warms_early(true), "on the web the press raises the Before")
+	check(Realms.warms_early(false), "on the desktop it is raised once a gate is open")
