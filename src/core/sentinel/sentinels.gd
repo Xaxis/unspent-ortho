@@ -654,31 +654,50 @@ static func opens(world: WorldData, at: Vector2, def: SentinelDef, enough: int =
 	var cy := floori(at.y)
 	if not _keeper_ground(world, cx, cy, tall):
 		return 0
+	# READ OFF A WINDOW (TileWindow), not through the world's methods a tile at a
+	# time: that was the cost of every lair and every station's den (the frost
+	# sea's soundings, 5-12 ms each). The same tiles in the same order, so the
+	# same count; tests/sentinel/test_flood_plain.gd keeps the body this replaced
+	# and holds the two equal.
+	var size := world.size
+	var win := TileWindow.of(world, cx - OPEN_TO, cy - OPEN_TO, cx + OPEN_TO + 1, cy + OPEN_TO + 1)
+	var levels := win.level
+	var grounds := win.ground
+	var overhead := world.has_overhead()
 	var side := OPEN_TO * 2 + 1
 	var seen := PackedByteArray()
 	seen.resize(side * side)
 	seen[OPEN_TO * side + OPEN_TO] = 1
-	var queue: Array[Vector2i] = [Vector2i(cx, cy)]
+	var qx := PackedInt32Array([cx])
+	var qy := PackedInt32Array([cy])
 	var head := 0
 	var n := 0
-	while head < queue.size():
-		var t := queue[head]
+	while head < qx.size():
+		var tx := qx[head]
+		var ty := qy[head]
 		head += 1
-		if maxi(absi(t.x - cx), absi(t.y - cy)) >= OPEN_FROM:
+		if maxi(absi(tx - cx), absi(ty - cy)) >= OPEN_FROM:
 			n += 1
 			if n >= enough:
 				return n
-		var level := world.level_at(t.x, t.y)
-		for d: Vector2i in STEPS4:
-			var u := t + d
-			var lx := u.x - cx + OPEN_TO
-			var ly := u.y - cy + OPEN_TO
+		var level: int = levels[(ty - win.y0) * win.w + tx - win.x0]
+		for k in 4:
+			var ux := tx + (1 if k == 0 else (-1 if k == 1 else 0))
+			var uy := ty + (1 if k == 2 else (-1 if k == 3 else 0))
+			var lx := ux - cx + OPEN_TO
+			var ly := uy - cy + OPEN_TO
 			if lx < 0 or ly < 0 or lx >= side or ly >= side or seen[ly * side + lx] != 0:
 				continue
-			if not _keeper_ground(world, u.x, u.y, tall) or absi(world.level_at(u.x, u.y) - level) > step:
+			if ux < 0 or uy < 0 or ux >= size or uy >= size:
+				continue
+			var i := (uy - win.y0) * win.w + ux - win.x0
+			var l: int = levels[i]
+			if l < 0 or grounds[i] == Ground.DEEP_WATER or absi(l - level) > step \
+					or (overhead and world.headroom_at(ux, uy) < tall):
 				continue
 			seen[ly * side + lx] = 1
-			queue.append(u)
+			qx.append(ux)
+			qy.append(uy)
 	return n
 
 
@@ -873,12 +892,30 @@ static func _founder_flood(world: WorldData, at: Vector2, def: SentinelDef, enou
 	var reach := within if within >= 0.0 else def.reach
 	var r2 := reach * reach
 	var r := ceili(reach)
+	# READ OFF A WINDOW (TileWindow), not through the world's methods, tile for
+	# tile in the same order (tests/sentinel/test_flood_plain.gd keeps the body
+	# this replaced): off the map is deep water, as `ground_at` says, and the sink
+	# is a table rather than a list asked each tile.
+	var size := world.size
+	var win := TileWindow.of(world, start.x - r, start.y - r, start.x + r + 1, start.y + r + 1)
+	var levels := win.level
+	var grounds := win.ground
+	var overhead := world.has_overhead()
+	var sunk := PackedByteArray()
+	sunk.resize(Ground.COUNT)
+	for g: int in sink:
+		sunk[g] = 1
 	# None of the ground anywhere in reach: no flood. Most of a region's rooms are
 	# this, and the room search asks dozens of them.
 	var any := false
 	for dy in range(-r, r + 1):
+		var y := start.y + dy
 		for dx in range(-r, r + 1):
-			if dx * dx + dy * dy <= r2 and sink.has(world.ground_at(start.x + dx, start.y + dy)):
+			if dx * dx + dy * dy > r2:
+				continue
+			var x := start.x + dx
+			var g: int = grounds[(y - win.y0) * win.w + x - win.x0] if x >= 0 and y >= 0 and x < size and y < size else Ground.DEEP_WATER
+			if sunk[g] != 0:
 				any = true
 				break
 		if any:
@@ -889,28 +926,36 @@ static func _founder_flood(world: WorldData, at: Vector2, def: SentinelDef, enou
 	var seen := PackedByteArray()
 	seen.resize(side * side)
 	seen[r * side + r] = 1
-	var todo: Array[Vector2i] = [start]
+	var qx := PackedInt32Array([start.x])
+	var qy := PackedInt32Array([start.y])
 	var head := 0
 	var n := 0
-	while head < todo.size() and n < enough:
-		var t := todo[head]
+	while head < qx.size() and n < enough:
+		var tx := qx[head]
+		var ty := qy[head]
 		head += 1
-		var l := world.level_at(t.x, t.y)
-		for d: Vector2i in STEPS4:
-			var u := t + d
-			var lx := u.x - start.x + r
-			var ly := u.y - start.y + r
-			if lx < 0 or ly < 0 or lx >= side or ly >= side or seen[ly * side + lx] != 0 or not world.in_bounds(u.x, u.y) \
-					or (Vector2(u) + Vector2(0.5, 0.5)).distance_squared_to(at) > r2:
+		var l: int = levels[(ty - win.y0) * win.w + tx - win.x0]
+		for k in 4:
+			var ux := tx + (1 if k == 0 else (-1 if k == 1 else 0))
+			var uy := ty + (1 if k == 2 else (-1 if k == 3 else 0))
+			var lx := ux - start.x + r
+			var ly := uy - start.y + r
+			if lx < 0 or ly < 0 or lx >= side or ly >= side or seen[ly * side + lx] != 0 \
+					or ux < 0 or uy < 0 or ux >= size or uy >= size \
+					or Vector2(ux + 0.5, uy + 0.5).distance_squared_to(at) > r2:
 				continue
 			seen[ly * side + lx] = 1
-			if not _keeper_ground(world, u.x, u.y, tall) or absi(world.level_at(u.x, u.y) - l) > step:
+			var i := (uy - win.y0) * win.w + ux - win.x0
+			var ul: int = levels[i]
+			var g: int = grounds[i]
+			if ul < 0 or g == Ground.DEEP_WATER or (overhead and world.headroom_at(ux, uy) < tall) or absi(ul - l) > step:
 				continue
-			if sink.has(world.ground_at(u.x, u.y)):
+			if sunk[g] != 0:
 				n += 1
-				if patch and _all_of(world, u, sink):
-					return [n, u]
-			todo.append(u)
+				if patch and _all_of(world, Vector2i(ux, uy), sink):
+					return [n, Vector2i(ux, uy)]
+			qx.append(ux)
+			qy.append(uy)
 	return [n, Vector2i(-1, -1)]
 
 
