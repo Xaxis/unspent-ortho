@@ -1,17 +1,17 @@
 extends TestCase
-## THE PLATE PLAYER WALKS TO ITS LURE ON GROUND IT CAN FIGHT FROM
+## THE PLATE PLAYER'S WALK TO ITS LURE IS NOT UNDONE BY A RISE
 ## (tests/fight/plate_reader.gd). Drawing a keeper out, it walks to the lure; a
 ## step up a bank two levels above the keeper is ground no blow passes from, and
-## the reader steps straight back down. Walked straight at the lure across a
+## a reader fighting there steps straight back down. Walked at the lure across a
 ## rise, the two undid each other every frame: it stood in the keeper's row on
 ## the rise's lip, never reaching the lure, and the anvil's bites caught it
-## there (seed 1's den, test_anvil_ways). A player walks round the rise.
+## there (seed 1's den, test_anvil_ways). A player drawing it out keeps going.
 
 const F := preload("res://tests/fight/fixture.gd")
 const PR := preload("res://tests/fight/plate_reader.gd")
 
 
-func test_the_walk_to_the_lure_goes_round_a_rise_it_cannot_fight_from() -> void:
+func test_the_walk_to_the_lure_crosses_a_rise_and_keeps_going() -> void:
 	var w := F.flat_world(64, Ground.ROCK, Country.COAST, 7)
 	for y in 64:
 		for x in 64:
