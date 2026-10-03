@@ -22,6 +22,13 @@ var react_ms := 220.0
 var human := -1
 const HUMAN_REACT := Vector2(250.0, FightRules.READ_REACT_MS)
 const MISREAD := 0.10
+## A reader made to misread more, or never (the first keeper's two cost bars,
+## tests/sentinel/test_keeper_bouts.gd): the share of its tells misread, and
+## how (&"late" or &"wrong"; empty, half of each). A grip is only ever read late.
+var misread_share := MISREAD
+var misread_as := &""
+## Tells it answered the wrong way while in their box.
+var wrong_reads := 0
 const HUMAN_LATE_MS := 200.0
 const WHIFF := 0.125
 const WHIFF_TURN := 0.9
@@ -95,7 +102,7 @@ func _grip_read() -> float:
 	var id := by.id if by != null else 0
 	var key := int(hero.grip_since)
 	var r := lerpf(HUMAN_REACT.x, HUMAN_REACT.y, Rng.hash01(human, id, key, 0x4752))
-	if Rng.hash01(human, id, key, 0x474C) < MISREAD:
+	if Rng.hash01(human, id, key, 0x474C) < misread_share:
 		r += HUMAN_LATE_MS
 	return r
 
@@ -166,8 +173,8 @@ func _tell_to_answer(m: MobState) -> bool:
 		react = lerpf(HUMAN_REACT.x, HUMAN_REACT.y, Rng.hash01(human, m.id, key, 0x4855))
 		if _by_cue:
 			react += HUMAN_CUE_TURN_MS
-		if Rng.hash01(human, m.id, key, 0x4D52) < (HUMAN_CUE_MISREAD if _by_cue else MISREAD):
-			misread = &"wrong" if Rng.hash01(human, m.id, key, 0x5752) < 0.5 else &"late"
+		if Rng.hash01(human, m.id, key, 0x4D52) < (HUMAN_CUE_MISREAD if _by_cue else misread_share):
+			misread = misread_as if misread_as != &"" else (&"wrong" if Rng.hash01(human, m.id, key, 0x5752) < 0.5 else &"late")
 		if misread == &"late":
 			react += HUMAN_LATE_MS
 	if now - m.blow_at < react:
@@ -196,6 +203,7 @@ func _tell_to_answer(m: MobState) -> bool:
 	if misread == &"wrong":
 		# Read the wrong way: across the blow's side, or in toward it.
 		_escape = -side if _escape == side else -fwd
+		wrong_reads += 1
 	hero.move = _escape
 	_hand(&"dodge")
 	dodges += 1

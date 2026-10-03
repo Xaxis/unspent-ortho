@@ -46,10 +46,8 @@
 # back on the list and teach the gate to expect a failure that is gone.
 
 # #26 (2026-10-02): every keeper held to the boss bar by a person (the human
-# reader, seeds 17 and 29). Red where the honest reader finds a keeper too cheap
-# (coast, frost) or too short (coast). Each keeper's gap is
-# #34's, tuned through its tells and its life.
-test_keeper_bouts:test_a_keeper_fight_lasts_a_boss_fight_for_a_person
+# reader, seeds 17 and 29). Red where the honest reader finds a keeper too cheap:
+# the frost sea. Its gap is #34's, tuned through its tells and its life.
 test_keeper_bouts:test_a_keeper_costs_a_person_something_real
 # #26: the coil's 10-25% band was measured against a bare fight that took a
 # false opening (a told stand); against the honest bare fight it is 31-34% at

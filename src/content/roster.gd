@@ -412,7 +412,7 @@ const DEFS := {
 		# Plated in steel (FightRules.bites): the iron knife the player wakes with
 		# rings off it, open part and all. The reason the next make is a steel edge.
 		"part": &"front", "guarded": true, "sentinel": &"tide_reaper", "breaks": WOOD, "plating": &"steel",
-		"pace": 4.2, "dash": 8.5, "quick": 300, "radius": 1.35, "height": 2.6, "life": 343,
+		"pace": 4.2, "dash": 8.5, "quick": 300, "radius": 1.35, "height": 2.6, "life": 429,
 		"sees": 15, "hears": 11, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
 		"bite": {"swing": [820, 170, 800, 900], "reach": 1.9, "width": 2.6, "dmg": 3, "knock": 9.0, "knock_ms": 320},
