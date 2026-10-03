@@ -57,7 +57,14 @@ func test_no_gate_open_raises_no_before() -> void:
 ## On the web the raise only begins with room for it: a third world in a wasm
 ## heap that never shrinks, where running out ends the player's game.
 func test_on_the_web_the_before_waits_for_room() -> void:
-	var mb := 1048576
-	check(Realms.before_fits(1150 * mb, true), "a game holding 1,150 MB has room on the web")
-	check(not Realms.before_fits(1400 * mb, true), "one holding 1,400 MB does not: the press raises it then")
-	check(Realms.before_fits(4000 * mb, false), "the desktop has no such wall")
+	check(Realms.before_fits(1150.0, true), "a heap of 1,150 MB has room on the web")
+	check(not Realms.before_fits(1400.0, true), "one of 1,400 MB does not: the press raises it then")
+	check(Realms.before_fits(4000.0, false), "the desktop has no such wall")
+
+
+## A reader that fails or reads 0 (the engine's own counter, in the release build
+## the web ships) must never wave a raise through.
+func test_on_the_web_an_unread_heap_refuses() -> void:
+	check(not Realms.before_fits(0.0, true), "a heap read as 0 refuses")
+	check(not Realms.before_fits(-1.0, true), "an unreadable heap refuses")
+	eq(Realms.web_heap_mb(), -1.0, "off the web the page's heap cannot be read")

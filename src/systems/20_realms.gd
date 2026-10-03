@@ -426,9 +426,19 @@ func _watch_gates() -> void:
 ## The Before's raise holds BEFORE_RAISE_MB more than the game did at its peak
 ## (measured, seed 7 at 1840: +402 MB of generation scratch over a held surface,
 ## settling to +89 MB, and RealmWarm's maps after), so it is begun early only
-## while static memory plus that stays under WEB_HEAP_CEILING_MB, which leaves
-## the heap's last 248 MB to the allocator's slack, the stack and the browser's
-## own. Otherwise the press raises it, as before. The desktop has no such wall.
+## while the heap plus that stays under WEB_HEAP_CEILING_MB, which leaves the
+## last 248 MB to the allocator's slack, the stack and the browser's own, and
+## never beside another realm's raise, whose scratch would stack on its own.
+## Otherwise the press raises it, as before. The desktop has no such wall.
+##
+## THE HEAP IS READ OFF THE PAGE (`web_heap_mb`), never the engine's counter:
+## OS.get_static_memory_usage counts only in a debug build and is 0 in the
+## release build the web ships (Godot core/os/memory.cpp), which would have
+## waved every raise through. The heap is a high-water mark that never shrinks,
+## so it errs safe, and a reading that fails or is 0 refuses. What that costs: a
+## threaded game raises the underground at its third frame (WARM_AFTER), which
+## took the heap to 1,555 MB at 1840, and 1,555 + 450 is over the ceiling, so
+## on the web the Before is mostly still raised at the press.
 const BEFORE_RAISE_MB := 450.0
 const WEB_HEAP_CEILING_MB := 1800.0
 
@@ -441,14 +451,29 @@ func _warm_the_before(open: Array[Dictionary]) -> void:
 	var size: int = game.world.size
 	if RealmWorlds.ready(seed_value, size, Realm.ERA) or RealmWorlds.going(seed_value, size, Realm.ERA):
 		return
-	if before_fits(OS.get_static_memory_usage(), OS.has_feature("web")):
+	var web := OS.has_feature("web")
+	if web:
+		for kind: StringName in Realm.KINDS:
+			if RealmWorlds.going(seed_value, size, kind):
+				return
+	if before_fits(web_heap_mb() if web else 0.0, web):
 		RealmWorlds.begin(seed_value, size, Realm.ERA)
 
 
-## Whether the Before's raise has room beside `static_bytes` of what the game
-## holds: always on the desktop, on the web only under WEB_HEAP_CEILING_MB.
-static func before_fits(static_bytes: int, web: bool) -> bool:
-	return not web or float(static_bytes) / 1048576.0 + BEFORE_RAISE_MB <= WEB_HEAP_CEILING_MB
+## The web page's wasm heap in MB, as src/boot/shell.html keeps it; -1 where it
+## cannot be read (off the web, or a page that does not keep it).
+static func web_heap_mb() -> float:
+	var n: Variant = JavaScriptBridge.eval("window.unspentHeap ? window.unspentHeap() : -1", true)
+	if typeof(n) != TYPE_FLOAT and typeof(n) != TYPE_INT:
+		return -1.0
+	return float(n) / 1048576.0 if float(n) > 0.0 else -1.0
+
+
+## Whether the Before's raise has room beside a heap of `heap_mb`: always on the
+## desktop; on the web only under WEB_HEAP_CEILING_MB, and never on a reading
+## that is not a size (0 or less), so a broken reader cannot wave it through.
+static func before_fits(heap_mb: float, web: bool) -> bool:
+	return not web or (heap_mb > 0.0 and heap_mb + BEFORE_RAISE_MB <= WEB_HEAP_CEILING_MB)
 
 
 ## Go through a shaft.

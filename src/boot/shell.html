@@ -36,6 +36,30 @@ $GODOT_HEAD_INCLUDE
 <script>
 const GODOT_CONFIG = $GODOT_CONFIG;
 const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+// THE WASM HEAP, for the game to read (20_realms `web_heap_mb`): the engine's own
+// memory counter counts only in a debug build and reads 0 in the release build
+// this page ships (Godot core/os/memory.cpp). Kept off the Memory the engine
+// makes (threads) or exports (no threads), before the engine starts. The heap
+// only ever grows, so its size is the most the game has held.
+(function () {
+  let heap = null;
+  const Real = WebAssembly.Memory;
+  const Kept = function (desc) { heap = new Real(desc); return heap; };
+  Kept.prototype = Real.prototype;
+  WebAssembly.Memory = Kept;
+  const keep = (r) => {
+    const inst = r && (r.instance || r);
+    for (const v of Object.values((inst && inst.exports) || {})) {
+      if (v instanceof Real) heap = v;
+    }
+    return r;
+  };
+  for (const name of ['instantiate', 'instantiateStreaming']) {
+    const real = WebAssembly[name];
+    if (real) WebAssembly[name] = (...a) => real.apply(WebAssembly, a).then(keep);
+  }
+  window.unspentHeap = () => (heap ? heap.buffer.byteLength : -1);
+}());
 (function () {
   // Kept equal to src/boot/boot_page.gd and src/ui/ui_font.gd (tests/export/test_export.gd checks).
   const SHELL_SHARE = 0.12;
