@@ -507,8 +507,12 @@ static func station_den(world: WorldData, p: Vector2, def: SentinelDef, landings
 ## nearest first: the station's works stay its larder and the den stays by the
 ## station. INF when none is.
 const DEN_OFF := 4
-## Rooms off a larder whose floods are run before a station is given up.
-const DEN_TRIES := 6
+## Rooms off a larder whose floods are run before a station is given up: fewer
+## while a work is being sited (`ground_only`), which keeps the works stage
+## cheap and only ever refuses a site the keeper would have taken, never the
+## other way round, since both search in the same order.
+const DEN_TRIES := 16
+const DEN_TRIES_SITED := 6
 
 
 static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, landings: Array[Vector2], id: int,
@@ -522,9 +526,8 @@ static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, land
 				spots.append(p + q)
 	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(p) < b.distance_squared_to(p))
 	# The floods behind a den's room and its ways are the cost, so each room is
-	# asked once, a spot beside one that failed is passed over (the same pocket,
-	# as `_room_nearest` keeps), and the search gives up after DEN_TRIES of them:
-	# unbounded, it asked 452 rooms on seed 42's glass at 256 and took 1.9 s.
+	# asked once, and the search gives up after DEN_TRIES of them: unbounded, it
+	# asked 452 rooms on seed 42's glass at 256 and took 1.9 s.
 	var asked := {}
 	var failed: Array[Vector2] = []
 	# And a room with none of its founder ground in reach is never flooded for
@@ -540,8 +543,9 @@ static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, land
 			for dy in range(-r, r + 1):
 				for dx in range(-r, r + 1):
 					close_cells[cell + Vector2i(dx, dy)] = true
+	var tries := DEN_TRIES_SITED if ground_only else DEN_TRIES
 	for q: Vector2 in spots:
-		if failed.size() >= DEN_TRIES:
+		if failed.size() >= tries:
 			break
 		if not world.in_bounds(floori(q.x), floori(q.y)) or world.region_at(floori(q.x), floori(q.y)) != id:
 			continue
@@ -552,13 +556,6 @@ static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, land
 			continue
 		asked[at] = true
 		if not close_cells.is_empty() and not close_cells.has(Vector2i(floori(at.x) / GROUND_CELL, floori(at.y) / GROUND_CELL)):
-			continue
-		var near_failed := false
-		for f: Vector2 in failed:
-			if at.distance_to(f) < float(RAY_OUT) * 0.6:
-				near_failed = true
-				break
-		if near_failed:
 			continue
 		if larder_robbable(world, at, def, laid) and _den_ok(world, at, def, landings) and ways_closed(world, at, def, ground_only).is_empty():
 			return at

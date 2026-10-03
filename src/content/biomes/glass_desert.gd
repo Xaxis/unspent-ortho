@@ -275,9 +275,7 @@ static func _strike_field(L: Object, at: Vector2, a: Array) -> bool:
 	var def := Sentinels.for_land(&"glass_desert")
 	for m: Dictionary in w.landmarks:
 		if StringName(str(m.get("kind", &""))) == &"strike_field" and (m.pos as Vector2).distance_to(at) <= def.reach * 2.0:
-			for p in w.props:
-				if p.kind == PropKind.STRIKE_ROD and p.pos.distance_to(m.pos) <= half.length() + ROD_STEP * 2.0:
-					larder.append(p.pos)
+			larder.append_array(m.get("rods", PackedVector2Array()))
 	if not GenWorks.station_holds(L, at, larder, maxf(half.x, half.y)):
 		(a[0] as Array)[0] += 1
 		return false
@@ -292,4 +290,7 @@ static func _strike_field(L: Object, at: Vector2, a: Array) -> bool:
 				var q := at + d * (i - (FIELD_ROWS.x - 2) * 0.5) * FIELD_PITCH + nrm * (j - (FIELD_ROWS.y - 2) * 0.5) * FIELD_PITCH
 				GenWorks._put(L, PropKind.FULGURITE, q, L.rng.randf() * TAU, -99, 0.3)
 	GenWorks._record(c, &"strike_field", at, d, half)
+	# Its rods on its row, so the next field near it counts them without reading
+	# the world's props.
+	w.landmarks.back()["rods"] = rods
 	return true
