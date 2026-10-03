@@ -56,6 +56,31 @@ tour_header_args() {
 # bare (home-coast.tour was, at frame 14).
 #
 #   tour_header_env tours/x.tour    -> TOUR_TIMEOUT=600 / TOUR_FIXED_FPS=60
+# The tours the header's run lines name when none of them is this one: a copy
+# of a tour keeps its original's header, and run under its own name it would
+# take none of those options and boot bare (seed 1 at 08:00), which reads as the
+# tour failing. Three such copies failed that way at line 35 before anyone knew.
+#
+#   tour_header_others tours/x.tour  -> the other paths, space-joined, or nothing
+tour_header_others() {
+  local file="$1"
+  awk -v base="$(basename "$file")" '
+    !/^#/ { exit }
+    {
+      at = index($0, "tools/tour.sh")
+      if (at == 0) next
+      n = split(substr($0, at + length("tools/tour.sh")), words, /[ \t]+/)
+      for (i = 1; i <= n; i++) {
+        if (words[i] !~ /\.tour$/) continue
+        k = split(words[i], bits, "/")
+        if (bits[k] == base) self = 1
+        else other = other (other == "" ? "" : " ") words[i]
+      }
+    }
+    END { if (!self && other != "") print other }
+  ' "$file"
+}
+
 tour_header_env() {
   local file="$1"
   local base

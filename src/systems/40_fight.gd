@@ -134,12 +134,26 @@ func _read_input(delta: float) -> void:
 		sim.press_dodge()
 	# The unbuilder's hands (FightKit.unbuild): use held at an open machine's part
 	# strips it, gathered through its openings.
-	if sim.hero.kit.unbuild and Input.is_action_pressed(&"use") and not Survival.ask_pending(game) \
-			and not Survival.words_in_front(game):
-		for m in sim.mobs:
-			if sim.can_strip(m):
-				sim.strip(m, delta * 1000.0)
-				break
+	if Input.is_action_pressed(&"use"):
+		var m := _strippable()
+		if m != null:
+			sim.strip(m, delta * 1000.0)
+
+
+## The open machine a held `use` strips now (FightKit.unbuild), or null: the one
+## answer the strip acts on and `use_line` names.
+func _strippable() -> MobState:
+	if sim == null or not sim.hero.kit.unbuild or Survival.ask_pending(game) or Survival.words_in_front(game):
+		return null
+	for m in sim.mobs:
+		if sim.can_strip(m):
+			return m
+	return null
+
+
+## The hint for the press the unbuilder's hands would take (UiLink.use_hint).
+func use_line() -> String:
+	return "machine - strip" if game != null and _strippable() != null else ""
 
 
 func _in_fight() -> bool:

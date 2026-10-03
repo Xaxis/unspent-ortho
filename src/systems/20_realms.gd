@@ -159,8 +159,6 @@ func _process(delta: float) -> void:
 	_use_was = down
 	if game == null or game.world == null or game.player == null:
 		return
-	if Survival.ask_pending(game):
-		use_edge = false
 	_settle = maxf(0.0, _settle - delta)
 	# How far this place is from the sky, which is the one thing about a realm's
 	# LIGHT that no landscape file can say (SkyLight.closed, and its header for
@@ -193,12 +191,40 @@ func _process(delta: float) -> void:
 		_watch()
 		_watch_gates()
 		_draw_gates()
-	if reachable != null and _settle <= 0.0 and not game.input_blocked() \
-			and use_edge and _shaft_wins():
+	var goes := _press_goes()
+	if use_edge and goes == &"shaft":
 		cross(reachable)
-	elif gate_near != &"" and _settle <= 0.0 and not game.input_blocked() \
-			and use_edge and _gate_wins():
+	elif use_edge and goes == &"gate":
 		cross_era()
+
+
+## What a press here does now: &"shaft" down (or up) the ladder in reach, &"gate"
+## into the day standing on the ground here, or &"". The one answer `_process`
+## acts on and `use_line` names.
+func _press_goes() -> StringName:
+	# A gate stands on the slot its year's people are cast at (StoryGates), so the
+	# press beside one of them is theirs (Survival.words_in_front): beside June,
+	# six, in 2029, the gate's reach caught the key and took him back to 2098.
+	if _settle > 0.0 or game.input_blocked() or Survival.ask_pending(game) or Survival.words_in_front(game):
+		return &""
+	if reachable != null and _shaft_wins():
+		return &"shaft"
+	if gate_near != &"":
+		return &"gate"
+	return &""
+
+
+## The hint for the press a shaft or a gate would take (UiLink.use_hint), or "".
+func use_line() -> String:
+	if game == null or game.world == null or game.player == null or Realm.is_pocket(_realm) \
+			or (_crossing != null and is_instance_valid(_crossing)):
+		return ""
+	match _press_goes():
+		&"shaft":
+			return "ladder - climb"
+		&"gate":
+			return "another day - step into it"
+	return ""
 
 
 ## `use` is one key and a shaft is one more thing it can mean, so it takes the
@@ -206,20 +232,10 @@ func _process(delta: float) -> void:
 ## mouth with a seam beside it, a player means the mouth; standing at a seam with
 ## a mouth two tiles off, they mean the seam.
 func _shaft_wins() -> bool:
-	if Survival.words_in_front(game):
-		return false
 	var t := Survival.use_target(game)
 	if t == null:
 		return true
 	return reachable.pos.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
-
-
-## A GATE STANDS ON THE SLOT ITS YEAR'S PEOPLE ARE CAST AT (StoryGates), so the
-## press beside one of them is theirs (Survival.words_in_front): beside June,
-## six, in 2029, the gate's reach caught the key and took him back to 2098
-## (before.tour).
-func _gate_wins() -> bool:
-	return not Survival.words_in_front(game)
 
 
 ## THE PRESS THAT CROSSED IS SPENT. A crossing MOVES the player, so the same
