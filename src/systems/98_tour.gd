@@ -172,7 +172,11 @@ extends GameSystem
 ##   perf fore SECS DRAWS MS    rendered cost of the foreground layer hanging over
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
 ##   perf foliage SECS [MS]  rendered cost of every leaf card in the loaded chunks,
-##                          shown and hidden in turn (foliage_perf.gd)
+##                          shown and hidden in turn (foliage_perf.gd); `props`,
+##                          `terrain`, `water`, `shadow` and the rest of its LAYERS
+##                          the same for that layer
+##   perf census [N]        the N biggest kinds of shown geometry by triangles
+##                          (tour/census_perf.gd)
 ##   perf decor SECS [MS]    the same for every chunk's baked decor: grass, stones, litter
 ##   perf grass SECS [MS]    the same for only what sways in it (grass.gdshader)
 ##   perf meadow SECS [MS]   the same for the eye-level meadow ring (18_meadow), and
@@ -658,6 +662,8 @@ func _run() -> void:
 					ok = await ForePerf.perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "stats":
 					ok = (preload("res://src/systems/tour/stats_perf.gd")).perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "census":
+					ok = (preload("res://src/systems/tour/census_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "lens":
 					ok = await (preload("res://src/systems/tour/lens_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "front":
