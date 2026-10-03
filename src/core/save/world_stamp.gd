@@ -286,7 +286,12 @@ const UNKNOWN := "unknown"
 ##     ashore as where he wakes. Every tread moves; seeds 1, 3 and 90210 hold a
 ##     crater on the Covenant's body, 7 (water under the strata) and 42 (no room)
 ##     fall through. (Provisional; restamped at landing.)
-const GEN := 48
+## 49. The tread's people keep a holding on the lip of the crater the walker
+##     lead pins (GenTreads.dress `_holding`, round Treads.folk_lip): a shack,
+##     a fire and a bench, laid as that tread's own, after everything else.
+##     Only props are appended; nothing laid before them moves. (Provisional;
+##     restamped at landing.)
+const GEN := 49
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

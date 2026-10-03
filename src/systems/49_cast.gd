@@ -300,29 +300,11 @@ func _clear() -> void:
 	people.clear()
 
 
-## THE TREAD'S PEOPLE STAND ON THE ARCH-SIDE LIP OF THE CRATER THE WALKER LEAD
-## PINS (`the_tread`, its middle toe's): still between the bowls, but where the
-## line comes down and a player comes to climb. Turned TREAD_TURN round the rim
-## from the arch, away from the side the cable hangs on (WalkerClimb.FOOT_TURN),
-## so they stand clear of everywhere the climb seeks its lip and of the walk down
-## from it to the cable (43_climb `climb:lip`). `slot` is the tread's cast row
-## (StoryCasting: pos, ankle, pads, yaw).
+## THE TREAD'S PEOPLE STAND ON THE LIP THEIR HOLDING IS LAID ROUND
+## (Treads.folk_lip): of the crater the walker lead pins (`the_tread`, its middle
+## toe's). `slot` is the tread's cast row (StoryCasting: pos, ankle, pads, yaw).
 func _tread_lip(slot: Dictionary) -> Vector2:
-	var ankle: Vector2 = slot.ankle
-	var pad: Vector3 = (slot.pads as Array)[Treads.MIDDLE_TOE]
-	var centre := Vector2(pad.x, pad.y)
-	var arch := (ankle - centre).normalized()
-	var hang := ankle + Vector2.from_angle(float(slot.yaw) + deg_to_rad(WalkerClimb.FOOT_TURN)) * WalkerClimb.HANG_FOOT_R
-	var away := -signf(arch.cross(hang - centre))
-	return centre + arch.rotated(away * TREAD_TURN) * (Treads.rim_r(pad) - TREAD_LIP_IN)
-
-
-## How far round the rim from the arch the tread's people stand (radians), and
-## how far in from the rim (Treads.rim_r). The climb seeks its lip no nearer the
-## arch than 0.065 rad short of it, on the cable's side; 0.15 is 6.8 m round a
-## 47 m rim the other way, more than `_stand_near`'s first steps off the spot.
-const TREAD_TURN := 0.15
-const TREAD_LIP_IN := 2.0
+	return Treads.folk_lip(slot.ankle, slot.pads, float(slot.yaw))
 
 
 ## A standable tile a few paces off the slot, at a bearing of their own, and

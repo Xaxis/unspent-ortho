@@ -125,6 +125,53 @@ func test_he_stands_on_the_middle_toe_s_lip_clear_of_the_climb() -> void:
 	Story.forget()
 
 
+## THEIR HOLDING STANDS ROUND HIS LIP (GenTreads.dress): a shack, a fire and a
+## bench round Treads.folk_lip of the tread cast to `the_tread`, laid as that
+## tread's own (its `props`, which its foot never crushes), at no other tread, and
+## none of them where Tull stands. Seed-agnostic, as the lip test is.
+func test_their_holding_stands_round_his_lip() -> void:
+	const HOLDING: Array[int] = [PropKind.SHACK, PropKind.FIRE, PropKind.BENCH]
+	var held := 0
+	for seed_value: int in [1, 7, 42]:
+		Story.forget()
+		Sx.use_root("tull-holding-%d" % seed_value)
+		var g := Sx.game(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0"])
+		await frames(3)
+		var placed: Dictionary = Sx.system(g, "49_cast").get("placed")
+		var row: Dictionary = placed.get(&"the_tread", {})
+		var lip := Treads.folk_lip(row.ankle, row.pads, float(row.yaw)) if not row.is_empty() else Vector2.INF
+		var tull := _row(g, &"tull")
+		for m: Dictionary in g.world.landmarks:
+			if StringName(m.get("kind", &"")) != &"tread":
+				continue
+			# The tread's own, by id (GenIds turns dress's span into them).
+			var own := {}
+			for id: int in PackedInt32Array(m.get("props", PackedInt32Array())):
+				own[id] = true
+			# Read by sections round the lip a holding would stand on (WorldSections).
+			var near := Treads.folk_lip(m.pos, m.pads, float(m.yaw))
+			var props: Array[WorldProp] = []
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					props.append_array(WorldSections.props_in(g.world, WorldSections.of(near) + Vector2i(dx, dy)))
+			var kinds: Array[int] = []
+			for p: WorldProp in props:
+				if own.has(p.id) and HOLDING.has(p.kind):
+					kinds.append(p.kind)
+					check(not tull.is_empty() and (tull.pos as Vector2).distance_to(p.pos) > 1.0, "seed %d: Tull does not stand in his own %s" % [seed_value, PropKind.NAMES[p.kind]])
+					if lip.is_finite():
+						lt(p.pos.distance_to(lip), 9.0, "seed %d: the %s stands round his lip (%.1f off it)" % [seed_value, PropKind.NAMES[p.kind], p.pos.distance_to(lip)])
+			if not row.is_empty() and (m.pos as Vector2) == (row.ankle as Vector2):
+				held += 1
+				for k: int in HOLDING:
+					check(kinds.has(k), "seed %d: the tread's people keep a %s at his tread" % [seed_value, PropKind.NAMES[k]])
+			else:
+				eq(kinds.size(), 0, "seed %d: and nothing of theirs at a tread nobody is cast to" % seed_value)
+		Sx.end(g)
+	gt(float(held), 0.0, "some seed has the tread cast, or nothing above was asked")
+	Story.forget()
+
+
 func _row(g: Game, id: StringName) -> Dictionary:
 	for row: Dictionary in Sx.system(g, "49_cast").get("people"):
 		if row.character == id:

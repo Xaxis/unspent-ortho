@@ -13,7 +13,8 @@ extends RefCounted
 ##           is not taken out here -- that would renumber every prop after it --
 ##           it is crushed at load by 19_colossi, from the tread, every time.
 ##   `dress` spoil and torn plate on the rims, the survey posts the plan keeps
-##           round its own treads, and one under the ankle -- appended.
+##           round its own treads, one under the ankle, and the tread's people's
+##           holding on the lip of the crater the walker lead pins -- appended.
 ##
 ## Reached by path (world_gen.gd preloads it), never by class_name.
 
@@ -826,6 +827,9 @@ static func dress(c: GenContext) -> void:
 	for m: Dictionary in w.landmarks:
 		if StringName(m.get("kind", &"")) == &"tread":
 			treads.append(m)
+	# Whose lip the tread's people keep: the tread cast to `the_tread`, by the
+	# rule the walker lead pins its crater by (StoryCasting.crater_near).
+	var folk: Dictionary = StoryCasting.cast(w, StoryPlan.slots()).get(&"the_tread", {}) if not treads.is_empty() else {}
 	for m: Dictionary in treads:
 		var at: Vector2 = m.pos
 		var pads: Array = m.pads
@@ -860,16 +864,41 @@ static func dress(c: GenContext) -> void:
 		# Under the ankle, between the toes, one more post: the only thing in
 		# the arch a person's size.
 		_put(c, PropKind.SURVEY, at + Vector2(3.0, -2.0), others)
+		if not folk.is_empty() and (folk.ankle as Vector2) == at:
+			_holding(c, folk, others)
 		# What this stage laid is the tread's own and is never crushed by it
 		# (19_colossi reads these ids).
 		m["props"] = Vector2i(first, w.props.size())
+
+
+## THE TREAD'S PEOPLE'S HOLDING (docs/STORY.md: the walkers; Tull speaks for
+## them), round the lip they stand on (Treads.folk_lip): a shack HOLD_SHACK out
+## past it, turned to the crater they farm, and a fire and a bench between it and
+## the lip, to one side of the line out so Tull's spot stays open. Colour, never
+## load: nothing here is asked for by the story or the climb.
+static func _holding(c: GenContext, row: Dictionary, others: Array[Vector3]) -> void:
+	var lip := Treads.folk_lip(row.ankle, row.pads, float(row.yaw))
+	var pad: Vector3 = (row.pads as Array)[Treads.MIDDLE_TOE]
+	var out := (lip - Vector2(pad.x, pad.y)).normalized()
+	var side := Vector2(-out.y, out.x)
+	_put(c, PropKind.SHACK, lip + out * HOLD_SHACK, others, (-out).angle())
+	_put(c, PropKind.FIRE, lip + out * HOLD_FIRE + side * HOLD_ASIDE, others)
+	_put(c, PropKind.BENCH, lip + out * HOLD_FIRE + side * (HOLD_ASIDE + 1.8), others)
+
+
+## Tiles out from the lip to the shack and to the fire, and aside of the line out
+## to the fire: the lip is FOLK_LIP_IN inside the rim, so the shack stands four
+## past it and the fire just over it.
+const HOLD_SHACK := 6.0
+const HOLD_FIRE := 2.5
+const HOLD_ASIDE := 1.5
 
 
 ## Nothing the foot throws lands in a village's own ground: the crater is sited
 ## clear of the clearings, but its spoil reaches past the rim, and a tread sited
 ## near one would drop plate in the square (seed 42, Chalkstone). Nor in another
 ## tread's craters (`others`, their pads), out to the rim.
-static func _put(c: GenContext, kind: int, p: Vector2, others: Array[Vector3]) -> void:
+static func _put(c: GenContext, kind: int, p: Vector2, others: Array[Vector3], rot := NAN) -> void:
 	var w := c.w
 	for op: Vector3 in others:
 		if p.distance_to(Vector2(op.x, op.y)) < Treads.rim_r(op):
@@ -884,4 +913,5 @@ static func _put(c: GenContext, kind: int, p: Vector2, others: Array[Vector3]) -
 	# Turn and scale from where it lies, as GenScatter._add's (S4b).
 	var px := roundi(p.x * 256.0)
 	var py := roundi(p.y * 256.0)
-	w.props.append(WorldProp.new(id, kind, p, Rng.hash01(c.s, px, py, kind, 0, 77) * TAU, 0.8 + Rng.hash01(c.s, px, py, kind, 0, 78) * 0.4))
+	var turn := rot if not is_nan(rot) else Rng.hash01(c.s, px, py, kind, 0, 77) * TAU
+	w.props.append(WorldProp.new(id, kind, p, turn, 0.8 + Rng.hash01(c.s, px, py, kind, 0, 78) * 0.4))
