@@ -2075,6 +2075,27 @@ func _come_for_the_seen() -> void:
 				break
 
 
+## `hour snatch` in a tour (98_tour): the world minute the plan comes for the
+## village that saw him first, from the clock now on, so a tour waits for the
+## snatch by name and never by an hour (SnatchNight.due moves it by up to a day
+## between seeds). The clock now once it has come; NAN when nobody has seen him.
+func tour_hour(_spec: String) -> float:
+	var folk := _folk()
+	if folk == null or game.clock == null:
+		return NAN
+	var seen: Dictionary = folk.get("seen_by")
+	var first := -1
+	for v: int in seen:
+		if first < 0 or float(seen[v]) < float(seen[first]):
+			first = v
+	if first < 0:
+		return NAN
+	var now := game.clock.minutes
+	if came_for.has(first):
+		return now
+	return maxf(now, _due_again.get(first, SnatchNight.due(float(seen[first]), game.world.seed_value, first)))
+
+
 func _folk() -> Node:
 	for sys in game.systems:
 		if sys.has_method(&"seen_at"):

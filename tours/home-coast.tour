@@ -338,16 +338,21 @@ village 36
 wait 1.0
 # A hungry body eats what it carries before it lies down (Survival._fallback):
 # fed first, a press a mouthful. On seed 7 the presses meant for sleep ate
-# berries ("berries - eat" under the hand) and he never lay down.
+# berries ("berries - eat" under the hand) and he never lay down. Each press
+# waits for the row to name it: seed 7's village 36 is a shift town whose
+# street puts somebody in front of him most seconds, and the press is theirs.
 try 8
+  until hint:eat 4
   press use 0.1
   wait 0.4
   await fed 1
 end
 # Sleep is asked for: the first press asks, the second sleeps.
 try 3
+  until hint:sleep 4
   press use 0.1
   wait 0.4
+  until hint:sleep 4
   press use 0.1
   await slept 6
 end
@@ -363,7 +368,10 @@ wait 0.4
 
 # 6 WHO SAW HIM (48_raids, SnatchNight): while he was away at the Reaper and at
 # Low Scar, the plan came in the small hours for somebody out of Oyster Row, and
-# holds them at the Reaper's region's yard.
+# holds them at the Reaper's region's yard. Staged by name: the small hours it
+# comes in are a seed's (SnatchNight.due), the night he slept at Low Scar on seed
+# 1 and the night after on seed 7.
+hour snatch
 await taken 5
 # At one of its housings, the yard in frame round him (its middle is its mast).
 at rescue:yard_breaker
