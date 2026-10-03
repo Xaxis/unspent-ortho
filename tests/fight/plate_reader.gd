@@ -17,6 +17,9 @@ const GUARD_MARGIN := 0.6
 const STRANDED := 10.0
 ## Closer than this to a keeper, a lure goes back out to its spot to draw it.
 const LURE_OFF := 4.0
+## A keeper still at its work this long after the player came has not seen
+## them: they walk up to it until it does.
+const UNSEEN_MS := 3000.0
 ## Grounds it never walks onto (a player keeping off the flats), grounds it
 ## never walks off (one holding out on them), and where it walks back to when
 ## nothing is out (come to after a down at the edge of its ground).
@@ -26,6 +29,7 @@ var home := Vector2.INF
 ## A lure: once it has the keeper after it, it walks out to here (onto the
 ## `keep_on` ground) and holds there, dodging, as a player drawing it out does.
 var lure := Vector2.INF
+var _at_work_since := -1.0
 
 
 func _wait(m: MobState) -> void:
@@ -92,6 +96,18 @@ func act() -> void:
 	# while the anvil's bites caught it (seed 1's den, test_anvil_ways).
 	if lure.is_finite() and m.roused() and drawing and hero.pos.distance_to(lure) > 0.3 and sim.now >= _escape_until:
 		hero.move = (lure - hero.pos).normalized()
+		return
+	# A wary keeper wakes only to someone it has seen inside its guard, and stood
+	# off it, held to the flats or behind a rise its level does not meet, the
+	# reader waited and the keeper worked on: 240 s at 9.6 tiles, never roused
+	# (the strike field's den, second-keeper). Unseen a while, a player walks up
+	# to it, over what lies between, as the lure walk does.
+	if m.roused():
+		_at_work_since = -1.0
+	elif _at_work_since < 0.0:
+		_at_work_since = sim.now
+	if not m.roused() and sim.now - _at_work_since > UNSEEN_MS:
+		hero.move = (m.pos - hero.pos).normalized()
 		return
 	if not sim.meets_hero(m.pos):
 		# Up on the bank beside it (a dodge can carry them there): down again,
