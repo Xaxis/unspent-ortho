@@ -11,10 +11,11 @@ extends RefCounted
 ##   19_colossi.prepare_world  what every tread's pads flatten, in the world's
 ##                             own record, before any view draws it
 ##   WorksMap.prepare      the machines' works cut into the ground (WorldView)
-##   Landmarks.record      the landmarks' rows in the world's list, FIRST:
-##                         the works map below asks where keepers den, and a
-##                         keeper stationed at a landmark dens there only once
-##                         its row is (22_landmarks takes the same rows)
+##   Landmarks.record      the landmarks' rows in the world's list, FIRST: a
+##                         keeper stationed at a landmark dens there only once its
+##                         row is, so every ask of its den, here or on the
+##                         crossing (21_doors, before 22_landmarks), gets the one
+##                         answer (22_landmarks takes the same rows)
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
 
