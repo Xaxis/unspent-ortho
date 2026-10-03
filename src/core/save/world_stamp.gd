@@ -312,7 +312,12 @@ const UNKNOWN := "unknown"
 ##     brine houses go to every region big enough to keep the rake, benches
 ##     to bare rock and then half spacing, locks to the next canal reach.
 ##     (Provisional; restamped at landing.)
-const GEN := 52
+## 53. The frost sea opens its leads, black water wandering through the ice
+##     at the far end of the field that throws its ridges, and lays its own:
+##     seal holes, frozen hulls, pressure blocks, the floe camp, and the
+##     soundings lines, the listener's stations, sited by the station rule.
+##     The scatter keeps off black water. (Provisional; restamped at landing.)
+const GEN := 53
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

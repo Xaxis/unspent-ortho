@@ -572,6 +572,9 @@ extends TestCase
 ## to the bit, and nothing is re-accepted: none of them is the crags or the
 ## salt flats, the coast's intake asks as it did, and its shore reads the
 ## skerries off the world (WorldData.islet_at), the same bytes as before.
+## AT GEN 53 (2026-10-03, provisional): the frost sea opens its leads and lays
+## its works, and the scatter keeps off black water. Whether the six hold is
+## measured below; none of them is the frost sea.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

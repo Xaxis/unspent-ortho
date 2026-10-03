@@ -286,12 +286,26 @@ const LINE_TRIES := 4
 ## rigs must stand for it to be one.
 const LINE_APART := 36.0
 const LINE_RIGS := 2
+## How far the last line a region tries keeps from its other places: in a
+## small region one place can crowd every run, and 90210's 3328 tiles of sea
+## had all 23 within 36 tiles of one.
+const LINE_APART_LAST := 9.0
 
 
 static func _works(L: Object) -> void:
+	# A region that holds no line once every run was crowded tries again at
+	# LINE_APART_LAST, so no line that stands moves.
+	for apart: float in [LINE_APART, LINE_APART_LAST]:
+		if _lines(L, apart) > 0:
+			break
+
+
+## Up to LINES soundings lines on the region's runs of sheet ice kept `apart`
+## from its other places; how many stood.
+static func _lines(L: Object, apart: float) -> int:
 	var tried := 0
 	var laid := 0
-	for v: Vector3i in GenWorks.runs(L, Ground.ICE, LINE_APART, LINES * LINE_TRIES, true):
+	for v: Vector3i in GenWorks.runs(L, Ground.ICE, apart, LINES * LINE_TRIES, true):
 		if laid >= LINES or tried >= LINES * LINE_TRIES:
 			break
 		# The runs were ranked before any line stood: one beside a line laid
@@ -302,6 +316,7 @@ static func _works(L: Object) -> void:
 		tried += 1
 		if GenWorks._work(L, &"_line", at, [v.z]):
 			laid += 1
+	return laid
 
 
 ## One soundings line at `at` (`GenWorks._work`), a[0] holes each way of its
