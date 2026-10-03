@@ -557,7 +557,10 @@ static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, land
 		asked[at] = true
 		if not close_cells.is_empty() and not close_cells.has(Vector2i(floori(at.x) / GROUND_CELL, floori(at.y) / GROUND_CELL)):
 			continue
-		if larder_robbable(world, at, def, laid) and _den_ok(world, at, def, landings) and ways_closed(world, at, def, ground_only).is_empty():
+		# Its ways before its room: off a larder most rooms that fail keep no
+		# founder ground in reach (seed 42's glass, 9 of 12), and that flood
+		# answers sooner than the room's own.
+		if larder_robbable(world, at, def, laid) and ways_closed(world, at, def, ground_only).is_empty() and _den_ok(world, at, def, landings):
 			return at
 		failed.append(at)
 	return Vector2.INF

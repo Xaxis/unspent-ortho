@@ -221,9 +221,12 @@ const FIELD_LEAST := 6
 const ROD_STEP := 0.8
 ## Sites a region tries before it is left without a field, and of those, how
 ## many may stand their rods and still find no den that keeps the anvil's ways
-## (the floods that answer that are the cost of the glass's works).
+## (the floods that answer that are the cost of the glass's works). One: on
+## seeds 1, 3, 7, 42 and 90210 at full size every region's first field found
+## its den, and a region whose first did not dens its anvil at its heart, with
+## STARVE standing.
 const FIELD_TRIES := 12
-const DEN_FAILS := 2
+const DEN_FAILS := 1
 
 
 static func _works(L: Object) -> void:
@@ -266,16 +269,15 @@ static func _strike_field(L: Object, at: Vector2, a: Array) -> bool:
 	if rods.size() < FIELD_LEAST:
 		return false
 	var half := Vector2((FIELD_ROWS.x - 1) * 0.5 * FIELD_PITCH + 1.5, (FIELD_ROWS.y - 1) * 0.5 * FIELD_PITCH + 1.5)
-	# A field already laid near enough to feed the same anvil is its larder too
-	# (Sentinels.larder_robbable counts every rod in reach), so its rods are
-	# asked with these: seed 7's two fields 38 tiles apart each found a den the
-	# other's rods stood under.
+	# A field of this region already laid near enough to feed the same anvil is
+	# its larder too (Sentinels.larder_robbable counts every rod in reach), so
+	# its rods are asked with these. Another region's are never read, as no work
+	# reads another region's (GenWorks._rows_near).
 	var larder := rods.duplicate()
 	var w: WorldData = L.w
 	var def := Sentinels.for_land(&"glass_desert")
-	for m: Dictionary in w.landmarks:
-		if StringName(str(m.get("kind", &""))) == &"strike_field" and (m.pos as Vector2).distance_to(at) <= def.reach * 2.0:
-			larder.append_array(m.get("rods", PackedVector2Array()))
+	for m: Dictionary in GenWorks._rows_near(L, &"strike_field", at, def.reach * 2.0):
+		larder.append_array(m.get("rods", PackedVector2Array()))
 	if not GenWorks.station_holds(L, at, larder, maxf(half.x, half.y)):
 		(a[0] as Array)[0] += 1
 		return false

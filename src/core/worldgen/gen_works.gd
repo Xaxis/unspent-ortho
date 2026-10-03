@@ -652,6 +652,19 @@ static func _crowded(L: Lay, p: Vector2, d: float) -> bool:
 	return false
 
 
+## This region's works rows of `kind` within d of p. Other regions' works are
+## never seen (`Lay.m_region`), as `_crowded` keeps them: a work hangs on its
+## own region's ground and works.
+static func _rows_near(L: Lay, kind: StringName, p: Vector2, d: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var marks := L.w.landmarks
+	for j in range(L.m_region, marks.size()):
+		var m: Dictionary = marks[j]
+		if m.kind == kind and (m.pos as Vector2).distance_to(p) <= d:
+			out.append(m)
+	return out
+
+
 static func _record(c: GenContext, kind: StringName, p: Vector2, dir: Vector2, half: Vector2, mark: StringName = &"") -> void:
 	var at := Vector2i(clampi(floori(p.x), 0, c.size - 1), clampi(floori(p.y), 0, c.size - 1))
 	# `region` goes on the row here too (`WorldData.landmarks`): a works mark is
