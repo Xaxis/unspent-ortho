@@ -3,7 +3,11 @@
 # it burns, hard and pale for the breakup, the land's shadows swinging as it
 # crosses -- and then, minutes on, its boom rolling in through the felt queue
 # (src/core/sky/rumble.gd) with a shake as the shock goes over.
-#   tools/tour.sh tours/falls_top.tour --seed=7 --place=coast --hour=23.4 --view=top --weather=clear:0 --fall=mass@23.5
+# Its run is the boot plus the boom's way to him: a staged mass falls 45 km off
+# (FallSchedule.STAGED_RANGE), at least 131 s at the speed of sound, which a
+# loaded box's 84 s boot put past the default 180 s.
+#
+#   TOUR_TIMEOUT=420 tools/tour.sh tours/falls_top.tour --seed=7 --place=coast --hour=23.4 --view=top --weather=clear:0 --fall=mass@23.5
 wait 2
 # The clock ran while the world warmed up; put it back before the fall.
 hour 23.45
