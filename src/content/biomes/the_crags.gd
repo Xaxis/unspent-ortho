@@ -373,6 +373,10 @@ static func _bench(L: Object, at: Vector2, _a: Array) -> bool:
 	if larder.size() < FED or not GenWorks.station_holds(L, at, larder, maxf(half.x, half.y)):
 		return false
 	GenWorks._record(L.c, &"bench", at, d, half, GenWorks.BORES)
+	# No yard's heart (Works.sites): the plan's depots stand on ground a yard
+	# fits, and the terraces round a bench hold none. Searched for, 512's seed 1
+	# walked the ring twice for nothing, and at 256 a crags yard stood first.
+	(L.w.landmarks.back() as Dictionary)["depot"] = false
 	for sx: float in [-1.0, 1.0]:
 		GenWorks._put(L, PropKind.SURVEY, at + d * (half.x + 1.6) * sx, d.angle(), -99, 0.0, true)
 	GenWorks._put(L, PropKind.SIGN, at - nrm * (half.y + 1.4), (-nrm).angle(), -99, 0.2)
