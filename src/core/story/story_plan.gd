@@ -147,14 +147,51 @@ static func cast(world: WorldData) -> Dictionary:
 	if world == _cast_world:
 		return _cast
 	_cast_world = world
-	_cast = StoryCasting.cast(world, slots())
+	var ready := _take_ready(world)
+	_cast = ready[1] if bool(ready[0]) else StoryCasting.cast(world, slots())
 	return _cast
+
+
+## A world's casting worked out beside its raise (RealmWarm), for the first ask
+## of that world to take: the first ask is a system's at setup, on the main
+## thread the start waits on. Locked, because the raise is a worker; held weakly,
+## so a world nobody entered takes its casting with it.
+static var _ready: Dictionary = {}
+static var _ready_lock := Mutex.new()
+
+
+static func prepare(world: WorldData) -> void:
+	# Not the era's: its casting mirrors the surface's (StoryCasting._twin), and
+	# where that is not cast already it would grow a whole surface on the worker.
+	if world == null or world.realm == Realm.ERA:
+		return
+	var got := StoryCasting.cast(world, slots())
+	_ready_lock.lock()
+	for k: int in _ready.keys():
+		if ((_ready[k] as Array)[0] as WeakRef).get_ref() == null:
+			_ready.erase(k)
+	_ready[world.get_instance_id()] = [weakref(world), got]
+	_ready_lock.unlock()
+
+
+## [true, casting] when `world`'s was got ready, taken; else [false, {}].
+static func _take_ready(world: WorldData) -> Array:
+	_ready_lock.lock()
+	var got: Array = _ready.get(world.get_instance_id(), [])
+	_ready.erase(world.get_instance_id())
+	_ready_lock.unlock()
+	if got.is_empty() or (got[0] as WeakRef).get_ref() != world:
+		return [false, {}]
+	return [true, got[1]]
 
 
 ## Only the tests want this; a running game casts once per world for its life.
 static func forget() -> void:
 	_cast_world = null
 	_cast = {}
+	_ready_lock.lock()
+	_ready.clear()
+	_ready_lock.unlock()
 
 
 ## Everything wrong with the story in THIS world, in words a writer can act on.

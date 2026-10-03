@@ -24,13 +24,21 @@ const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 ## did exactly that). Not keyed by WorldStamp either: it costs a millisecond and
 ## the gates are cast every frame.
 static var _surface: Dictionary = {}
+## Casting runs on workers too (GenTreads on the raise, StoryPlan.prepare beside
+## it) while the main thread casts a world it enters.
+static var _surface_lock := Mutex.new()
 const SURFACE_MOST := 16
+
+
+## How many castings have been worked out, for a test to see where one was.
+static var casts := 0
 
 
 static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	var out := {}
 	if world == null:
 		return out
+	casts += 1
 	# Cast in declaration order, because `apart` measures against what is already
 	# placed: the spine's own sequence decides who gets the good ground.
 	var taken: Array[Vector2] = []
@@ -97,9 +105,12 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 		out[s.id] = place
 		taken.append(place.get("pos", Vector2.ZERO) as Vector2)
 	if world.realm == Realm.SURFACE:
+		var key := _key(world)
+		_surface_lock.lock()
 		if _surface.size() >= SURFACE_MOST:
 			_surface.clear()
-		_surface[_key(world)] = out
+		_surface[key] = out
+		_surface_lock.unlock()
 	return out
 
 
@@ -108,10 +119,16 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 ## 2029 costs nothing), and otherwise the surface grown from the same seed.
 static func _twin(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	var key := _key(world)
-	if not _surface.has(key):
+	_surface_lock.lock()
+	var had := _surface.has(key)
+	_surface_lock.unlock()
+	if not had:
 		@warning_ignore("return_value_discarded")
 		cast(WorldGen.generate(world.seed_value, world.size), slots)
-	return _surface.get(key, {})
+	_surface_lock.lock()
+	var got: Dictionary = _surface.get(key, {})
+	_surface_lock.unlock()
+	return got
 
 
 static func _key(world: WorldData) -> String:

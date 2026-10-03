@@ -42,3 +42,20 @@ func test_no_system_adds_a_row_to_a_world_got_ready() -> void:
 	eq(Sentinels.lairs_worked - lairs, 0, "and no keeper's den was worked out at setup: RealmWarm did")
 	Sx.end(g)
 	Sx.finish()
+
+
+## The story's casting searches the whole world once per slot, and its first ask
+## is a system's at setup (20_realms' gates, 49_cast), on the main thread: it is
+## cast beside the raise instead, and the first ask takes it.
+func test_the_casting_got_ready_beside_the_raise_is_taken() -> void:
+	Sx.use_root("start-warm")
+	var w := WorldGen.generate(1, 512)
+	RealmWarm.prepare(w)
+	var fresh := StoryCasting.cast(w, StoryPlan.slots())
+	var casts := StoryCasting.casts
+	BootWorld.offer(w)
+	var g := Sx.game(tree, ["--seed=1", "--size=512"])
+	eq(StoryCasting.casts - casts, 0, "no casting was worked out at setup")
+	eq(var_to_str(StoryPlan.cast(w)), var_to_str(fresh), "and the one taken is the world's")
+	Sx.end(g)
+	Sx.finish()

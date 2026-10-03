@@ -23,6 +23,7 @@ extends RefCounted
 ##   Sentinels.states, Works.sites   every keeper's den and every depot, for the
 ##                         list as it stands: the systems that ask at setup
 ##                         (21_doors, 34_works, 44_sentinels, 49_cast) find them
+##   StoryPlan.prepare     the story's casting, taken by the first ask of it
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
 
@@ -58,7 +59,9 @@ static func prepare(w: WorldData) -> void:
 	Sentinels.states(w)
 	@warning_ignore("return_value_discarded")
 	Works.sites(w)
-	_took(ms, "keepers", t)
+	t = _took(ms, "keepers", t)
+	StoryPlan.prepare(w)
+	_took(ms, "cast", t)
 	# Read off a web run's console: this is the raise's time a title has to hide.
 	print("realm warm %s: %s ms" % [w.realm, ms])
 
