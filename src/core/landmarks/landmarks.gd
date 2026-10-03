@@ -527,6 +527,16 @@ static func _trod(world: WorldData) -> Dictionary:
 ## (docs/ROADMAP.md's start budget). The sweep gathers every tile with room on it
 ## once, scoring it for each thing the region's own kinds want, and the picking
 ## afterwards is a walk over a few hundred candidates.
+## Where the landfall city's port stair stands (its works row `port`: the step
+## on the water side of the quay, the raft's landing), or INF on a world whose
+## landfall laid none.
+static func port_of(world: WorldData) -> Vector2:
+	for m: Dictionary in world.landmarks:
+		if m.get("kind") == &"port":
+			return m.pos
+	return Vector2.INF
+
+
 static func sited(world: WorldData) -> Array[LandmarkSite]:
 	var out: Array[LandmarkSite] = []
 	if world == null:
@@ -568,10 +578,7 @@ static func sited(world: WorldData) -> Array[LandmarkSite]:
 	# laid there (its works row `port`), or where the shortest water from home
 	# comes ashore (GenBodies marks `landfall` and `from` on its row) on a world
 	# with no port. A &"landfall" kind stands as near it as it can (`_wants`).
-	var port := Vector2.INF
-	for m: Dictionary in world.landmarks:
-		if m.get("kind") == &"port":
-			port = m.pos
+	var port := port_of(world)
 	var ashore_on := {}
 	for row: Dictionary in world.continents:
 		if bool(row.get("landfall", false)) and row.has("from"):
