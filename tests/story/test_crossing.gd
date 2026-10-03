@@ -102,6 +102,53 @@ func test_the_raft_lands_on_the_port_stair() -> void:
 	StoryPlan.forget()
 
 
+## THE PORT STANDS ITS SIGN (49_cast `the_port`, StoryContent.STOOD): on a world
+## whose raft comes in on the port's stair, the story places `the_port` there, and
+## once he is near, one sign is set down by it on dry ground, holding the stair's
+## own words (`port_arrivals`), not any landscape's.
+func test_the_port_stands_its_sign_at_the_stair() -> void:
+	var signed := 0
+	for s: int in [1, 7, 42]:
+		Story.forget()
+		var g := Sx.game(tree, ["--seed=%d" % s, "--hour=11", "--weather=clear:0"])
+		await process_frames(2)
+		var port := Landmarks.port_of(g.world)
+		var placed: Dictionary = Sx.system(g, "49_cast").get("placed")
+		if not port.is_finite():
+			check(not placed.has(StoryCrossing.PORT), "seed %d: no port, so no port slot" % s)
+			Sx.end(g)
+			continue
+		check(placed.has(StoryCrossing.PORT) and (placed[StoryCrossing.PORT].pos as Vector2).distance_to(port) < 0.01, "seed %d: the port slot is the port's stair" % s)
+		var p := g.player.place(port)
+		g.view.ensure_near(p)
+		var got: Array[WorldProp] = []
+		for i in 120:
+			await process_frames(1)
+			got = _set_down_near(g, PropKind.SIGN, port, 10.0)
+			if not got.is_empty():
+				break
+		eq(got.size(), 1, "seed %d: one sign is set down by the stair" % s)
+		if got.size() == 1:
+			signed += 1
+			var t := Vector2i(got[0].pos.floor())
+			check(g.query.standable(t.x, t.y) and not Ground.is_water(g.world.ground_at(t.x, t.y)), "seed %d: on dry ground you can stand at" % s)
+			eq(StoryFragments.held_by(g.world, g.query, got[0]), &"port_arrivals", "seed %d: holding the stair's own words" % s)
+		Sx.end(g)
+		await process_frames(1)
+	gt(float(signed), 0.0, "some seed's raft lands on a port, or nothing above was asked")
+	Story.forget()
+
+
+## The props set down in play (after the world's own) of `kind` within `r` of `at`.
+func _set_down_near(g: Game, kind: int, at: Vector2, r: float) -> Array[WorldProp]:
+	var out: Array[WorldProp] = []
+	for i in range(g.world.generated(), g.world.prop_count()):
+		var q := g.world.prop_at(i)
+		if q.kind == kind and q.pos.distance_to(at) <= r:
+			out.append(q)
+	return out
+
+
 func test_the_raft_comes_ashore_at_the_landfall() -> void:
 	for s: int in [7, 42]:
 		var w := WorldGen.generate(s, 2048)

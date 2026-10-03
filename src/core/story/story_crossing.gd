@@ -14,6 +14,9 @@ class_name StoryCrossing
 ## The two places 49_cast adds to the cast for it: where he puts in, where he lands.
 const LAUNCH := &"the_crossing"
 const LANDING := &"the_landing"
+## And where the landing is the landfall city's port stair (rule 1), the port
+## itself, where the story stands its sign (StoryContent.STOOD).
+const PORT := &"the_port"
 
 const PUT_IN := &"seen:raft_put_in"
 const CROSSED := &"seen:far_shore"

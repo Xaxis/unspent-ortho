@@ -166,6 +166,11 @@ func _place_crossing() -> void:
 		return
 	placed[StoryCrossing.LAUNCH] = {"pos": c.launch}
 	placed[StoryCrossing.LANDING] = {"pos": c.land}
+	# Only a raft that comes in on the port's stair has a port to read at; a
+	# landing on a bare shore stands no sign.
+	var port := Landmarks.port_of(game.world)
+	if port.is_finite() and (c.land as Vector2).distance_to(port) < 0.01:
+		placed[StoryCrossing.PORT] = {"pos": port}
 
 
 ## THE STORY'S OWN READABLE THINGS (StoryContent.STOOD): where nothing the world
