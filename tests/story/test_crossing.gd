@@ -1,8 +1,9 @@
 extends TestCase
 ## THE CROSSING (ROADMAP slice 3, step 1): Vera has named the archive across the
-## water. The goal is a raft, then the narrows the survey marks on the home body's
-## shore (StoryCrossing: the line from the crew's camp to the archive, where it
-## leaves the land), then, once he has stood on the far body, the archive.
+## water. The goal is a raft, then the put-in the survey marks on the home body's
+## shore, then, once he has stood on the far body, the archive. The raft comes
+## ashore at the world's landfall, else across the narrows off the line from the
+## crew's camp to the archive (StoryCrossing.of).
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 
@@ -67,3 +68,29 @@ func test_the_goal_walks_raft_narrows_archive() -> void:
 	eq(Guide.goal(g), _lead(&"archive"), "stood on the far body: the archive")
 	Sx.end(g)
 	Story.forget()
+
+
+
+## THE RAFT COMES ASHORE AT THE LANDFALL, where the shortest water from home does
+## and the city dealt there stands its clock (StoryCrossing.of, the_landfall):
+## seed 7's narrows put him ashore 126 tiles off it, out of sight of the city's
+## port. In the drowned city, a step off the raft.
+func test_the_raft_comes_ashore_at_the_landfall() -> void:
+	for s: int in [7, 42]:
+		var w := WorldGen.generate(s, 2048)
+		StoryPlan.forget()
+		var cast := StoryPlan.cast(w)
+		check(cast.has(&"the_landfall"), "seed %d: the world has a landfall" % s)
+		if not cast.has(&"the_landfall"):
+			continue
+		var landfall: Vector2 = cast[&"the_landfall"].pos
+		var c := StoryCrossing.of(w, cast)
+		var land: Vector2 = c.get("land", Vector2.INF)
+		lt(land.distance_to(landfall), StoryCrossing.ASHORE + 1.0, "seed %d: the raft comes ashore at it (%.1f tiles off)" % [s, land.distance_to(landfall)])
+		check(w.same_body(c.get("launch", Vector2.INF), cast[&"the_camp"].pos), "seed %d: from home" % s)
+		var city := false
+		for dy in range(-3, 4):
+			for dx in range(-3, 4):
+				city = city or BiomeRegistry.at(w, land + Vector2(dx, dy)).id == &"drowned_city"
+		check(city, "seed %d: into the drowned city" % s)
+	StoryPlan.forget()

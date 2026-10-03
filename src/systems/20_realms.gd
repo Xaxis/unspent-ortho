@@ -202,7 +202,10 @@ func _process(delta: float) -> void:
 ## into the day standing on the ground here, or &"". The one answer `_process`
 ## acts on and `use_line` names.
 func _press_goes() -> StringName:
-	if _settle > 0.0 or game.input_blocked() or Survival.ask_pending(game):
+	# A gate stands on the slot its year's people are cast at (StoryGates), so the
+	# press beside one of them is theirs (Survival.words_in_front): beside June,
+	# six, in 2029, the gate's reach caught the key and took him back to 2098.
+	if _settle > 0.0 or game.input_blocked() or Survival.ask_pending(game) or Survival.words_in_front(game):
 		return &""
 	if reachable != null and _shaft_wins():
 		return &"shaft"

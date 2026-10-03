@@ -80,6 +80,19 @@ func act() -> void:
 		# the way a player walks it, round what stands between.
 		hero.move = _walk_back() if home.is_finite() and hero.pos.distance_to(home) > 1.0 else Vector2.ZERO
 		return
+	var here_g := sim.world.ground_at(floori(hero.pos.x), floori(hero.pos.y))
+	# Off the ground it holds out on, or near enough a keeper that stands its own
+	# ground to be struck from it (the anvil plants at the edge of its plates and
+	# bites from there; only a charge, from further off, carries it onto the sand).
+	var drawing := not keep_on.has(here_g) or m.pos.distance_to(hero.pos) < LURE_OFF
+	# Drawing it out, the walk to the lure comes first. Ground off its level on
+	# the way (a rise between its plates and the sand) is crossed, not stepped
+	# back off: the step back onto its level and the step on to the lure undid
+	# each other every frame, and the player stood on the rise's lip in its row
+	# while the anvil's bites caught it (seed 1's den, test_anvil_ways).
+	if lure.is_finite() and m.roused() and drawing and hero.pos.distance_to(lure) > 0.3 and sim.now >= _escape_until:
+		hero.move = (lure - hero.pos).normalized()
+		return
 	if not sim.meets_hero(m.pos):
 		# Up on the bank beside it (a dodge can carry them there): down again,
 		# the nearest way onto its level.
@@ -94,14 +107,6 @@ func act() -> void:
 		# down): back the way it came at it, round what stands between.
 		if home.is_finite() and not _holding_out():
 			hero.move = _walk_back()
-		return
-	var here_g := sim.world.ground_at(floori(hero.pos.x), floori(hero.pos.y))
-	# Off the ground it holds out on, or near enough a keeper that stands its own
-	# ground to be struck from it (the anvil plants at the edge of its plates and
-	# bites from there; only a charge, from further off, carries it onto the sand).
-	var drawing := not keep_on.has(here_g) or m.pos.distance_to(hero.pos) < LURE_OFF
-	if lure.is_finite() and m.roused() and drawing and hero.pos.distance_to(lure) > 0.3 and sim.now >= _escape_until:
-		hero.move = (lure - hero.pos).normalized() if hero.pos.distance_to(lure) > 0.3 else Vector2.ZERO
 		return
 	if hero.move.length() < 0.05:
 		return

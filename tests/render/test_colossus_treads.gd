@@ -332,6 +332,50 @@ func test_every_shipped_world_carries_a_footprint() -> void:
 	print("       treads on the home continent: %d of %d seeds" % [on_home, seeds.size()])
 
 
+## THE LAME LEG COMES DOWN ON THE COVENANT'S BODY (GenTreads LEG1_FIRST), where
+## the story sends him to climb (StoryMap `crater:the_covenant`): home-first, it
+## stood there on two seeds of five. Where the foot fits nowhere on that body
+## (seed 7: water under the strata; seed 42: no room between its coast, roads,
+## villages, yards and keeper) it is sited home-first as before, and the walker
+## lead goes home (test_walker_lead). On every seed where he comes ashore stays
+## clear of every pad, and no landmark the story is cast to is trodden.
+func test_the_lame_leg_comes_down_on_the_covenants_body() -> void:
+	const Worlds := preload("res://tests/core/test_world_gen.gd")
+	var on_it: Array[int] = [1, 3, 90210]
+	for s: int in [1, 3, 90210, 7, 42]:
+		var w: WorldData = _grown() if s == 7 else Worlds.world(s)
+		var cast := StoryCasting.cast(w, StoryPlan.slots())
+		var covenant := int((cast[&"the_covenant"] as Dictionary).get("body", -1))
+		var first: Dictionary = Treads.wanted(w.seed_value, w.size)[0]
+		var lame := {}
+		for m: Dictionary in _treads(w):
+			if m.walker == first.walker and int(m.leg) == int(first.leg) and int(m.j) == int(first.j):
+				lame = m
+		check(not lame.is_empty(), "seed %d: the lame leg's plant has its tread" % s)
+		if lame.is_empty():
+			continue
+		var p: Vector2 = lame.pos
+		var on := w.continent_at(floori(p.x), floori(p.y)) == covenant
+		if on_it.has(s):
+			check(on, "seed %d: the lame leg's tread at %s is on the Covenant's body %d" % [s, p, covenant])
+		var anchor := Vector2.INF
+		for row: Dictionary in w.continents:
+			if bool(row.get("landfall", false)):
+				anchor = row.get("from", Vector2.INF)
+		var stood := {}
+		for place: Dictionary in cast.values():
+			stood[place.get("pos", Vector2.INF)] = true
+		for m: Dictionary in _treads(w):
+			for pad: Vector3 in (m.pads as Array):
+				check(Vector2(pad.x, pad.y).distance_to(anchor) >= GenTreads.reach_r(pad) + GenTreads.SPAWN_ROOM,
+					"seed %d: where he comes ashore is clear of the pad at %s" % [s, pad])
+		for site: LandmarkSite in Landmarks.sited(w):
+			if Landmarks.trodden(w, site.id):
+				check(not stood.has(site.pos), "seed %d: %s, trodden, is no place the story stands" % [s, site.id])
+				check(not Landmarks.sites(w).has(site), "seed %d: and %s no longer stands" % [s, site.id])
+		print("       seed %d: the lame leg's tread on the Covenant's body: %s" % [s, on])
+
+
 ## WHAT FALLS TAKES ITS WALLS, ITS DOOR AND ITS WORDS WITH IT. A ruin's walls
 ## (23_ruins) and a house's door (21_doors) are worked out from the props once
 ## and kept, and a walker's feet crush what stands in their craters only once
@@ -406,6 +450,29 @@ func _alone(g: Game, p: WorldProp) -> bool:
 		if q.id != p.id and StoryProps.kind_of(q.kind) != &"":
 			return false
 	return true
+
+
+## THE LANDMARKS SITED BEFORE THE TREADS ARE THE ONES EVERY ASK GETS. Siting is
+## derived from the land, and the treads cut it, so sited again after them 83 of
+## seed 7's 196 stood elsewhere, and the ids a tread recorded as trodden named
+## other places. The list was kept in a cache of six worlds that emptied when it
+## filled; it is held on each world for its life (Landmarks.HELD).
+func test_the_landmarks_sited_before_the_treads_are_kept() -> void:
+	var w := _grown()
+	var was := {}
+	for s: LandmarkSite in Landmarks.sited(w):
+		was[s.id] = s.pos
+	for s: int in [11, 12, 13, 14, 15, 16, 17]:
+		@warning_ignore("return_value_discarded")
+		Landmarks.sited(WorldGen.generate(s, 256))
+	var moved := 0
+	for s: LandmarkSite in Landmarks.sited(w):
+		if not was.has(s.id) or was[s.id] != s.pos:
+			moved += 1
+	eq(moved, 0, "asked again after seven other worlds, every landmark is where it was sited")
+	for m: Dictionary in _treads(w):
+		for id: StringName in (m.get("trod", []) as Array):
+			check(was.has(id), "a trodden %s still names a sited place" % id)
 
 
 ## THE NEAR FOOT'S BUILD IS ALWAYS CLAIMED. A pool task nobody waits for keeps

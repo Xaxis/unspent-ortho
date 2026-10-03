@@ -12,6 +12,8 @@ extends TestCase
 const DIR := "res://src/systems"
 ## The system that answers the ask.
 const OWNER := "50_survival.gd"
+## The words' system's number (49_story): systems load and answer in name order.
+const WORDS_AT := 49
 
 
 func test_every_system_that_answers_use_leaves_an_asks_press_alone() -> void:
@@ -30,3 +32,25 @@ func test_every_system_that_answers_use_leaves_an_asks_press_alone() -> void:
 		# "campfire - build?" over a cache the press opened.
 		check(src.contains("func use_line() -> String:"), "%s answers `use`, so it names what the press does (use_line)" % f)
 	gt(float(found), 6.5, "the systems that answer `use` were found by what they read (%d)" % found)
+
+
+## THE PRESS GOES TO WHAT HE FACES (Survival.words_in_front). The words answer
+## `use` in 49_story, and every system that reads the key before them would take
+## a press meant for a person or a page in front of him: a cache took Otto's, and
+## the gate home took June's and crossed him back to 2098. So each one that runs
+## before the words leaves that press be. A system after them (50_survival) is
+## left the press only when the words did not spend it (49_story `use_spent`).
+## Found by what each script reads, as above.
+func test_every_system_before_the_words_leaves_a_faced_press_to_them() -> void:
+	var reads := RegEx.create_from_string("is_action_(just_)?pressed\\(&?\"use\"\\)")
+	var found := 0
+	for f: String in DirAccess.get_files_at(DIR):
+		if not f.ends_with(".gd") or f.left(2).to_int() >= WORDS_AT:
+			continue
+		var src := FileAccess.get_file_as_string("%s/%s" % [DIR, f])
+		if reads.search(src) == null:
+			continue
+		found += 1
+		check(src.contains("Survival.words_in_front(game)"), "%s answers `use` before the words, so it leaves a faced press to them (Survival.words_in_front)" % f)
+	gt(float(found), 5.5, "the systems that answer `use` before the words were found by what they read (%d)" % found)
+

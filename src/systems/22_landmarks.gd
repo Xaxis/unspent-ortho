@@ -252,10 +252,7 @@ func _watch() -> void:
 ## "talk to Otto" opened the locker. Nothing is lost by it: the instant the cache
 ## is open it stops being reachable, and the bush is under the hand again.
 func _cache_wins() -> bool:
-	for s in game.systems:
-		if s != self and s.has_method(&"faces_words") and bool(s.call(&"faces_words")):
-			return false
-	return true
+	return not Survival.words_in_front(game)
 
 
 ## The hint for the press a cache would take (UiLink.use_hint), or "": the
