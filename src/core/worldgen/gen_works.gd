@@ -734,6 +734,76 @@ static func flattest(L: Lay, r: int, grounds: Array, apart: float, station := fa
 	return out
 
 
+## THE LONGEST RUNS OF `ground` ALONG THE BEARING in the region being laid:
+## (x, y, steps each way of two tiles, two to RUN_MOST), longest first and ties
+## in scan order, scanned every RUN_STEP tiles like `flattest`. A run is unbroken
+## dry `ground` of the landscape's own, both ways of its middle, so a ruled line
+## laid on it never runs on over a shore or a ridge. Up to `count` of them clear
+## of where the player wakes, of villages and of the region's other places by
+## `apart`; for a `station`, with its keeper's founder ground in reach (its
+## cells, before anything dearer) and passed by the cheap half of the station
+## rule (`station_may_hold`), none where the region can hold no station
+## (`station_ground`). The frost sea's soundings lines stand on these.
+const RUN_STEP := 4
+const RUN_MOST := 6
+
+
+static func runs(L: Lay, ground: int, apart: float, count: int, station := false) -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	if L.rects.is_empty() or (station and not station_ground(L)):
+		return out
+	var c := L.c
+	var w := L.w
+	var rect: Rect2 = L.rects[0]
+	var found: Array[Vector3i] = []
+	var y := int(rect.position.y) + 2
+	while y < int(rect.end.y) - 2:
+		var x := int(rect.position.x) + 2
+		while x < int(rect.end.x) - 2:
+			var at := Vector2(x + 0.5, y + 0.5)
+			if L.here(x, y) and w.blend[y * c.size + x] <= 0.35 and _run_at(L, at, ground):
+				var reach := 0
+				while reach < RUN_MOST and _run_at(L, at + L.d * (reach + 1) * 2.0, ground) and _run_at(L, at - L.d * (reach + 1) * 2.0, ground):
+					reach += 1
+				if reach >= 2:
+					found.append(Vector3i(x, y, reach))
+			x += RUN_STEP
+		y += RUN_STEP
+	found.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return a.z > b.z or (a.z == b.z and (a.y < b.y or (a.y == b.y and a.x < b.x))))
+	var def := Sentinels.for_land(L.id) if station else null
+	var looked := 0
+	for v: Vector3i in found:
+		var at := Vector2(v.x + 0.5, v.y + 0.5)
+		# The founder cells first, a few lookups: the frost sea's longest runs
+		# lie out on the open sheet, and seed 1's first eighty were all out of
+		# the listener's reach of any black water.
+		if def != null and not _founder_near(L, def, at):
+			continue
+		if at.distance_to(w.spawn) < Sentinels.CLEAR_OF_HOME or GenScatter._near_village(w, at, 18.0) or _crowded(L, at, apart):
+			continue
+		if station:
+			if looked >= count * STATION_LOOKS:
+				break
+			looked += 1
+			if not station_may_hold(L, at):
+				continue
+		out.append(v)
+		if out.size() >= count:
+			break
+	return out
+
+
+## Dry `ground` of the landscape being laid at `q`, off the map's rim.
+static func _run_at(L: Lay, q: Vector2, ground: int) -> bool:
+	var c := L.c
+	var x := floori(q.x)
+	var y := floori(q.y)
+	if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
+		return false
+	var i := y * c.size + x
+	return c.w.ground[i] == ground and c.water[i] == 0 and c.w.level[i] > 0 and L.home(x, y)
+
+
 ## A tile to try: inside one of the laid type's own regions, chosen by size, or
 ## anywhere on the land while laying what every type shares.
 ##

@@ -191,6 +191,19 @@ static func make() -> BiomeDef:
 
 ## Ice almost everywhere; a ridge where two floes met is rock-hard and stands
 ## proud; and the low ground is where a lead has opened and the water shows.
+##
+## THE LEADS are the sea's signature and the listener's founder ground
+## (designs/listener.gd): black open water wandering through the white, where
+## the sheet has opened under the same stress that throws the ridges up, so they
+## come from the other end of the same field. A narrow band of the rise, not its
+## floor: a line round the low ground a tile or three wide, never a lake
+## (tests/biome/test_frost_leads.gd). Between RIDGE_RISE and the leads lies the
+## sheet, and the sheet is most of the sea.
+const RIDGE_RISE := 1.2
+const LEAD_RISE := -1.2
+const LEAD_BAND := 0.15
+
+
 static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE
@@ -200,8 +213,10 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.SNOW
 	# A pressure ridge: the only steep thing out here, and the only thing to take
 	# cover behind.
-	if rs > 1.2:
+	if rs > RIDGE_RISE:
 		return Ground.ROCK
+	if rs < LEAD_RISE and rs > LEAD_RISE - LEAD_BAND:
+		return Ground.BLACKWATER
 	# ICE, not snow, and `test_snow_and_ash_keep_to_their_countries` is what made
 	# the point: SNOW belongs to the snowfield, and reaching for it here because
 	# it is the white ground I wanted put 4.7% of it outside its own country. A
@@ -259,25 +274,33 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 ## tripod over every third hole, the heated pipe that keeps them open laid
 ## beside it, a post at each end and a tank for the heater.
 ##
-## LINES to a region, on its longest unbroken runs of sheet ice: a line that ran
-## on over the shore or a ridge stood its rigs in the sea or on the rock. Each
+## LINES to a region, on its longest unbroken runs of sheet ice (GenWorks.runs):
+## a line that ran on over the shore or a ridge stood its rigs in the sea or on
+## the rock. Each
 ## is the listener's station (designs/listener.gd), so it stands only where the
 ## den by it keeps the listener's ways (`_line`, GenWorks.station_first), and a
 ## refused run gives way to the next longest, LINE_TRIES of them.
 const LINES := 2
 const LINE_TRIES := 4
-## How far a line keeps from the region's other places.
+## How far a line keeps from the region's other places, and how many of its
+## rigs must stand for it to be one.
 const LINE_APART := 36.0
+const LINE_RIGS := 2
 
 
 static func _works(L: Object) -> void:
 	var tried := 0
 	var laid := 0
-	for v: Vector3i in _line_sites(L, LINE_APART, LINES * LINE_TRIES):
+	for v: Vector3i in GenWorks.runs(L, Ground.ICE, LINE_APART, LINES * LINE_TRIES, true):
 		if laid >= LINES or tried >= LINES * LINE_TRIES:
 			break
+		# The runs were ranked before any line stood: one beside a line laid
+		# since is the same ice.
+		var at := Vector2(v.x, v.y) + Vector2(0.5, 0.5)
+		if laid > 0 and GenWorks._crowded(L, at, LINE_APART):
+			continue
 		tried += 1
-		if GenWorks._work(L, &"_line", Vector2(v.x, v.y) + Vector2(0.5, 0.5), [v.z]):
+		if GenWorks._work(L, &"_line", at, [v.z]):
 			laid += 1
 
 
@@ -289,72 +312,18 @@ static func _line(L: Object, at: Vector2, a: Array) -> bool:
 	var c: GenContext = L.c
 	var d: Vector2 = L.d
 	var nrm: Vector2 = L.nrm
-	var from: int = L.w.props.size()
 	var reach: int = a[0]
 	var half := Vector2(reach * 2.0 + 1.0, 1.6)
 	GenWorks._record(c, &"soundings", at, d, half, GenWorks.BORES)
+	var rigs := 0
 	for h in range(-reach, reach + 1):
-		if posmod(h, 3) == 0:
-			GenWorks.put_on_step(L, PropKind.SOUNDING_RIG, at + d * h * 2.0, d.angle(), 0.3, 0.8)
+		if posmod(h, 3) == 0 and GenWorks.put_on_step(L, PropKind.SOUNDING_RIG, at + d * h * 2.0, d.angle(), 0.3, 0.8) != null:
+			rigs += 1
+	# A line its rigs could not stand on is no line.
+	if rigs < LINE_RIGS:
+		return false
 	GenWorks._run(L, PropKind.PIPE, at - d * reach * 2.0 + nrm * 1.3, d, reach * 2, 2.0, -99, 0.15)
 	for sx: float in [-1.0, 1.0]:
 		GenWorks._put(L, PropKind.SURVEY, at + d * (half.x + 0.8) * sx, d.angle(), -99, 0.0, true)
 	GenWorks.put_on_step(L, PropKind.WATER_TANK, at + d * (half.x + 1.2) - nrm * 2.2, d.angle(), 0.6)
-	return GenWorks.station_last(L, at, from, half.x)
-
-
-## The region being laid's runs of sheet ice along the bearing, (x, y, holes
-## each way, two to six), longest first and ties in scan order: up to `count`
-## of them clear of where the player wakes, of villages, of the region's other
-## places by `apart`, and passed by the cheap half of the station rule
-## (GenWorks.station_may_hold). Scanned rather than thrown for, like
-## GenWorks.flattest. None where the region can hold no station
-## (GenWorks.station_ground).
-static func _line_sites(L: Object, apart: float, count: int) -> Array[Vector3i]:
-	var out: Array[Vector3i] = []
-	if (L.rects as Array).is_empty() or not GenWorks.station_ground(L):
-		return out
-	var c: GenContext = L.c
-	var w := c.w
-	var d: Vector2 = L.d
-	var rect: Rect2 = L.rects[0]
-	var runs: Array[Vector3i] = []
-	var y := int(rect.position.y) + 2
-	while y < int(rect.end.y) - 2:
-		var x := int(rect.position.x) + 2
-		while x < int(rect.end.x) - 2:
-			var at := Vector2(x + 0.5, y + 0.5)
-			if L.here(x, y) and w.blend[y * c.size + x] <= 0.35 and _sheet(L, at):
-				var reach := 0
-				while reach < 6 and _sheet(L, at + d * (reach + 1) * 2.0) and _sheet(L, at - d * (reach + 1) * 2.0):
-					reach += 1
-				if reach >= 2:
-					runs.append(Vector3i(x, y, reach))
-			x += 4
-		y += 4
-	runs.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return a.z > b.z or (a.z == b.z and (a.y < b.y or (a.y == b.y and a.x < b.x))))
-	var looked := 0
-	for v: Vector3i in runs:
-		var at := Vector2(v.x + 0.5, v.y + 0.5)
-		if at.distance_to(w.spawn) < Sentinels.CLEAR_OF_HOME or GenScatter._near_village(w, at, 18.0) or GenWorks._crowded(L, at, apart):
-			continue
-		if looked >= count * GenWorks.STATION_LOOKS:
-			break
-		looked += 1
-		if not GenWorks.station_may_hold(L, at):
-			continue
-		out.append(v)
-		if out.size() >= count:
-			break
-	return out
-
-
-## Open sheet ice of this sea at `q`: somewhere a hole can be kept open.
-static func _sheet(L: Object, q: Vector2) -> bool:
-	var c: GenContext = L.c
-	var x := floori(q.x)
-	var y := floori(q.y)
-	if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
-		return false
-	var i := y * c.size + x
-	return c.w.ground[i] == Ground.ICE and c.water[i] == 0 and c.w.level[i] > 0 and L.home(x, y)
+	return GenWorks.station_last(L, at, half.x)

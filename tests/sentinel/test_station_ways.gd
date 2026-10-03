@@ -13,12 +13,11 @@ const SEEDS: Array[int] = [1, 7, 42, 90210]
 ## as design:way where a den still closes the way (measured at GEN 47; routed
 ## by cb, 2026-10-02). A way that needs laid works (STARVE's feeds, a SPOOF's
 ## lamp) waits on its landscape's works; a FOUNDER line stands where no room the
-## search tries in a region has its ground in reach (the frost sea's black water,
-## the snowfield's ice, a mesa skerry's sand). It only shrinks: the test fails on
-## a line that now holds on every seed.
+## search tries in a region has its ground in reach (the snowfield's ice, a mesa
+## skerry's sand; the frost sea's black water came off with its leads). It only
+## shrinks: the test fails on a line that now holds on every seed.
 const STANDING: Array[String] = [
 	"anchor:founder", "anchor:starve",
-	"listener:founder",
 	"plough:founder", "plough:starve",
 	"unbuilder:spoof",
 ]
@@ -216,7 +215,25 @@ const FLATS_SEEDS: Array[int] = [1, 4, 7, 42, 90210]
 
 
 func test_every_salt_flats_region_with_a_station_keeps_its_rake() -> void:
-	var def := Sentinels.by_id(&"pan_rake")
+	_every_region_keeps(&"salt_flats", &"pan_rake")
+
+
+## THE FROST SEA'S SOUNDINGS ARE THE LISTENER'S STATIONS, sited by the rule
+## from the first: every frost-sea region on the same five seeds, printed the
+## same way. Before the lines were laid the listener denned by each region's
+## heart, its founder way (black water) open at none of them on some seeds.
+func test_every_frost_sea_region_with_a_station_keeps_its_listener() -> void:
+	_every_region_keeps(&"frost_sea", &"listener")
+
+
+## Every region of landscape `land` on FLATS_SEEDS, as `design`'s keeper stands
+## in it, printed: where it dens, how far from its nearest station, and which
+## ways a den there closes. A region holding a station, or big enough to keep a
+## keeper, keeps one at a station with every way open, unless its ground can
+## hold none of its stations (`_kept_out`, printed).
+func _every_region_keeps(land: StringName, design: StringName) -> void:
+	var def := Sentinels.by_id(design)
+	var name := String(land).replace("_", " ")
 	for s: int in FLATS_SEEDS:
 		var w := _world(s)
 		var landings: Array[Vector2] = []
@@ -225,10 +242,10 @@ func test_every_salt_flats_region_with_a_station_keeps_its_rake() -> void:
 				landings.append(row["from"] as Vector2)
 		var lair_of := {}
 		for st: SentinelState in Sentinels.states(w):
-			if st.design == &"pan_rake":
+			if st.design == design:
 				lair_of[st.region] = st.lair
 		for r: Dictionary in w.regions:
-			if StringName(str(r.get("type", &""))) != &"salt_flats":
+			if StringName(str(r.get("type", &""))) != land:
 				continue
 			var id := int(r.get("id", -1))
 			var stations: Array[Vector2] = []
@@ -241,14 +258,14 @@ func test_every_salt_flats_region_with_a_station_keeps_its_rake() -> void:
 			for p: Vector2 in stations:
 				off = minf(off, p.distance_to(lair)) if lair.is_finite() else INF
 			var closed: Array = Sentinels.ways_closed(w, lair, def) if lair.is_finite() else ["no den"]
-			print("       seed %d salt flats region %d (%d tiles): %d stations, rake %s, %.1f from its nearest station, closed %s"
-				% [s, id, int(r.get("tiles", 0)), stations.size(), "at %s" % lair if lair.is_finite() else "stands nowhere", off, closed])
+			print("       seed %d %s region %d (%d tiles): %d stations, %s %s, %.1f from its nearest station, closed %s"
+				% [s, name, id, int(r.get("tiles", 0)), stations.size(), design, "at %s" % lair if lair.is_finite() else "stands nowhere", off, closed])
 			var why := _kept_out(w, r, def, landings) if stations.is_empty() else ""
 			if why != "":
-				print("       seed %d salt flats region %d: %s" % [s, id, why])
+				print("       seed %d %s region %d: %s" % [s, name, id, why])
 				continue
 			if not stations.is_empty() or int(r.get("tiles", 0)) >= Sentinels.MIN_TILES:
-				check(not stations.is_empty() and lair.is_finite() and closed.is_empty(), "seed %d: salt flats region %d holds %d stations and keeps its rake, every way open (%s)" % [s, id, stations.size(), closed])
+				check(not stations.is_empty() and lair.is_finite() and closed.is_empty(), "seed %d: %s region %d holds %d stations and keeps its %s, every way open (%s)" % [s, name, id, stations.size(), design, closed])
 
 
 ## ASKED BEFORE IT IS LAID, IT STILL HOLDS AFTER. Where a station's den does
@@ -258,6 +275,7 @@ func test_every_salt_flats_region_with_a_station_keeps_its_rake() -> void:
 ## the one that was asked: every such station on five worlds still holds.
 func test_a_station_asked_before_it_is_laid_still_holds_after() -> void:
 	var asked := 0
+	var of := {}
 	for s: int in FLATS_SEEDS:
 		var w := _world(s)
 		var landings: Array[Vector2] = []
@@ -272,7 +290,9 @@ func test_a_station_asked_before_it_is_laid_still_holds_after() -> void:
 			var half: Vector2 = m.get("half", Vector2.ZERO)
 			var den := Sentinels.station_den(w, p, def, landings, w.region_at(floori(p.x), floori(p.y)), PackedVector2Array(), true, maxf(half.x, half.y))
 			asked += 1
+			of[def.id] = int(of.get(def.id, 0)) + 1
 			check(den.is_finite(), "seed %d: the %s's %s at %s, asked before it was laid, holds in the finished world" % [s, def.id, m.kind, p])
+	print("       stations asked before they were laid, by keeper: %s" % of)
 	gt(float(asked), 10.0, "five worlds hold stations asked before they were laid (%d)" % asked)
 
 

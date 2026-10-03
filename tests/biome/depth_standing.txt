@@ -22,10 +22,6 @@ coast player.only_in
 coast player.signature
 drowned_city player.only_in
 frost_sea land.landmark
-frost_sea land.own_props
-frost_sea land.site
-frost_sea plan.depot
-frost_sea plan.work_props
 frost_sea player.only_in
 glass_desert land.landmark
 glass_desert land.own_props
