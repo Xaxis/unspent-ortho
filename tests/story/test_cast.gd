@@ -4,6 +4,7 @@ extends TestCase
 ## one `use` key in a running game.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
+const Doors := preload("res://src/systems/21_doors.gd")
 const SEEDS: Array[int] = [1, 7]
 const SIZE := 256
 
@@ -173,3 +174,92 @@ func test_somebody_who_is_not_there_does_not_answer_the_key() -> void:
 		check(StringName(str(picked.get("character", &""))) != id, "the key does not open %s's words where %s is not" % [id, id])
 	Sx.end(g)
 	Story.forget()
+
+
+## Where a door was nearer some of the cast than the key's reach (measured on
+## main at this size: four people on seed 1, five on 42).
+const DOOR_SEEDS: Array[int] = [1, 42]
+## Where he stands to speak to someone: in the key's reach of them, on every side.
+const SPEAK_FROM: Array[float] = [1.2, 1.6, 2.2, 2.8]
+
+
+## A DOOR TAKES THE KEY BEFORE THE PERSON STANDING AT IT. 21_doors gives `use` to
+## a door he faces within its REACH of him (`_door_wins`), so someone cast nearer
+## a door than the key's reach is someone the key opens that door instead of,
+## from some of the places he would speak to them from: on seed 1, Hollis, Lark,
+## Liss and Sabine, 1.4 to 2.5 off a door, lost it from one or two stands in 33;
+## on the frost sea, Dace stood on a frozen hull's hatch. From every stand in the
+## key's reach round each of the cast who is there, and round each thing the
+## story stands, facing them, the door never takes the key.
+func test_no_door_takes_the_key_meant_for_the_cast() -> void:
+	for s: int in DOOR_SEEDS:
+		Story.forget()
+		var g := Sx.game(tree, ["--seed=%d" % s, "--size=%d" % SIZE, "--hour=11"])
+		await frames(3)
+		var cast: Node = Sx.system(g, "49_cast")
+		var doors: Node = Sx.system(g, "21_doors")
+		var all: Array[Threshold] = []
+		all.assign(doors.get("doors"))
+		gt(float(all.size()), 20.0, "seed %d has doors to keep off (%d)" % [s, all.size()])
+		var stands := 0
+		for row: Dictionary in cast.get("people"):
+			# Somebody not there yet answers nothing, and a press beside where
+			# they will stand rightly opens the door behind him (`_door_wins`
+			# defers only to words in front): Vera, before she comes to the camp.
+			if not StoryCast.get_def(row.character).present():
+				continue
+			stands += await _door_never_takes(g, doors, all, row.pos, "seed %d: %s" % [s, row.character])
+		var things := 0
+		for slot: StringName in StoryContent.STOOD:
+			if not (cast.get("placed") as Dictionary).has(slot):
+				continue
+			var at: Vector2 = cast.get("placed")[slot].pos
+			g.player.pos = at
+			g.player.hero.pos = at
+			await _until(func() -> bool: return cast.call("_stood_at", slot) != null)
+			var thing: WorldProp = cast.call("_stood_at", slot)
+			if thing == null:
+				# 49_cast found no spot for it (`_thing_spot`): nothing there to reach.
+				var spot: Vector2 = cast.call("_thing_spot", at, absi(int(slot.hash())))
+				check(not spot.is_finite(), "seed %d: the %s's thing has a spot at %s and is stood" % [s, slot, spot])
+				print("       seed %d: the %s has no spot for its thing" % [s, slot])
+				continue
+			things += 1
+			stands += await _door_never_takes(g, doors, all, thing.pos, "seed %d: the %s's %s" % [s, slot, StoryProps.kind_of(thing.kind)])
+		gt(float(things), 0.0, "seed %d stands a thing of the story's" % s)
+		gt(float(stands), 300.0, "seed %d: asked from %d stands" % [s, stands])
+		Sx.end(g)
+	Story.forget()
+
+
+## From every standable spot in SPEAK_FROM round `at`, facing it, whether a door
+## takes the key (21_doors' own choice of door and its own `_door_wins`): a fail
+## for each. The stands asked.
+func _door_never_takes(g: Game, doors: Node, all: Array[Threshold], at: Vector2, who: String) -> int:
+	var asked := 0
+	for r: float in SPEAK_FROM:
+		for i in 8:
+			var p := at + Vector2.from_angle(TAU * i / 8.0) * r
+			if not g.query.standable(floori(p.x), floori(p.y)):
+				continue
+			asked += 1
+			var facing := (at - p).angle()
+			var meant := Interiors.door_for(all, p, facing, Doors.REACH)
+			if meant == null:
+				continue
+			g.player.pos = p
+			g.player.hero.pos = p
+			g.player.facing = facing
+			g.player.hero.facing = facing
+			await frames(1)
+			check(not bool(doors.call("_door_wins", meant.door)),
+				"%s: from %s facing them, the door at %s takes the key (%.2f off them)" % [who, p, meant.door, meant.door.distance_to(at)])
+	return asked
+
+
+## Until `ok` holds, or ten seconds: what is stood is settled twice a second
+## (49_cast RECHECK).
+func _until(ok: Callable) -> void:
+	var end := Time.get_ticks_msec() + 10000
+	while Time.get_ticks_msec() < end and not bool(ok.call()):
+		await process_frames(1)
