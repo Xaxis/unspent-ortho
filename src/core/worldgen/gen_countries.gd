@@ -1123,20 +1123,16 @@ static func _best_two(flat: PackedFloat32Array, n: int, i: int, types: int, c: G
 ## Pieces of a type smaller than min_tiles take the land type most common along
 ## their edge (islets, with no land neighbours, stay). Runs before the ecotones
 ## are measured, so the blend follows the borders that remain.
-## A LANDSCAPE OF THE SHORE (`coastal` at least SHORE_BOUND: the coast, the
-## drowned city, the frost sea) HOLDS NO PLACE THE SEA DOES NOT REACH. Its keeper
-## and works stand at the water (the coast's intake, the drowned city's quays),
-## and a run of it walled off from the sea by another landscape was a coast with
-## no coast: 90210's coast r23 (9,485 tiles, its nearest sea 16 off) and seed 1's
+## A LANDSCAPE BOUND TO THE SEA (BiomeDef.sea_bound: the coast, the frost sea)
+## HOLDS NO PLACE THE SEA DOES NOT REACH. Its keeper and works stand at the open
+## water (the coast's intake on the shore), and a run of it walled off from the
+## sea by another landscape was a coast with no coast: 90210's coast r23 (9,485 tiles, its nearest sea 16 off) and seed 1's
 ## frost sea r22 (13,822 tiles, 54 off), with no keeper or works in either.
 ## Asked of the PLAN (the sampled landscape every region is cut from,
 ## `regions`): a run of a shore type none of whose cells touches the open sea
 ## or the square's edge takes the landscape round it, by the votes of its
 ## border, tile for tile, its own type kept as the second for the blend. A run
 ## with no other land round it is left as it is.
-const SHORE_BOUND := 1.0
-
-
 static func _dry_shores(c: GenContext) -> void:
 	var w := c.w
 	var cw := c.cw
@@ -1147,7 +1143,7 @@ static func _dry_shores(c: GenContext) -> void:
 	shore.resize(types)
 	var any := false
 	for cc: int in c.land_types:
-		if c.defs[cc].coastal >= SHORE_BOUND:
+		if c.defs[cc].sea_bound:
 			shore[cc] = 1
 			any = true
 	if not any:

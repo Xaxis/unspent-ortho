@@ -88,6 +88,12 @@ const LANDFALL := Vector2i(1, -1)
 var adjacency: Dictionary = {}
 ## -1 wants to be inland, +1 wants the shore, 0 does not care.
 var coastal := 0.0
+## Its keeper and works need the OPEN SEA at its edge (the coast's intake, the
+## frost sea's ice off the shore), so a run of it the sea does not reach takes the
+## landscape round it (GenCountries._dry_shores). Wanting the shore (`coastal`) is
+## not this: the drowned city lies by the sea but keeps its own water, its keeper
+## working the locks of its canals.
+var sea_bound := false
 
 # --- relief and climate ---------------------------------------------------
 
