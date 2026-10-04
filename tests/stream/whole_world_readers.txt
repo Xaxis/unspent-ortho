@@ -36,6 +36,7 @@ src/core/interior/interiors.gd::thresholds::builder Works.sites
 src/core/interior/interiors.gd::thresholds::list
 src/core/landmarks/landmarks.gd::_trod::list
 src/core/landmarks/landmarks.gd::port_of::list
+src/core/landmarks/landmarks.gd::record::list
 src/core/landmarks/landmarks.gd::sited::list
 src/core/mobs/coast.gd::_first_due::builder Spawner.green_distance
 src/core/mobs/coast.gd::_first_meeting::builder Spawner.green_distance
@@ -169,7 +170,6 @@ src/systems/20_realms.gd::enter::builder WorldQuery.new
 src/systems/20_realms.gd::setup::builder RealmWorlds.keep
 src/systems/21_doors.gd::realm_changed::builder Interiors.thresholds
 src/systems/21_doors.gd::setup::builder Interiors.thresholds
-src/systems/22_landmarks.gd::_as_landmark::list
 src/systems/22_landmarks.gd::_read_sites::builder Landmarks.sites
 src/systems/24_holds.gd::_read_sites::builder Hold.sites
 src/systems/24_holds.gd::_refresh_chapters::builder Chapters.for_regions
