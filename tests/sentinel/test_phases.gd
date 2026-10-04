@@ -30,18 +30,84 @@ func test_a_phase_rewrites_the_row_and_the_roster_is_left_alone() -> void:
 	eq(SaveCodec.canonical(Roster.DEFS[def.kind]), before, "the roster table itself was never touched")
 
 
-func test_every_phase_leaves_the_working_side_reachable_by_walking_round_it() -> void:
-	# The rule the fight rests on (tests/fight/test_openings): a machine must turn
-	# slower than a player walks round it at close quarters, or its side cannot be
-	# reached and the only answer left is trading hits.
+func test_every_phase_leaves_the_working_side_reachable() -> void:
+	# The rule the fight rests on (tests/fight/test_openings): a phase's working
+	# side can be reached, or the only answer left is trading hits. Either a player
+	# walks round to it (it turns slower than a walk round it at close quarters),
+	# or the phase declares its own way round:
+	#   a stand: spent after a bite that missed, it turns slower than a walk round
+	#     it with every weapon a person holds, for long enough to walk to its back
+	#     and strike (FightRules.walk_round_ms);
+	#   a slew: a grip that, wrenched loose, swings it half round (Blow.torn) and
+	#     so turns its back, the part, to the player.
 	var knife := Blow.for_item(&"knife", 5000)
+	var held: Array[Blow] = []
+	for id: StringName in Items.DEFS:
+		if Items.def(id).has("swing"):
+			held.append(Blow.for_item(id, 5000))
 	for def: SentinelDef in Sentinels.all():
 		var m := MobState.new(def.kind, Vector2(10, 10))
 		var circle := m.radius + Tuning.PLAYER_RADIUS + knife.reach * 0.5
 		for i in def.phases.size():
 			Sentinels.wear_phase(m, def, i)
-			lt(m.turn_rate, Tuning.WALK_SPEED / circle,
-				"%s phase %s tracks a walking player (%.2f rad/s, bound %.2f)" % [def.id, def.phase(i).id, m.turn_rate, Tuning.WALK_SPEED / circle])
+			var id := "%s phase %s" % [def.id, def.phase(i).id]
+			var slews_round := m.bite.grip > 0 and m.bite.torn > 0 and m.part == &"back"
+			var spent_turn := float(m.row.get("spent_turn", -1.0))
+			var stands := spent_turn >= 0.0
+			if stands:
+				var need := 0.0
+				for b: Blow in held:
+					need = maxf(need, FightRules.walk_round_ms(m.radius + Tuning.PLAYER_RADIUS + b.reach * 0.5, spent_turn, b))
+				gt(float(m.bite.recovery + m.bite.cooldown), need,
+					"%s: its stand outlasts a walk round it to its back and a strike, with any weapon (%d ms, walk %.0f ms)" % [id, m.bite.recovery + m.bite.cooldown, need])
+			check(m.turn_rate < Tuning.WALK_SPEED / circle or slews_round or stands,
+				"%s: its side is walked round to (%.2f rad/s, bound %.2f), or it stands spent, or its grip's slew turns it to the player" % [id, m.turn_rate, Tuning.WALK_SPEED / circle])
+
+
+func test_a_stooped_reaper_whose_grip_closed_on_nothing_stands_for_a_walk_to_its_back() -> void:
+	# A good read is never punished: the dodged grip leaves the chute gear in
+	# reach of a walk with the weapon a keeper bout carries, and a strike there.
+	var def := Sentinels.for_land(&"coast")
+	var sim := F.make_sim(F.flat_world(64), Vector2(32.5, 32.5))
+	sim.hero.inventory.add(&"axe_felling")
+	sim.hero.inventory.set_held(&"axe_felling")
+	sim.hero.kit = FightKit.of([])
+	var m := sim.add_mob(def.kind, sim.hero.pos + Vector2(3.0, 0.0))
+	Sentinels.own_row(m)
+	Sentinels.wear_phase(m, def, def.phases.size() - 1)
+	eq(m.part, &"back", "stooped, its chute gear at its back is the part")
+	m.facing = PI
+	m.aim = PI
+	m.disturbed = true
+	m.set_mood(MobState.CHASING, sim.now)
+	var told := false
+	for i in 400:
+		sim.slices(1)
+		if m.blow != null and m.blow_phase(sim.now) == &"windup":
+			told = true
+			break
+	check(told, "it tells its grip")
+	# Read at a person's slowest hands, then out of its box to the side.
+	var aside := Vector2.from_angle(m.facing).orthogonal()
+	F.ms(sim, FightRules.READ_REACT_MS - (sim.now - m.blow_at))
+	sim.hero.move = aside
+	sim.press_dodge()
+	F.ms(sim, m.blow_at + m.blow.windup + m.blow.active + 8 - sim.now)
+	var events := sim.drain()
+	eq(F.count(events, &"grip"), 0, "the grip closed on nothing")
+	check(m.spent(sim.now), "and it stands spent")
+	var struck := false
+	while m.spent(sim.now) and not struck:
+		var back := m.pos - Vector2.from_angle(m.facing) * (m.radius + sim.hero.radius + 0.45)
+		var to := back - sim.hero.pos
+		sim.hero.move = to.normalized() if to.length() > 0.1 else Vector2.ZERO
+		if FightRules.side_of(m.pos, m.facing, sim.hero.pos) == &"back" and sim.reaches_part(m, sim.hero.pos):
+			sim.hero.move = Vector2.ZERO
+			sim.press_swing((m.pos - sim.hero.pos).angle())
+		sim.slices(1)
+		for e in sim.drain():
+			struck = struck or (e.type == &"hit" and e.get("target") == m and int(e.damage) > 0)
+	check(struck, "a walk to its back and a strike there landed while it stood (turning %.2f rad/s)" % m.turn_rate_at(sim.now))
 
 
 func test_a_guarded_phase_rings_off_the_front_and_opens_after_a_bite_that_missed() -> void:
