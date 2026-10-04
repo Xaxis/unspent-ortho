@@ -9,7 +9,7 @@ wait 3
 shot 01-tull-and-the-holding-from-above
 hold shoulder
 wait 1.5
-shot 02-over-his-shoulder-the-shack-fire-and-bench
+shot 02-over-his-shoulder-the-shack-fire-and-bench with station:fire
 release shoulder
 wait 1
 hour 20
