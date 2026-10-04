@@ -401,13 +401,47 @@ func _watch_gates() -> void:
 	if game.world == null:
 		return
 	var at: Vector2 = game.player.pos
-	for g: Dictionary in StoryGates.open(game.world):
+	var open := StoryGates.open(game.world)
+	_warm_the_before(open)
+	for g: Dictionary in open:
 		if (g.pos as Vector2).distance_to(at) <= GATE_REACH:
 			gate_near = g.id
 			if not _taught.has(g.id):
 				_taught[g.id] = true
 				Events.hint.emit(PlayerSettings.spell("Another day is standing on the ground here. %s to step into it.", [&"use"]), PlayerSettings.cap_of(&"use"))
 			return
+
+
+## THE BEFORE IS RAISED ONCE A GATE IS OPEN, before anybody walks to it: a gate
+## opens on a beat, usually a walk away, and the walk covers the raise (36 s at
+## 1840 on desktop), where the press used to stand him behind the crossing page
+## for all of it. Not on approach, as a
+## shaft is (WARM): 44 tiles is 13 s of walking. With threads only (`begin`
+## answers false without them, and the press raises it as before), and from the
+## surface, the one realm a gate leads out of.
+##
+## NOT ON THE WEB. A third world in a 2 GiB wasm heap that never shrinks: a
+## threaded game is at 1,555 MB by its third frame (the underground's raise,
+## WARM_AFTER), and the Before's raise holds up to 450 MB more at its peak
+## (measured, seed 7 at 1840: +402 MB of generation scratch over a held surface,
+## settling to +89 MB, and RealmWarm's maps). 1,555 + 450 is past what the heap
+## can safely take, an out-of-memory ends the player's game, which is worse than
+## a page, and the engine cannot read what it holds there (its counter counts
+## only in a debug build). So on the web the press raises it, as before. A
+## measured web heap after both raises (#58's work) is what would earn it back.
+func _warm_the_before(open: Array[Dictionary]) -> void:
+	# After the opening frames, as the shafts' raises are (WARM_AFTER).
+	if open.is_empty() or _realm != Realm.SURFACE or _frames < WARM_AFTER or not warms_early(OS.has_feature("web")):
+		return
+	var seed_value := game.options.seed_value
+	var size: int = game.world.size
+	if not RealmWorlds.ready(seed_value, size, Realm.ERA):
+		RealmWorlds.begin(seed_value, size, Realm.ERA)
+
+
+## Whether the Before is raised before the press: on the desktop, never on the web.
+static func warms_early(web: bool) -> bool:
+	return not web
 
 
 ## Go through a shaft.
