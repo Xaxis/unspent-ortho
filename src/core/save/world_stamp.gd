@@ -311,7 +311,6 @@ const UNKNOWN := "unknown"
 ##     landmarks still standing. And a tread that fits is found wherever it
 ##     ranks (GenTreads._find, FITS_ASKED_MOST), each row keeping its `rank`:
 ##     seed 41's second walker had lost its foot to the rank-60 cut.
-##     (Provisional; restamped at landing.)
 const GEN := 52
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
