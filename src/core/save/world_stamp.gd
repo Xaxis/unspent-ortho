@@ -312,7 +312,12 @@ const UNKNOWN := "unknown"
 ##     brine houses go to every region big enough to keep the rake, benches
 ##     to bare rock and then half spacing, locks to the next canal reach.
 ##     (Provisional; restamped at landing.)
-const GEN := 52
+## 53. A shore landscape (the coast, the drowned city, the frost sea) holds no
+##     run of land the open sea does not reach: such a run takes the landscape
+##     round it (GenCountries._dry_shores). 90210's coast r23 (9,472 tiles, 16
+##     from the sea) and seed 1's frost sea r22 (13,936, 54 off) go to their
+##     neighbours. (Provisional; restamped at landing.)
+const GEN := 53
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
