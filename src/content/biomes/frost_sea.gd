@@ -116,14 +116,17 @@ static func make() -> BiomeDef:
 	d.props = [PropKind.BOULDER, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.STONE_ORE,
 		PropKind.SURVEY, PropKind.RELAY, PropKind.DEBRIS,
 		# Its own (docs/LANDSCAPES.md, src/models/props/frost_sea.gd): ice
-		# thrown up on end, a trawler frozen in, the plan's sounding tripod, a
-		# seal's hole. Declared here so the economy can walk lens ice back to
-		# this sea; where each stands per frame is `_scatter`'s, and the bands
-		# land with the works row and the ridge relief (phase B).
+		# thrown up on end, a trawler frozen in and a seal's hole are
+		# `_scatter`'s; the plan's sounding tripod is the soundings line's
+		# (`_works`).
 		PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE]
 	d.ore = [[PropKind.STONE_ORE, 0.012]]
-	d.sites = {"tips": 1}
+	# The floe camp (SiteKinds): a dead expedition's tents, sledges and graves
+	# on the open ice, as a rate per 1,000 tiles of each region.
+	d.sites = {"tips": 1, "floe_camp": 0.1}
 	d.beached_wrecks = true
+	# The leads are the sheet opened, not standing water (`_surface`).
+	d.leads = true
 	d.pools = {"order": 2, "cell": 26, "chance": 0.55, "r_min": 2.2, "r_max": 5.0, "ground": Ground.BLACKWATER}
 	# NOBODY LIVES ON MOVING ICE, and that is a decision, not a gap (docs/
 	# LANDSCAPES.md §2). People are here as a dead expedition's camp and one
@@ -174,6 +177,15 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_snowfield"
 	d.surface = _surface
 	d.scatter = _scatter
+	# Sounding what is under the ice (docs/LANDSCAPES.md §2 PLAN): the soundings
+	# lines `_works` lays.
+	GenWorks.register(&"frost_sea", {
+		"host": load("res://src/content/biomes/frost_sea.gd"),
+		"works": &"_works",
+		"vignettes": [[4, &"debris_field"], [4, &"wreck"], [3, &"survey_posts"], [3, &"grave_cluster"],
+			[2, &"wreck_parts"], [2, &"tipped_signs"], [1, &"shelter"]],
+		"survey": [[0.35, &"sign_beside"]],
+	})
 	# The web's day contrast here (BiomeDef.web_contrast): inferred from the snowfield: bright and cold.
 	d.web_contrast = 1.05
 	return d
@@ -181,6 +193,21 @@ static func make() -> BiomeDef:
 
 ## Ice almost everywhere; a ridge where two floes met is rock-hard and stands
 ## proud; and the low ground is where a lead has opened and the water shows.
+##
+## THE LEADS are the sea's signature and the listener's founder ground
+## (designs/listener.gd): black open water wandering through the white, where
+## the sheet has opened. A lead is a line, so it is a CONTOUR: the tiles where
+## the broad field (`gb`, 1/48) stands within LEAD_HALF of LEAD_AT, a meander a
+## tile or three wide that runs on for a hundred tiles and more, never a lake
+## (tests/biome/test_frost_leads.gd). Not the rise's low tail: that is the floor
+## of every pit, and lays rings and specks round them.
+## Between RIDGE_RISE and the leads lies the sheet, and the sheet is most of the
+## sea.
+const RIDGE_RISE := 1.2
+const LEAD_AT := 0.45
+const LEAD_HALF := 0.035
+
+
 static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE
@@ -190,8 +217,10 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.SNOW
 	# A pressure ridge: the only steep thing out here, and the only thing to take
 	# cover behind.
-	if rs > 1.2:
+	if rs > RIDGE_RISE:
 		return Ground.ROCK
+	if absf(gb - LEAD_AT) < LEAD_HALF:
+		return Ground.BLACKWATER
 	# ICE, not snow, and `test_snow_and_ash_keep_to_their_countries` is what made
 	# the point: SNOW belongs to the snowfield, and reaching for it here because
 	# it is the white ground I wanted put 4.7% of it outside its own country. A
@@ -214,19 +243,106 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.BOULDER
 		return BiomeScatter.NONE
 	if g == Ground.ICE:
+		# A seal's breathing hole about once a frame: the one sign out here
+		# that anything is alive under the sheet.
+		if r > 0.40 and r < 0.4038:
+			return PropKind.SEAL_HOLE
+		# A trawler locked in to its gunwale, one in six or seven frames.
+		if r > 0.30 and r < 0.3004:
+			return PropKind.FROZEN_HULL
 		if r > 0.80 and r < 0.812:
 			return PropKind.BOULDER
 		return PropKind.DEBRIS if r > 0.20 and r < 0.206 else BiomeScatter.NONE
 	if g == Ground.SNOW:
-		if r > 0.60 and r < 0.609:
-			return PropKind.BOULDER
-		return PropKind.SURVEY if r > 0.10 and r < 0.1035 else BiomeScatter.NONE
+		# The survey posts are the soundings line's (`_works`): the plan's own
+		# things are not dealt by the scatter.
+		return PropKind.BOULDER if r > 0.60 and r < 0.609 else BiomeScatter.NONE
 	if g == Ground.ROCK:
 		if r < 0.030:
 			return PropKind.BOULDER
 		if r < 0.040:
 			return PropKind.STONE_ORE
-		return PropKind.RELAY if r > 0.50 and r < 0.505 else BiomeScatter.NONE
+		# Slabs of sea ice thrown up on end where two floes met, in knots along
+		# the ridge rather than evenly down it: the only cover on the sea.
+		if r > 0.10 and r < 0.12 + maxf(0.0, t.clump[i]) * 0.3:
+			return PropKind.PRESSURE_BLOCK
+		return BiomeScatter.NONE
 	if g == Ground.GRAVEL:
 		return PropKind.DRIFTWOOD if r < 0.012 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## THE SOUNDINGS (docs/LANDSCAPES.md §2 PLAN): the plan is mapping the sea floor
+## by sound through the sheet. A ruled line of holes kept open along the bearing
+## (the bores mark: a black disc with a pale refrozen rim every two tiles), a
+## tripod over every third hole, the heated pipe that keeps them open laid
+## beside it, a post at each end and a tank for the heater.
+##
+## LINES to a region, on its longest unbroken runs of sheet ice (GenWorks.runs):
+## a line that ran on over the shore or a ridge stood its rigs in the sea or on
+## the rock. Each
+## is the listener's station (designs/listener.gd), so it stands only where the
+## den by it keeps the listener's ways (`_line`, GenWorks.station_first), and a
+## refused run gives way to the next longest, LINE_TRIES of them.
+const LINES := 2
+const LINE_TRIES := 4
+## How far a line keeps from the region's other places, and how many of its
+## rigs must stand for it to be one.
+const LINE_APART := 36.0
+const LINE_RIGS := 2
+## How far the last line a region tries keeps from its other places: in a
+## small region one place can crowd every run, and 90210's 3328 tiles of sea
+## had all 23 within 36 tiles of one.
+const LINE_APART_LAST := 9.0
+
+
+static func _works(L: Object) -> void:
+	# A region that holds no line once every run was crowded tries again at
+	# LINE_APART_LAST, so no line that stands moves.
+	for apart: float in [LINE_APART, LINE_APART_LAST]:
+		if _lines(L, apart) > 0:
+			break
+
+
+## Up to LINES soundings lines on the region's runs of sheet ice kept `apart`
+## from its other places; how many stood.
+static func _lines(L: Object, apart: float) -> int:
+	var tried := 0
+	var laid := 0
+	for v: Vector3i in GenWorks.runs(L, Ground.ICE, apart, LINES * LINE_TRIES, true):
+		if laid >= LINES or tried >= LINES * LINE_TRIES:
+			break
+		# The runs were ranked before any line stood: one beside a line laid
+		# since is the same ice.
+		var at := Vector2(v.x, v.y) + Vector2(0.5, 0.5)
+		if laid > 0 and GenWorks._crowded(L, at, LINE_APART):
+			continue
+		tried += 1
+		if GenWorks._work(L, &"_line", at, [v.z]):
+			laid += 1
+	return laid
+
+
+## One soundings line at `at` (`GenWorks._work`), a[0] holes each way of its
+## middle.
+static func _line(L: Object, at: Vector2, a: Array) -> bool:
+	if not GenWorks.station_first(L, at):
+		return false
+	var c: GenContext = L.c
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var reach: int = a[0]
+	var half := Vector2(reach * 2.0 + 1.0, 1.6)
+	GenWorks._record(c, &"soundings", at, d, half, GenWorks.BORES)
+	var rigs := 0
+	for h in range(-reach, reach + 1):
+		if posmod(h, 3) == 0 and GenWorks.put_on_step(L, PropKind.SOUNDING_RIG, at + d * h * 2.0, d.angle(), 0.3, 0.8) != null:
+			rigs += 1
+	# A line its rigs could not stand on is no line.
+	if rigs < LINE_RIGS:
+		return false
+	GenWorks._run(L, PropKind.PIPE, at - d * reach * 2.0 + nrm * 1.3, d, reach * 2, 2.0, -99, 0.15)
+	for sx: float in [-1.0, 1.0]:
+		GenWorks._put(L, PropKind.SURVEY, at + d * (half.x + 0.8) * sx, d.angle(), -99, 0.0, true)
+	GenWorks.put_on_step(L, PropKind.WATER_TANK, at + d * (half.x + 1.2) - nrm * 2.2, d.angle(), 0.6)
+	return GenWorks.station_last(L, at, half.x)

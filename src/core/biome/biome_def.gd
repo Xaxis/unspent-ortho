@@ -450,6 +450,10 @@ var above: Dictionary = {}
 var tip_ground := Ground.GRAVEL
 ## Hulls are hauled up on this landscape's beaches.
 var beached_wrecks := true
+## Its black water is the sheet opened in leads (the frost sea), not a body of
+## water: a lead is no pool, and a walker's tread comes down through one as it
+## does through the ice round it (GenTreads keeps off standing water only).
+var leads := false
 ## Still water: {order, cell, chance, r_min, r_max, ground}, `order` deciding
 ## which landscape's pools are laid first. Empty: no tarns or pools.
 var pools: Dictionary = {}

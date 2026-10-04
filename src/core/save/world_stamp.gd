@@ -311,7 +311,24 @@ const UNKNOWN := "unknown"
 ##     landmarks still standing. And a tread that fits is found wherever it
 ##     ranks (GenTreads._find, FITS_ASKED_MOST), each row keeping its `rank`:
 ##     seed 41's second walker had lost its foot to the rank-60 cut.
-const GEN := 52
+## 53. The glass desert lays its strike fields: nine rods ruled three by three
+##     on the survey bearing, fulgurite dug out between them, the survey at the
+##     corners, one to each region big enough to keep the anvil, sited where a
+##     den off the rods keeps every way its design declares
+##     (GenWorks.station_holds, asked of the den the keeper takes). A walker's
+##     tread keeps off a keeper's first station (GenTreads `_built`).
+## 54. The crags lay their survey benches, the plumb's stations, with lintels,
+##     carved faces, hollow ways, the barrow and limestone pavement. Every
+##     keeper's station is sited where its den keeps its ways, the salt flats'
+##     pans and brine houses too, and a refused site is tried again elsewhere:
+##     brine houses go to every region big enough to keep the rake, benches
+##     to bare rock and then half spacing, locks to the next canal reach.
+## 55. The frost sea opens its leads, lines of black water wandering through
+##     the ice along a contour of the broad field, and lays its own:
+##     seal holes, frozen hulls, pressure blocks, the floe camp, and the
+##     soundings lines, the listener's stations, sited by the station rule.
+##     The scatter keeps off black water.
+const GEN := 55
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -323,7 +340,7 @@ const TERRAIN: Array[String] = [
 	"border_elevation", "tongues", "reach_out_thin", "reach_in_thin", "reach_out_high", "reach_in_low",
 	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter", "scatter_ruled",
-	"sites", "tip_ground", "beached_wrecks", "pools", "villages", "village_names", "village_order",
+	"sites", "tip_ground", "beached_wrecks", "leads", "pools", "villages", "village_names", "village_order",
 	"villages_each_region", "village_platform",
 	"spawn_home",
 	"above",

@@ -60,3 +60,8 @@ test_bouts:test_a_phase_coil_opens_a_roused_harvester
 # first meets it (16/16) but turns the plumb and the rake bouts red. #54, the
 # share earning its promise; the bar is not lowered.
 test_ploughshare:test_the_ploughshare_bout
+# 90210's region 23 is a coast of 9472 tiles with no sea within
+# GenWorks.SHORE_STEPS of any of it: the Reaper's intake has nowhere to stand
+# and the region keeps no keeper. A coast dealt to land the sea never reaches,
+# GenCountries' to answer (task #60), not the station rule's.
+test_station_ways:test_no_region_past_a_sliver_is_kept_out_of_its_keeper
