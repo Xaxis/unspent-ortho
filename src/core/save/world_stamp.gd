@@ -328,7 +328,12 @@ const UNKNOWN := "unknown"
 ##     seal holes, frozen hulls, pressure blocks, the floe camp, and the
 ##     soundings lines, the listener's stations, sited by the station rule.
 ##     The scatter keeps off black water.
-const GEN := 55
+## 56. A landscape bound to the sea (the coast, the frost sea; BiomeDef.sea_bound)
+##     holds no run of land the open sea does not reach: such a run takes the landscape
+##     round it (GenCountries._dry_shores). 90210's coast r23 (9,472 tiles, 16
+##     from the sea) and seed 1's frost sea r22 (13,936, 54 off) go to their
+##     neighbours.
+const GEN := 56
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -336,7 +341,7 @@ const GEN := 55
 const TERRAIN: Array[String] = [
 	"id", "index", "order", "sea", "realms",
 	"share", "spread", "anchors", "temp_range", "moist_range", "site_count", "adjacency", "coastal",
-	"relief", "form", "caldera", "dunes",
+	"relief", "form", "caldera", "dunes", "sea_bound",
 	"border_elevation", "tongues", "reach_out_thin", "reach_in_thin", "reach_out_high", "reach_in_low",
 	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter", "scatter_ruled",

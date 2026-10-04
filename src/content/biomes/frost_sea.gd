@@ -44,6 +44,7 @@ static func make() -> BiomeDef:
 	d.spread = Vector2i(1, 1)
 	# It IS the sea: it wants the edge of the land, not the middle of it.
 	d.coastal = 1.0
+	d.sea_bound = true
 	# Flat as water, because it is water. What relief there is was pushed up by
 	# one floe meeting another, so the ridges are thin and high and everything
 	# between them is level.
