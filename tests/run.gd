@@ -26,6 +26,11 @@ const ScriptErrorLog := preload("res://tests/script_error_log.gd")
 
 var _script_errors: Logger = ScriptErrorLog.new()
 var _failed := 0
+## How many WorldProps one test may leave alive past its end. A grown world holds
+## its props as rows and keeps a handful as objects (tests/stream/test_prop_table.gd);
+## a test that keeps thousands is holding the world's props, and the file that
+## noticed used to be some later one.
+const LEAK_PROPS := 1000
 var _passed := 0
 var _load_errors := 0
 
@@ -126,6 +131,7 @@ func _run() -> void:
 			inst.current = id
 			_load_script_errors()
 			var t := Time.get_ticks_msec()
+			var props_before := WorldProp.live
 			await inst.call(name)
 			# **A TEST MAY CLEAN UP AFTER ITSELF, AND NOW IT IS ASKED TO.** A file
 			# that defines `teardown()` has it awaited after every test in it, and
@@ -186,15 +192,25 @@ func _run() -> void:
 				var parts := k.split(":")
 				WorldGen.unhalt(parts[0].to_int(), parts[1].to_int(), StringName(parts[2]))
 			var ms := Time.get_ticks_msec() - t
+			# NO TEST KEEPS THE WORLD'S PROPS. What a test still holds goes with it
+			# here, so whatever is alive past this point it put somewhere that lasts
+			# (a static, a cache, a node left in the root). Counted on the test that
+			# did it: before, the file that went red was a later one that asked how
+			# many props a grown world keeps (32,028, 2026-10-03).
+			var failures := inst.failures
+			inst = null
+			var kept := WorldProp.live - props_before
+			if kept > LEAK_PROPS:
+				failures.append("%s: left %d WorldProps alive (keep rows, not objects)" % [id, kept])
 			for e: String in _script_errors.call(&"take"):
-				inst.failures.append("%s: %s" % [id, e])
-			if inst.failures.is_empty():
+				failures.append("%s: %s" % [id, e])
+			if failures.is_empty():
 				_passed += 1
 				print("  ok   %s (%d ms)" % [id, ms])
 			else:
 				_failed += 1
 				print("  FAIL %s (%d ms)" % [id, ms])
-				for f in inst.failures:
+				for f in failures:
 					print("       ", f)
 		if file_ran > 0:
 			print("file-time %s %d" % [path.trim_prefix("res://"), Time.get_ticks_msec() - file_t])

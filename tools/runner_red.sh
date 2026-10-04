@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prove the test runner goes red when it should (tests/run.gd). Plants, runs,
-# and takes away six things, one run each:
+# and takes away seven things, one run each:
 #   1. a test that passes, alone                 -> the runner must exit 0
 #   2. a test whose code dies of a SCRIPT ERROR  -> it must print FAIL, exit 1
 #   3. a test that boots a game and never ends it -> IT fails, by name, and the
@@ -8,10 +8,12 @@
 #   4. a src script that does not parse          -> load error, exit 1
 #   5. a last test that lets go of a realm raise  -> the runner claims it before
 #      it quits, so no worker is left in the pool (no "Pages in use" line)
-#   6. a last test that leaves the shared bank baking -> the runner claims the
+#   6. a test that keeps 5000 WorldProps alive -> IT fails, by name, and the
+#      test after it is green
+#   7. a last test that leaves the shared bank baking -> the runner claims the
 #      bakes and EXITS, on a pool shaped like CI's four threads
 # The first is the control: without it a runner that is always red would pass.
-# Usage: tools/runner_red.sh    (exits 0 only if all six behave)
+# Usage: tools/runner_red.sh    (exits 0 only if all seven behave)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 probe_dir="tests/zz_runner_red"
@@ -118,6 +120,33 @@ if [ "$code" != 0 ] || ! grep -q "ok   test_zz_runner_probe:test_lets_go_of_a_ra
   echo "runner_red: the runner quit with a realm raise still in the pool (exit $code)"; grep "test_lets_go\\|PagedAllocator" "$log"; fails=1
 else
   echo "runner_red: a raise left by the last test is claimed before the quit (exit $code)"
+fi
+
+# A test that keeps the world's props as objects fails, by name, and the one after
+# it does not. A grown world holds its props as table rows (tests/stream/
+# test_prop_table.gd), and that file was the one that went red for 32,028 props a
+# story test far earlier in the shard had kept (2026-10-03).
+cat >"$probe" <<'PROBE'
+extends TestCase
+## Planted by tools/runner_red.sh; never committed.
+static var kept: Array[WorldProp] = []
+
+
+func test_keeps_props() -> void:
+	for i in 5000:
+		kept.append(WorldProp.new(i, PropKind.FIRE, Vector2(i, i), 0.0, 1.0))
+	check(true)
+
+
+func test_then_runs_clean() -> void:
+	check(true)
+PROBE
+code=$(run)
+if [ "$code" = 0 ] || ! grep -q "FAIL test_zz_runner_probe:test_keeps_props" "$log" || ! grep -q "left 5000 WorldProps alive" "$log" \
+    || ! grep -q "ok   test_zz_runner_probe:test_then_runs_clean" "$log"; then
+  echo "runner_red: a test that kept 5000 props was not red by name, or the test after it was (exit $code)"; grep "test_zz_runner_probe\|WorldProps" "$log"; fails=1
+else
+  echo "runner_red: kept props red on the test that kept them (exit $code)"
 fi
 
 # The shared SoundBank outlives every game, and a game that ends leaves its
