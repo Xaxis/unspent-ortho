@@ -75,6 +75,33 @@ func test_the_goal_walks_raft_narrows_archive() -> void:
 ## and the city dealt there stands its clock (StoryCrossing.of, the_landfall):
 ## seed 7's narrows put him ashore 126 tiles off it, out of sight of the city's
 ## port. In the drowned city, a step off the raft.
+## THE RAFT LANDS ON THE PORT STAIR (StoryCrossing.of, rule 1): on a world whose
+## landfall city laid its port (Landmarks.port_of), the raft comes in on that
+## stair, under the clock, put in from a home shore with open water all the way.
+## At the shipped size; each seed prints which rule it took and how far it lands
+## from where the shortest water comes ashore.
+func test_the_raft_lands_on_the_port_stair() -> void:
+	var ported := 0
+	for s: int in [1, 7, 42]:
+		var w := WorldGen.generate(s, Tuning.WORLD_SIZE)
+		StoryPlan.forget()
+		var cast := StoryPlan.cast(w)
+		var port := Landmarks.port_of(w)
+		var c := StoryCrossing.of(w, cast)
+		var land: Vector2 = c.get("land", Vector2.INF)
+		var from := GenBodies.ashore(w)
+		print("  seed %d at %d: %s, landing %.1f off the port and %.1f off where the water comes ashore, over %.0f tiles of water" % [
+			s, Tuning.WORLD_SIZE, "the port" if port.is_finite() else "no port", land.distance_to(port), land.distance_to(from), float(c.get("water", NAN))])
+		if not port.is_finite():
+			continue
+		ported += 1
+		lt(land.distance_to(port), 0.01, "seed %d: the raft lands on the port's stair" % s)
+		check(w.same_body(c.get("launch", Vector2.INF), cast[&"the_camp"].pos), "seed %d: put in from home" % s)
+		check(StoryCrossing._open_water(w, c.get("launch", Vector2.INF), land), "seed %d: over open water all the way" % s)
+	gt(float(ported), 0.0, "some seed's landfall laid a port, or nothing above was asked")
+	StoryPlan.forget()
+
+
 func test_the_raft_comes_ashore_at_the_landfall() -> void:
 	for s: int in [7, 42]:
 		var w := WorldGen.generate(s, 2048)

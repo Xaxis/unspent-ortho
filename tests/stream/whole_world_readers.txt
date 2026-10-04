@@ -35,6 +35,7 @@ src/core/interior/interiors.gd::thresholds::builder Landmarks.sites
 src/core/interior/interiors.gd::thresholds::builder Works.sites
 src/core/interior/interiors.gd::thresholds::list
 src/core/landmarks/landmarks.gd::_trod::list
+src/core/landmarks/landmarks.gd::port_of::list
 src/core/landmarks/landmarks.gd::sited::list
 src/core/mobs/coast.gd::_first_due::builder Spawner.green_distance
 src/core/mobs/coast.gd::_first_meeting::builder Spawner.green_distance
