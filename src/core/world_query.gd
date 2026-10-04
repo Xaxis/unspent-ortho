@@ -31,12 +31,21 @@ var _block_by: Dictionary = {}  # owner -> Array[Vector3]
 const BLOCK_SLACK := 1.0
 
 
-## The widest solid any prop here has, which sets how far round a body every
-## search for what stops it must look (`solid_reach`). A fixed two tiles let a
+## WHAT STOPS A BODY IS LOOKED FOR IN TWO TIERS. A fixed two-tile search let a
 ## body sink into any solid over about 1.72, 1.45 tiles into one of 3.22 (city
-## buildings, the big coastal houses, murals). Only grows: a prop taken away
-## leaves it as wide.
-var _solid_most := 0.0
+## buildings, the big coastal houses, murals). One window sized for the widest
+## solid fixed that and made every step of every body search 3.5 tiles round
+## where 1.8 do: 1.55-1.85x a `_fits` (seed 1, city and pinewood, walk and
+## crowd). So a solid up to ORDINARY is found in the tiles round a body, and the
+## few wider ones are filed in their own coarse grid (WIDE_CELL tiles a side)
+## and searched at their own reach (`_wide_most`). `solid_rows_near` is the one
+## search; every reader of what stops a body asks it.
+const ORDINARY := 1.5
+const WIDE_CELL := 8
+var _wide: Dictionary = {}  # coarse cell index -> PackedInt32Array of rows
+var _wide_most := 0.0
+## The widest ghost: there are a handful, searched at their own reach.
+var _ghost_most := 0.0
 
 
 func _init(w: WorldData) -> void:
@@ -46,13 +55,71 @@ func _init(w: WorldData) -> void:
 	var solid := w.table.solid
 	for row in w.table.size():
 		_file(floori(pos[row].y) * w.size + floori(pos[row].x), row)
-		_solid_most = maxf(_solid_most, solid[row])
+		if solid[row] > ORDINARY:
+			_file_wide(pos[row], row, solid[row])
 
 
-## How far round a point a body of radius r can be touched by a prop's solid:
-## the window every search for what stops a body has to look through.
-func solid_reach(r: float) -> float:
-	return _solid_most + r
+func _file_wide(at: Vector2, row: int, solid: float) -> void:
+	_wide_most = maxf(_wide_most, solid)
+	var k := _wide_key(floori(at.x) / WIDE_CELL, floori(at.y) / WIDE_CELL)
+	var cell: PackedInt32Array = _wide.get(k, PackedInt32Array())
+	cell.append(row)
+	_wide[k] = cell
+
+
+func _wide_key(cx: int, cy: int) -> int:
+	return cy * (world.size / WIDE_CELL + 1) + cx
+
+
+## The table rows of every solid prop that could touch a body of radius `r` at
+## `p`: the ordinary ones in the tiles round it, and every wide one whose coarse
+## cell lies within its reach. Each row once; a caller still asks the distance.
+func solid_rows_near(p: Vector2, r: float) -> PackedInt32Array:
+	var out := ordinary_rows_near(p, r)
+	out.append_array(wide_rows_in(p, p, r))
+	return out
+
+
+## The ordinary tier alone: solids up to ORDINARY whose tile is within its reach.
+func ordinary_rows_near(p: Vector2, r: float) -> PackedInt32Array:
+	var t := world.table
+	var out := PackedInt32Array()
+	for row in rows_near(p, ORDINARY + r):
+		var solid := t.solid[row]
+		if solid > 0.0 and solid <= ORDINARY:
+			out.append(row)
+	return out
+
+
+## The wide tier alone: every wide solid whose coarse cell could reach a body of
+## radius `r` anywhere in the box `lo`..`hi` (a whole nav field asks once).
+func wide_rows_in(lo: Vector2, hi: Vector2, r: float) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	if _wide.is_empty():
+		return out
+	var reach := _wide_most + r
+	var last := (world.size - 1) / WIDE_CELL
+	for cy in range(maxi(0, floori(lo.y - reach)) / WIDE_CELL, mini(last, maxi(0, floori(hi.y + reach)) / WIDE_CELL) + 1):
+		for cx in range(maxi(0, floori(lo.x - reach)) / WIDE_CELL, mini(last, maxi(0, floori(hi.x + reach)) / WIDE_CELL) + 1):
+			var k := _wide_key(cx, cy)
+			if _wide.has(k):
+				out.append_array(_wide[k])
+	return out
+
+
+## The ghosts whose solid could touch a body of radius `r` at `p`.
+func solid_ghosts_near(p: Vector2, r: float) -> Array[WorldProp]:
+	return ghosts_near(p, _ghost_most + r)
+
+
+## `solid_rows_near` and `solid_ghosts_near` as props, for a reader that wants
+## the objects.
+func solid_props_near(p: Vector2, r: float) -> Array[WorldProp]:
+	var out: Array[WorldProp] = []
+	for row in solid_rows_near(p, r):
+		out.append(world.prop_at(row))
+	out.append_array(solid_ghosts_near(p, r))
+	return out
 
 
 func _file(k: int, row: int) -> void:
@@ -135,12 +202,14 @@ func blocks_at(p: Vector2) -> Array:
 
 
 func add_prop(p: WorldProp) -> void:
-	_solid_most = maxf(_solid_most, p.solid)
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
 	var row := world.row_of_id(p.id)
 	if row >= 0:
 		_file(k, row)
+		if p.solid > ORDINARY:
+			_file_wide(p.pos, row, p.solid)
 		return
+	_ghost_most = maxf(_ghost_most, p.solid)
 	if not _ghosts.has(k):
 		_ghosts[k] = [] as Array[WorldProp]
 	(_ghosts[k] as Array[WorldProp]).append(p)
@@ -155,6 +224,13 @@ func remove_prop(p: WorldProp) -> void:
 		if at >= 0:
 			cell.remove_at(at)
 			_cells[k] = cell
+		var wk := _wide_key(floori(p.pos.x) / WIDE_CELL, floori(p.pos.y) / WIDE_CELL)
+		if _wide.has(wk):
+			var wide: PackedInt32Array = _wide[wk]
+			var wat := wide.find(row)
+			if wat >= 0:
+				wide.remove_at(wat)
+				_wide[wk] = wide
 		return
 	if _ghosts.has(k):
 		var ghosts: Array[WorldProp] = _ghosts[k]
@@ -343,7 +419,7 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 	var best := Vector2.INF
 	var best_d := INF
 	var t := world.table
-	for row in rows_near(to, solid_reach(r)):
+	for row in solid_rows_near(to, r):
 		var solid := t.solid[row]
 		if solid <= 0.0 or world.depleted.has(t.id[row]):
 			continue
@@ -353,7 +429,7 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 		if after < rr * rr and after < at.distance_squared_to(from) and after < best_d:
 			best_d = after
 			best = at
-	for q in ghosts_near(to, solid_reach(r)):
+	for q in solid_ghosts_near(to, r):
 		if q.solid <= 0.0:
 			continue
 		var rr := q.solid + r
@@ -387,7 +463,7 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims, tall):
 			return false
 	var t := world.table
-	for row in rows_near(to, solid_reach(r)):
+	for row in solid_rows_near(to, r):
 		var solid := t.solid[row]
 		if solid <= 0.0 or world.depleted.has(t.id[row]):
 			continue
@@ -397,7 +473,7 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 		# Only block when it would bring us closer: bodies can always leave an overlap.
 		if after < rr * rr and after < at.distance_squared_to(from):
 			return false
-	for q in ghosts_near(to, solid_reach(r)):
+	for q in solid_ghosts_near(to, r):
 		if q.solid <= 0.0:
 			continue
 		var rr := q.solid + r

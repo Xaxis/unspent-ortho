@@ -962,7 +962,7 @@ static func _heap_spot_at(game: Game, p: Vector2, facing: float, scale: float) -
 		if not game.query.standable(t.x, t.y) or Ground.is_water(w.ground_at(t.x, t.y)) or w.level_at(t.x, t.y) != here:
 			continue
 		var clear := true
-		for q in game.query.props_near(at, game.query.solid_reach(radius + 0.05)):
+		for q in game.query.solid_props_near(at, radius + 0.05):
 			if w.depleted.has(q.id) or q.solid <= 0.0:
 				continue
 			if q.pos.distance_to(at) < q.solid + radius + 0.05:
