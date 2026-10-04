@@ -303,13 +303,15 @@ const UNKNOWN := "unknown"
 ##     from it): a shack, a fire and a bench round its lip (GenTreads.dress
 ##     `_holding`, Treads.folk_lip), laid as that tread's own, after everything
 ##     else. Only props are appended; nothing laid before them moves.
-##     (Provisional; restamped at landing.)
 ## 52. The colossi's feet keep off only the landmarks that carry the world's
 ##     load (keeper stations, the landfall's clock, a landscape's room under
 ##     one), no longer the ones the story was cast to: worldgen casts no story
 ##     (GenTreads._bearing). A foot may now come down on a landmark that was
 ##     kept only for the story, and the story is cast afterwards from the
-##     landmarks still standing. (Provisional; restamped at landing.)
+##     landmarks still standing. And a tread that fits is found wherever it
+##     ranks (GenTreads._find, FITS_ASKED_MOST), each row keeping its `rank`:
+##     seed 41's second walker had lost its foot to the rank-60 cut.
+##     (Provisional; restamped at landing.)
 const GEN := 52
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
