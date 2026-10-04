@@ -44,3 +44,19 @@
 # IS ALWAYS THE INTERSECTION: a line removed by EITHER side now passes, so
 # keeping it because the other side still had it would put a green test
 # back on the list and teach the gate to expect a failure that is gone.
+
+# #26 (2026-10-02): every keeper held to the boss bar by a person (the human
+# reader, seeds 17 and 29). Red where the honest reader finds a keeper too cheap:
+# the frost sea. Its gap is #34's, tuned through its tells and its life.
+test_keeper_bouts:test_a_keeper_costs_a_person_something_real
+# #26: the coil's 10-25% band was measured against a bare fight that took a
+# false opening (a told stand); against the honest bare fight it is 31-34% at
+# every stall to 1800 ms. Re-derived in #34, against the bare harvester #34 makes.
+test_bouts:test_a_phase_coil_opens_a_roused_harvester
+# #26: the ploughshare's promise, better than bare against three harvesters, is
+# unmet under the honest reader: bare 14/16, share 6/16. Main's reader hid it.
+# The share's lost bouts are stalemates: a turned charge stands spent 4-8 tiles
+# off while the reader works a nearer harvester standing off. Taking the opening
+# first meets it (16/16) but turns the plumb and the rake bouts red. #54, the
+# share earning its promise; the bar is not lowered.
+test_ploughshare:test_the_ploughshare_bout

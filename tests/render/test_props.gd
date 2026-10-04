@@ -157,3 +157,36 @@ func test_no_two_scrapwood_trees_wear_the_same_crown() -> void:
 			for j in range(i + 1, vals.size()):
 				gt(absf(float(vals[i]) - float(vals[j])), 0.01,
 					"scrap trees %d and %d have the same %s (%.3f)" % [i, j, got[1], vals[i]])
+
+
+## The rock kinds (props/rocks.gd), every variant in every landscape.
+const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE,
+	PropKind.TIN_ORE, PropKind.STANDING_STONE, PropKind.CLINTS, PropKind.CAIRN, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK]
+## How far from its foot a rock is drawn, at most, at scale 1: the widest whole
+## rock (a peat bank, a stone ore) reaches 1.25.
+const ROCK_REACH_MOST := 1.5
+## How far under the ground a rock goes, at most: a leaning mass sinks its low
+## edge 0.3 at the deepest.
+const ROCK_DEPTH_MOST := 0.5
+
+
+## A ROCK IS ONE MASS ON ITS FOOT. Its faces are half-spaces closing round a
+## jittered ellipsoid (Rocks.faceted), and too few of them close nothing: the
+## bonelands' boulder spall, given three at the landscape's five facets, came out
+## a blade reaching 7.55 from its foot and 3.3 under the ground, on one boulder in
+## four, walked through for three tiles.
+func test_every_rock_is_one_mass_on_its_foot() -> void:
+	var bad: Array[String] = []
+	var asked := 0
+	for kind: int in ROCKS:
+		for v in PropModels.variants(kind):
+			for def: BiomeDef in BiomeRegistry.all():
+				var k := PropModels.build_kit(kind, v, def.index)
+				for mk: MeshKit in [k.made, k.found, k.leaf]:
+					for p: Vector3 in mk.verts:
+						asked += 1
+						if Vector2(p.x, p.z).length() > ROCK_REACH_MOST or p.y < -ROCK_DEPTH_MOST:
+							bad.append("kind %d v%d in %s at %s" % [kind, v, def.id, p])
+							break
+	check(bad.is_empty(), "rocks drawn past their foot: %s" % [bad.slice(0, 8)])
+	gt(float(asked), 1000.0, "and rocks were drawn to be asked (%d points)" % asked)

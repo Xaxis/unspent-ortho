@@ -371,26 +371,6 @@ static func _room_at(world: WorldData, x: int, y: int) -> bool:
 	return true
 
 
-## The implementation `_room_at` replaced, kept only to be compared against it.
-## `tests/works/test_world.gd` holds the two equal over a real world, so a future
-## rewrite of the fast one has something to be checked against rather than a
-## promise in a comment.
-static func room_at_plainly(world: WorldData, x: int, y: int) -> bool:
-	if not world.in_bounds(x - 3, y - 3) or not world.in_bounds(x + 3, y + 3):
-		return false
-	var level := world.level_at(x, y)
-	if level < 1:
-		return false
-	for dy in range(-3, 4):
-		for dx in range(-3, 4):
-			var g := world.ground_at(x + dx, y + dy)
-			if Ground.is_water(g) or g == Ground.ROAD:
-				return false
-			if absi(world.level_at(x + dx, y + dy) - level) > 1:
-				return false
-	return true
-
-
 ## The round the depot's own walk: out along the survey bearing and back, which
 ## is the line every ruled thing the machines built in this world lies on, so a
 ## patrol crossing the land is crossing it the way the plan reads. [from, to].

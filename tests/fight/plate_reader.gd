@@ -17,6 +17,9 @@ const GUARD_MARGIN := 0.6
 const STRANDED := 10.0
 ## Closer than this to a keeper, a lure goes back out to its spot to draw it.
 const LURE_OFF := 4.0
+## A keeper still at its work this long after the player came has not seen
+## them: they walk up to it until it does.
+const UNSEEN_MS := 3000.0
 ## Grounds it never walks onto (a player keeping off the flats), grounds it
 ## never walks off (one holding out on them), and where it walks back to when
 ## nothing is out (come to after a down at the edge of its ground).
@@ -26,6 +29,8 @@ var home := Vector2.INF
 ## A lure: once it has the keeper after it, it walks out to here (onto the
 ## `keep_on` ground) and holds there, dodging, as a player drawing it out does.
 var lure := Vector2.INF
+var _at_work_since := -1.0
+var _walk_up_to := Vector2.INF
 
 
 func _wait(m: MobState) -> void:
@@ -76,6 +81,11 @@ func act() -> void:
 	var hero := sim.hero
 	var m := _nearest()
 	if m == null:
+		# Walking up to a keeper at its work round what stands between, it goes on
+		# to where it saw it while the way turns it out of sight.
+		if _walk_up_to.is_finite() and hero.pos.distance_to(_walk_up_to) > 0.5:
+			hero.move = _walk_to(_walk_up_to)
+			return
 		# Nothing in sight (come to at the edge of its ground after a down): back
 		# the way a player walks it, round what stands between.
 		hero.move = _walk_back() if home.is_finite() and hero.pos.distance_to(home) > 1.0 else Vector2.ZERO
@@ -92,6 +102,20 @@ func act() -> void:
 	# while the anvil's bites caught it (seed 1's den, test_anvil_ways).
 	if lure.is_finite() and m.roused() and drawing and hero.pos.distance_to(lure) > 0.3 and sim.now >= _escape_until:
 		hero.move = (lure - hero.pos).normalized()
+		return
+	# A wary keeper wakes only to someone it has seen inside its guard, and stood
+	# off it, held to the flats or behind a rise its level does not meet, the
+	# reader waited and the keeper worked on: 240 s at 9.6 tiles, never roused
+	# (the strike field's den, second-keeper). Unseen a while, a player walks up
+	# to it the way a body can walk (`_route`: over a rise a step at a time).
+	if m.roused():
+		_at_work_since = -1.0
+		_walk_up_to = Vector2.INF
+	elif _at_work_since < 0.0:
+		_at_work_since = sim.now
+	if not m.roused() and sim.now - _at_work_since > UNSEEN_MS:
+		_walk_up_to = m.pos + (hero.pos - m.pos).normalized() * (m.radius + hero.radius + 1.0)
+		hero.move = _walk_to(_walk_up_to)
 		return
 	if not sim.meets_hero(m.pos):
 		# Up on the bank beside it (a dodge can carry them there): down again,
@@ -156,7 +180,19 @@ var _stuck_on := {}
 
 
 func _walk_back() -> Vector2:
+	return _walk_to(home)
+
+
+## The walk to `goal` by the tiles a body passes over (`_route`), laid again when
+## the goal moves a tile or the walk stops gaining.
+var _route_goal := Vector2.INF
+
+
+func _walk_to(goal: Vector2) -> Vector2:
 	var hero := sim.hero
+	if not _route_goal.is_finite() or _route_goal.distance_to(goal) > 1.0:
+		_route_goal = goal
+		_route_tiles.clear()
 	while not _route_tiles.is_empty() and hero.pos.distance_to(_centre(_route_tiles[0])) < 0.45:
 		_route_tiles.pop_front()
 		_route_best = INF
@@ -169,13 +205,13 @@ func _walk_back() -> Vector2:
 			_stuck_on[_route_tiles[0]] = true
 			_route_tiles.clear()
 	if _route_tiles.is_empty():
-		_route_tiles = _route(home, true)
+		_route_tiles = _route(goal, true)
 		if _route_tiles.is_empty():
-			_route_tiles = _route(home, false)
+			_route_tiles = _route(goal, false)
 		_route_best = INF
 		_route_since = sim.now
 	if _route_tiles.is_empty():
-		return (home - hero.pos).normalized()
+		return (goal - hero.pos).normalized()
 	return (_centre(_route_tiles[0]) - hero.pos).normalized()
 
 
