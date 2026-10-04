@@ -150,11 +150,11 @@ static func make() -> BiomeDef:
 	# still the joint-worst em in the game.
 	d.hazards = {&"em": 0.6, &"thirst": 0.4}
 	d.roster = {
-		&"warden": {"weight": 1.0},
-		&"watcher": {"weight": 1.0},
-		&"clerk": {"weight": 1.0, "grounds": ["floor", "road", "gravel", "rock"]},
-		&"sweeper": {"weight": 0.9, "grounds": ["floor", "road", "gravel"]},
-		&"longlegs": {"weight": 0.6},
+		&"warden": {},
+		&"watcher": {},
+		&"clerk": {"grounds": ["floor", "road", "gravel", "rock"]},
+		&"sweeper": {"grounds": ["floor", "road", "gravel"]},
+		&"longlegs": {},
 	}
 	d.landmarks = [&"clerks_office", &"blinking_stack", &"poured_pillar", &"cast_stones"]
 	d.sound_bed = &"bed_hum"

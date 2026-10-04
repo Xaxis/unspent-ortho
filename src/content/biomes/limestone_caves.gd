@@ -210,14 +210,14 @@ static func make() -> BiomeDef:
 	# bonelands pavement is not a row about a cave floor (tests/biome). VISION's
 	# blind crawlers want a body of their own, and that is M3's.
 	d.roster = {
-		&"cutter": {"weight": 1.0, "grounds": ["limestone", "rock", "gravel", "scree", "bone"]},
+		&"cutter": {"grounds": ["limestone", "rock", "gravel", "scree", "bone"]},
 		# The cave hauler works the dark by ear: it hardly sees and hears
 		# everything, walks the face slower, and winds its bite up longer, which
 		# is what makes it a cave's to fight and not the bonelands' (BiomeDef.roster).
 		# And its knuckle drive is on its BACK, away from the wall it works: a
 		# player who has learned the bonelands hauler's left side goes round to
 		# the wrong one here.
-		&"hauler": {"weight": 0.7, "grounds": ["limestone", "gravel", "bone", "mud"],
+		&"hauler": {"grounds": ["limestone", "gravel", "bone", "mud"],
 			"over": {"sees": 3, "hears": 13, "pace": 3.4, "part": &"back",
 				"bite": {"swing": [780, 160, 600, 800], "reach": 1.5, "width": 2.0, "dmg": 4, "knock": 9.5, "knock_ms": 320}}},
 	}

@@ -123,7 +123,7 @@ static func catch_up(s: Settlement, now: float, ctx: Dictionary = {}) -> Diction
 ## (35_folk DUSK and DAWN), because it is the same day.
 static func night_at(minutes: float) -> float:
 	var hour := fposmod(minutes, 1440.0) / 60.0
-	if hour >= 21.0 or hour < 5.0:
+	if hour >= Weather.DUSK_END or hour < 5.0:
 		return 1.0
 	if hour < 6.5:
 		return clampf((6.5 - hour) / 1.5, 0.0, 1.0)

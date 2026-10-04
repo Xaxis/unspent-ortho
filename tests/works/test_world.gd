@@ -120,7 +120,7 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 ## `world.ground` and `world.level` by index where it used to ask `ground_at` and
 ## `level_at` — ninety-eight method calls a candidate, up to seventy thousand in
 ## one `stand_near` — and that is only safe because the window is proved in bounds
-## before it is read. `Works.room_at_plainly` is the version it replaced, kept for
+## before it is read. `room_at_plainly` below is the version it replaced, kept for
 ## this: every tile of a real world, both answers, no exceptions. A rewrite of the
 ## fast one has something to be checked against instead of a promise in a header,
 ## and the bounds edge (x or y under 3, or within 3 of the far side) is where an
@@ -137,7 +137,25 @@ func test_the_quick_room_check_answers_exactly_what_the_plain_one_did() -> void:
 			var quick := Works._room_at(w, x, y)
 			if quick:
 				room += 1
-			if quick != Works.room_at_plainly(w, x, y) and disagreed.size() < 8:
+			if quick != room_at_plainly(w, x, y) and disagreed.size() < 8:
 				disagreed.append("(%d, %d)" % [x, y])
 	check(disagreed.is_empty(), "the two room checks disagree at %s" % [disagreed])
 	gt(float(room), 1000.0, "and they were asked about somewhere with room in it (%d tiles)" % room)
+
+
+## The implementation `Works._room_at` replaced: here, not in the game, because
+## only this test asks it.
+static func room_at_plainly(world: WorldData, x: int, y: int) -> bool:
+	if not world.in_bounds(x - 3, y - 3) or not world.in_bounds(x + 3, y + 3):
+		return false
+	var level := world.level_at(x, y)
+	if level < 1:
+		return false
+	for dy in range(-3, 4):
+		for dx in range(-3, 4):
+			var g := world.ground_at(x + dx, y + dy)
+			if Ground.is_water(g) or g == Ground.ROAD:
+				return false
+			if absi(world.level_at(x + dx, y + dy) - level) > 1:
+				return false
+	return true

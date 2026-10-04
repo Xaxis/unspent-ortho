@@ -79,6 +79,11 @@ static func boulder(k: Kit, v: int, c: int) -> void:
 			k.fleck(p, p + Vector3(0.08, 0.02, 0.06), p + Vector3(0.1, 0.0, -0.03), g[2] if i != 1 else P.MOSS[4])
 
 
+## Fewer faces than this over the base close no mass: crowded to the top, three
+## left a boulder's spall a blade 7.5 long running under the ground (test_props).
+const FACES_LEAST := 5
+
+
 ## ONE BROKEN ROCK: the intersection of `faces` half-spaces, each pushed out to
 ## a jittered ellipsoid of `radii` standing on `base`, so every face is a flat
 ## fracture plane and the silhouette is a handful of long edges rather than a
@@ -88,6 +93,7 @@ static func boulder(k: Kit, v: int, c: int) -> void:
 ## and down by `slip`. Faces stay hard on purpose: a fracture is an edge. Returns
 ## the highest point, for what lies on top.
 static func faceted(k: Kit, base: Vector3, radii: Vector3, faces: int, seed_value: int, col: Color, tilt: Vector3 = Vector3.ZERO, split: Vector3 = Vector3.ZERO, gap: float = 0.0, slip: float = 0.0) -> Vector3:
+	faces = maxi(faces, FACES_LEAST)
 	var centre := Vector3(0.0, radii.y * 0.46, 0.0)
 	var planes: Array[Plane] = [Plane(Vector3.DOWN, 0.0)]
 	var golden := PI * (3.0 - sqrt(5.0))

@@ -96,7 +96,7 @@ static func make() -> BiomeDef:
 	# bites from ash 0.14 up — the commonest weather above. That is the day a
 	# respirator earns its slot. Heat is the sun's, and falls under BITE after dark.
 	d.hazards = {&"heat": 0.7, &"fumes": 0.5}
-	d.roster = {&"clerk": {"weight": 1.0}}
+	d.roster = {&"clerk": {}}
 	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
