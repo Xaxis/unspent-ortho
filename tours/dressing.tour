@@ -1,17 +1,14 @@
 # What a landscape's built things are made of (BiomeDressing).
-#   tools/tour.sh tours/dressing.tour --seed=1 --size=512 --hour=11 --weather=clear:0
+#   tools/tour.sh tours/dressing.tour --seed=4 --size=512 --hour=11 --weather=clear:0
 #
-# One village in each of the eight landscapes a seed-1 world holds, each frame
-# claiming the landscape it says it is in — because the whole package is the
-# claim that a village here is not a village there, and a frame that shows the
-# coast's houses under the name "bonelands" would prove the opposite of itself.
-# Each village is asked for BY ITS LANDSCAPE, the first of that land's in the
-# world's list: indices were, and a worldgen change reordered them under the
-# frames (village 1 stopped being the moss's). The `with land:` claim still
-# fails the tour if a landscape holds no village at all: on this world the
-# bonelands and the scrapwood hold none now (2026-09-26), so the machine city
-# and the grey orchards stand in for them (the slums' one village stands on the
-# glass desert's ground).
+# One village in each of eight landscapes, each frame claiming the landscape it
+# says it is in — because the whole package is the claim that a village here is
+# not a village there, and a frame that shows the coast's houses under the name
+# "bonelands" would prove the opposite of itself. Each village is asked for BY
+# ITS LANDSCAPE, the first of that land's in the world's list, and the `with
+# land:` claim fails the tour if a landscape holds no village at all. Seed 4,
+# because its world holds a village in all eight (and in six more): seed 1's
+# lost the bonelands' and the scrapwood's, then the snowfield's (2026-10-02).
 zoom 30
 hour 11
 weather clear:0
@@ -32,9 +29,9 @@ village snowfield
 wait 0.4
 shot 04-snowfield with land:snowfield
 
-village machine_city
+village bonelands
 wait 0.4
-shot 05-machine-city with land:machine_city
+shot 05-bonelands with land:bonelands
 
 village burning
 wait 0.4
@@ -44,6 +41,6 @@ village salt_flats
 wait 0.4
 shot 07-salt-flats with land:salt_flats
 
-village grey_orchards
+village scrapwood
 wait 0.4
-shot 08-grey-orchards with land:grey_orchards
+shot 08-scrapwood with land:scrapwood

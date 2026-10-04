@@ -151,7 +151,7 @@ func _set_down_near(g: Game, kind: int, at: Vector2, r: float) -> Array[WorldPro
 
 func test_the_raft_comes_ashore_at_the_landfall() -> void:
 	for s: int in [7, 42]:
-		var w := WorldGen.generate(s, 2048)
+		var w := WorldGen.generate(s, Tuning.WORLD_SIZE)
 		StoryPlan.forget()
 		var cast := StoryPlan.cast(w)
 		check(cast.has(&"the_landfall"), "seed %d: the world has a landfall" % s)
@@ -160,6 +160,10 @@ func test_the_raft_comes_ashore_at_the_landfall() -> void:
 		var landfall: Vector2 = cast[&"the_landfall"].pos
 		var c := StoryCrossing.of(w, cast)
 		var land: Vector2 = c.get("land", Vector2.INF)
+		var narrows := StoryCrossing.find(w, cast[&"the_camp"].pos, cast[&"the_archive"].pos)
+		print("  seed %d at %d: ashore %.1f tiles off the landfall over %.0f of water; the narrows land %.0f off it" % [
+			s, Tuning.WORLD_SIZE, land.distance_to(landfall), float(c.get("water", NAN)),
+			(narrows.get("land", Vector2.INF) as Vector2).distance_to(landfall)])
 		lt(land.distance_to(landfall), StoryCrossing.ASHORE + 1.0, "seed %d: the raft comes ashore at it (%.1f tiles off)" % [s, land.distance_to(landfall)])
 		check(w.same_body(c.get("launch", Vector2.INF), cast[&"the_camp"].pos), "seed %d: from home" % s)
 		var city := false
