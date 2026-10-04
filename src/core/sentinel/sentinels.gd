@@ -201,7 +201,7 @@ static func wear_phase(m: MobState, def: SentinelDef, i: int) -> void:
 	m.turn_rate = p.turn
 	m.bite = Blow.from_dict(p.bite)
 	m.bite.creep = 1.0
-	m.come_round = come_round_of(m.bite)
+	m.come_round = come_round_of(m.bite) if p.comes_round else null
 	m.flank_since = -1.0
 	# The sim's own one-shot second act belongs to ordinary machines; a keeper's
 	# phases are these, and they are counted here.

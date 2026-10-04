@@ -66,7 +66,7 @@ static func make() -> SentinelDef:
 	# wide and guarded: a blow into the swinging side rings off the grab itself,
 	# and the opening is the stand after a swing that met nobody.
 	var sweeping := SentinelPhase.make(&"sweeping", 0.6, &"right",
-		{"swing": [640, 170, 700, 820], "reach": 2.2, "width": 2.8, "dmg": 4, "knock": 10.0, "knock_ms": 340})
+		{"swing": [788, 170, 700, 820], "reach": 2.2, "width": 2.8, "dmg": 4, "knock": 10.0, "knock_ms": 340})
 	sweeping.guarded = true
 	sweeping.pace = 4.6
 	sweeping.dash = 9.5

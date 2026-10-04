@@ -1,0 +1,17 @@
+# THE TREAD'S PEOPLE'S HOLDING (GenTreads.dress `_holding`, #27): Tull on his lip
+# of the crater the walker lead pins (`the_tread`), and round him what they keep
+# there: a shack out past the lip turned to the crater, a fire and a bench to one
+# side of the line out, so his own spot stays open. From above at noon, then over
+# his shoulder, then at dusk with the fire the only warm light on the rim.
+#   tools/tour.sh tours/tread-holding.tour --seed=1 --hour=12 --weather=clear:0
+at cast:tull
+wait 3
+shot 01-tull-and-the-holding-from-above
+hold shoulder
+wait 1.5
+shot 02-over-his-shoulder-the-shack-fire-and-bench with station:fire
+release shoulder
+wait 1
+hour 20
+wait 3
+shot 03-the-holding-at-dusk
