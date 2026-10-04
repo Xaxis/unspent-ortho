@@ -108,3 +108,41 @@ func test_second_act_turns_the_grip_into_a_swing() -> void:
 	check(m.second_act, "at 45% the dredger changes")
 	eq(m.bite.grip, 0, "and no longer takes hold")
 	eq(m.bite.dmg, 4)
+
+
+## A crushing grip (Blow.crush, the Reaper's stooped phase) not pulled loose in
+## FightRules.crush_ms (the read, then a pull at a person's pace,
+## HUMAN_PULL_GAP_MS) bites for its crush and lets go. Pulled loose at that pace
+## as soon as it is read, it costs nothing: the grip is its own tell.
+func _crushing() -> FightSim:
+	var sim := F.make_sim(F.flat_world(64, Ground.GRASS))
+	var m := F.still(sim, &"dredger", Vector2(22.0, 20.5), PI)
+	m.bite = Blow.from_dict({"swing": [600, 150, 600, 800], "reach": 1.8, "width": 2.0, "dmg": 0, "grip": 4, "crush": 3})
+	sim.hero.pos = m.pos + Vector2(-(m.radius + sim.hero.radius + 0.4), 0)
+	m.start_blow(m.bite, sim.now)
+	F.ms(sim, m.bite.windup + m.bite.active + 16)
+	return sim
+
+
+func test_a_crushing_grip_not_answered_bites_and_lets_go() -> void:
+	var sim := _crushing()
+	check(sim.hero.held(), "it holds")
+	var crush := FightRules.crush_ms((sim.hero.holder as MobState).bite)
+	F.ms(sim, crush - 100 - (sim.now - sim.hero.grip_since))
+	eq(sim.hero.health, FightRules.HEALTH, "nothing yet inside the window a person needs")
+	F.ms(sim, 200)
+	eq(sim.hero.health, FightRules.HEALTH - 3, "not pulled loose in time, the drum comes down")
+	check(not sim.hero.held(), "and lets go")
+
+
+func test_a_crushing_grip_pulled_loose_as_it_is_read_costs_nothing() -> void:
+	var sim := _crushing()
+	F.ms(sim, FightRules.READ_REACT_MS - (sim.now - sim.hero.grip_since))
+	var n := 0
+	while sim.hero.held() and n < 8:
+		sim.press_swing()
+		F.ms(sim, FightRules.HUMAN_PULL_GAP_MS)
+		n += 1
+	check(not sim.hero.held(), "pulled loose")
+	F.ms(sim, FightRules.crush_ms(Blow.from_dict({"grip": 4})) + 200)
+	eq(sim.hero.health, FightRules.HEALTH, "no crush for a grip answered as it was read")

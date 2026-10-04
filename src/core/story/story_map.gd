@@ -230,6 +230,21 @@ static func crater_pos(game: Game, place: StringName) -> Vector2:
 	return StoryCasting.crater_near(game.world, craters, at)
 
 
+## Where a place the goal line names stands: a slot the story cast (49_cast
+## `placed`, the crossings with it), or a walker's crater (`crater:SLOT`). INF where
+## this world has none.
+static func place_pos(game: Game, place: StringName) -> Vector2:
+	if game == null or game.world == null:
+		return Vector2.INF
+	if String(place).begins_with("crater:"):
+		return crater_pos(game, place)
+	for sys: GameSystem in game.systems:
+		var placed: Variant = sys.get(&"placed")
+		if placed is Dictionary and (placed as Dictionary).has(place):
+			return (placed as Dictionary)[place].pos
+	return Vector2.INF
+
+
 static func _leg_at(world: WorldData, bodies: Array[int], p: Vector2) -> int:
 	var at := bodies.find(world.continent_at(floori(p.x), floori(p.y)))
 	return clampi(at, 0, LEGS.size() - 1) if at >= 0 else 0

@@ -104,6 +104,7 @@ func _process(delta: float) -> void:
 	_since = 0.0
 	_stand_things(from)
 	_heard_the_far_shore(from)
+	_heard_the_walker_shore(from)
 	for row: Dictionary in people:
 		var c := StoryCast.get_def(row.character)
 		var here: bool = (row.pos as Vector2).distance_to(from) <= STREAM and (c == null or c.present())
@@ -154,6 +155,19 @@ func _heard_the_far_shore(from: Vector2) -> void:
 		Story.hear(StoryCrossing.CROSSED)
 
 
+## The first time he stands on the body the lame walker's foot comes down on,
+## where that is across the water from the Covenant's (StoryCrossing.to_walker),
+## it is heard (WALKER_CROSSED): the walker's crossing is behind him.
+func _heard_the_walker_shore(from: Vector2) -> void:
+	if Story.heard(StoryCrossing.WALKER_CROSSED) or game.world.realm != Realm.SURFACE \
+			or not placed.has(StoryCrossing.WALKER_LANDING) or not placed.has(&"the_tread"):
+		return
+	var t := Vector2i(from.floor())
+	if not Ground.is_water(game.world.ground_at(t.x, t.y)) and game.world.same_body(from, placed[&"the_tread"].pos):
+		@warning_ignore("return_value_discarded")
+		Story.hear(StoryCrossing.WALKER_CROSSED)
+
+
 ## Where a raft puts in from the home body and lands on the next leg's
 ## (StoryCrossing): ashore at the world's landfall (the_landfall), else across the
 ## narrows. Two more places: the survey marks the one while the
@@ -166,6 +180,12 @@ func _place_crossing() -> void:
 		return
 	placed[StoryCrossing.LAUNCH] = {"pos": c.launch}
 	placed[StoryCrossing.LANDING] = {"pos": c.land}
+	# And where the lame walker's foot comes down across another water, the raft
+	# from the Covenant's shore to it.
+	var walker := StoryCrossing.to_walker(game.world, placed)
+	if not walker.is_empty():
+		placed[StoryCrossing.WALKER_LAUNCH] = {"pos": walker.launch}
+		placed[StoryCrossing.WALKER_LANDING] = {"pos": walker.land}
 
 
 ## THE STORY'S OWN READABLE THINGS (StoryContent.STOOD): where nothing the world
@@ -300,29 +320,11 @@ func _clear() -> void:
 	people.clear()
 
 
-## THE TREAD'S PEOPLE STAND ON THE ARCH-SIDE LIP OF THE CRATER THE WALKER LEAD
-## PINS (`the_tread`, its middle toe's): still between the bowls, but where the
-## line comes down and a player comes to climb. Turned TREAD_TURN round the rim
-## from the arch, away from the side the cable hangs on (WalkerClimb.FOOT_TURN),
-## so they stand clear of everywhere the climb seeks its lip and of the walk down
-## from it to the cable (43_climb `climb:lip`). `slot` is the tread's cast row
-## (StoryCasting: pos, ankle, pads, yaw).
+## THE TREAD'S PEOPLE STAND ON THE LIP THEIR HOLDING IS LAID ROUND
+## (Treads.folk_lip): of the crater the walker lead pins (`the_tread`, its middle
+## toe's). `slot` is the tread's cast row (StoryCasting: pos, ankle, pads, yaw).
 func _tread_lip(slot: Dictionary) -> Vector2:
-	var ankle: Vector2 = slot.ankle
-	var pad: Vector3 = (slot.pads as Array)[Treads.MIDDLE_TOE]
-	var centre := Vector2(pad.x, pad.y)
-	var arch := (ankle - centre).normalized()
-	var hang := ankle + Vector2.from_angle(float(slot.yaw) + deg_to_rad(WalkerClimb.FOOT_TURN)) * WalkerClimb.HANG_FOOT_R
-	var away := -signf(arch.cross(hang - centre))
-	return centre + arch.rotated(away * TREAD_TURN) * (Treads.rim_r(pad) - TREAD_LIP_IN)
-
-
-## How far round the rim from the arch the tread's people stand (radians), and
-## how far in from the rim (Treads.rim_r). The climb seeks its lip no nearer the
-## arch than 0.065 rad short of it, on the cable's side; 0.15 is 6.8 m round a
-## 47 m rim the other way, more than `_stand_near`'s first steps off the spot.
-const TREAD_TURN := 0.15
-const TREAD_LIP_IN := 2.0
+	return Treads.folk_lip(slot.ankle, slot.pads, float(slot.yaw))
 
 
 ## A standable tile a few paces off the slot, at a bearing of their own, and

@@ -88,6 +88,30 @@ static func wanted(seed_value: int, size: int) -> Array:
 const MIDDLE_TOE := 1
 
 
+## WHERE THE TREAD'S PEOPLE LIVE: the arch-side lip of the middle toe's crater,
+## where the line comes down and a player comes to climb, turned FOLK_TURN round
+## the rim from the arch away from the side the cable hangs on
+## (WalkerClimb.FOOT_TURN), so clear of everywhere the climb seeks its lip and of
+## the walk down from it to the cable (43_climb `climb:lip`). Tull stands here
+## (49_cast) and their holding is laid round it (GenTreads.dress): one rule, so
+## the one never stands in the other. `ankle`, `pads` and `yaw` are a tread's.
+static func folk_lip(ankle: Vector2, pads_of: Array, yaw: float) -> Vector2:
+	var pad: Vector3 = pads_of[MIDDLE_TOE]
+	var centre := Vector2(pad.x, pad.y)
+	var arch := (ankle - centre).normalized()
+	var hang := ankle + Vector2.from_angle(yaw + deg_to_rad(WalkerClimb.FOOT_TURN)) * WalkerClimb.HANG_FOOT_R
+	var away := -signf(arch.cross(hang - centre))
+	return centre + arch.rotated(away * FOLK_TURN) * (rim_r(pad) - FOLK_LIP_IN)
+
+
+## How far round the rim from the arch the tread's people stand (radians), and
+## how far in from the rim. The climb seeks its lip no nearer the arch than 0.065
+## rad short of it, on the cable's side; 0.15 is 6.8 m round a 47 m rim the other
+## way, more than 49_cast `_stand_near`'s first steps off the spot.
+const FOLK_TURN := 0.15
+const FOLK_LIP_IN := 2.0
+
+
 ## The pads of a foot set down at `centre` facing `yaw` (its toes, then its heel), as circles
 ## Vector3(x, y, radius) in tile space: where its weight is, and so where a
 ## crater is cut, a body is stopped and a prop is crushed.

@@ -43,8 +43,11 @@ static func make() -> SentinelDef:
 	# Phase one: clearing. It runs its lanes and turns at the end of each. The run
 	# is the bite; the share guards its front; off a lane it wallows, and the
 	# grille on its back is open while it grinds round in the snow.
+	# Each phase's bite is told about 100 ms past the floor a person needs
+	# (FightRules.readable_windup): a slewing hull is slow to set its share, and a
+	# person who reads it a beat late still clears the lane.
 	var clearing := SentinelPhase.make(&"clearing", 1.0, &"back",
-		{"swing": [700, 180, 900, 1000], "reach": 1.8, "width": 2.8, "dmg": 4, "knock": 12.0, "knock_ms": 340})
+		{"swing": [888, 180, 900, 1000], "reach": 1.8, "width": 2.8, "dmg": 4, "knock": 12.0, "knock_ms": 340})
 	clearing.pace = 3.6
 	clearing.dash = 10.0
 	clearing.quick = 330
@@ -55,7 +58,7 @@ static func make() -> SentinelDef:
 	# and walls its engine in with them: the side open is the left, guarded until a
 	# run has gone past and the share is still up.
 	var banking := SentinelPhase.make(&"banking", 0.6, &"left",
-		{"swing": [620, 170, 760, 880], "reach": 2.0, "width": 3.0, "dmg": 4, "knock": 12.0, "knock_ms": 340})
+		{"swing": [918, 170, 760, 880], "reach": 2.0, "width": 3.0, "dmg": 4, "knock": 12.0, "knock_ms": 340})
 	banking.guarded = true
 	banking.pace = 4.0
 	banking.dash = 10.5
@@ -66,7 +69,7 @@ static func make() -> SentinelDef:
 	# Phase three: stalled. The share is packed with ice: it can barely run, it
 	# drags, and the drive under the share is bare.
 	var stalled := SentinelPhase.make(&"stalled", 0.3, &"front",
-		{"swing": [800, 200, 900, 1100], "reach": 1.6, "width": 2.4, "dmg": 5, "knock": 13.0, "knock_ms": 360})
+		{"swing": [900, 200, 900, 1100], "reach": 1.6, "width": 2.4, "dmg": 5, "knock": 13.0, "knock_ms": 360})
 	stalled.pace = 3.0
 	stalled.dash = 6.0
 	stalled.quick = 260
