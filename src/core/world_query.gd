@@ -31,12 +31,28 @@ var _block_by: Dictionary = {}  # owner -> Array[Vector3]
 const BLOCK_SLACK := 1.0
 
 
+## The widest solid any prop here has, which sets how far round a body every
+## search for what stops it must look (`solid_reach`). A fixed two tiles let a
+## body sink into any solid over about 1.72, 1.45 tiles into one of 3.22 (city
+## buildings, the big coastal houses, murals). Only grows: a prop taken away
+## leaves it as wide.
+var _solid_most := 0.0
+
+
 func _init(w: WorldData) -> void:
 	world = w
 	w.sync_table()
 	var pos := w.table.pos
+	var solid := w.table.solid
 	for row in w.table.size():
 		_file(floori(pos[row].y) * w.size + floori(pos[row].x), row)
+		_solid_most = maxf(_solid_most, solid[row])
+
+
+## How far round a point a body of radius r can be touched by a prop's solid:
+## the window every search for what stops a body has to look through.
+func solid_reach(r: float) -> float:
+	return _solid_most + r
 
 
 func _file(k: int, row: int) -> void:
@@ -119,6 +135,7 @@ func blocks_at(p: Vector2) -> Array:
 
 
 func add_prop(p: WorldProp) -> void:
+	_solid_most = maxf(_solid_most, p.solid)
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
 	var row := world.row_of_id(p.id)
 	if row >= 0:
@@ -326,7 +343,7 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 	var best := Vector2.INF
 	var best_d := INF
 	var t := world.table
-	for row in rows_near(to, 2.0):
+	for row in rows_near(to, solid_reach(r)):
 		var solid := t.solid[row]
 		if solid <= 0.0 or world.depleted.has(t.id[row]):
 			continue
@@ -336,7 +353,7 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 		if after < rr * rr and after < at.distance_squared_to(from) and after < best_d:
 			best_d = after
 			best = at
-	for q in ghosts_near(to, 2.0):
+	for q in ghosts_near(to, solid_reach(r)):
 		if q.solid <= 0.0:
 			continue
 		var rr := q.solid + r
@@ -370,7 +387,7 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims, tall):
 			return false
 	var t := world.table
-	for row in rows_near(to, 2.0):
+	for row in rows_near(to, solid_reach(r)):
 		var solid := t.solid[row]
 		if solid <= 0.0 or world.depleted.has(t.id[row]):
 			continue
@@ -380,7 +397,7 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 		# Only block when it would bring us closer: bodies can always leave an overlap.
 		if after < rr * rr and after < at.distance_squared_to(from):
 			return false
-	for q in ghosts_near(to, 2.0):
+	for q in ghosts_near(to, solid_reach(r)):
 		if q.solid <= 0.0:
 			continue
 		var rr := q.solid + r

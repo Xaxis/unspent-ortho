@@ -200,3 +200,30 @@ func test_a_body_is_never_trapped_by_a_corner_it_already_overhangs() -> void:
 	for i in 40:
 		up = q.move_body(up, Vector2(-0.07, 0.0), r)
 	eq(w.level_at(floori(up.x), floori(up.y)), 1, "and never climbs onto the top tile")
+
+
+## A BIG SOLID STOPS A BODY AT ITS EDGE FROM EVERY SIDE. The search for what a
+## move pushes into looked two tiles round, so a solid over about 1.72 let a body
+## sink into it: 0.63 at a solid of 2.40, 1.45 at 3.22 (city buildings, the big
+## coastal houses, murals). Walked straight at from 32 bearings, a solid of 3.22
+## stops the body at its own radius plus the body's.
+func test_a_big_solid_stops_a_body_at_its_edge_from_every_side() -> void:
+	var w := WorldData.new(3, 48)
+	for i in 48 * 48:
+		w.level[i] = 2
+		w.ground[i] = Ground.GRASS
+		w.country[i] = Country.COAST
+	var q := WorldQuery.new(w)
+	var centre := Vector2(24.5, 24.5)
+	var prop := WorldProp.new(w.next_id(), PropKind.HOUSE, centre, 0.0, 3.22 / PropKind.SOLID[PropKind.HOUSE])
+	w.add_prop(prop)
+	q.add_prop(prop)
+	var r := Tuning.PLAYER_RADIUS
+	var deepest := 0.0
+	for k in 32:
+		var dir := Vector2.from_angle(k * TAU / 32.0)
+		var p := centre - dir * (prop.solid + r + 3.0)
+		for i in 240:
+			p = q.move_body(p, dir * 5.4 / 60.0, r)
+		deepest = maxf(deepest, prop.solid + r - p.distance_to(centre))
+	lt(deepest, 0.02, "no body gets into a solid of %.2f (deepest %.2f)" % [prop.solid, deepest])

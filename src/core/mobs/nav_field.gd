@@ -221,7 +221,7 @@ func direction(p: Vector2) -> Vector2:
 ## move's test, WorldQuery._fits), leaving the kinds in `through`.
 static func prop_stands_in(q: WorldQuery, p: Vector2, radius: float, through: Array = []) -> bool:
 	var t := q.world.table
-	for row in q.rows_near(p, 2.0 + radius):
+	for row in q.rows_near(p, q.solid_reach(radius)):
 		var solid := t.solid[row]
 		if solid <= 0.0 or q.world.depleted.has(t.id[row]) or through.has(t.kind[row]):
 			continue
