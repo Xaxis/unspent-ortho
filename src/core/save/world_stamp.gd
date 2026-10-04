@@ -304,7 +304,13 @@ const UNKNOWN := "unknown"
 ##     `_holding`, Treads.folk_lip), laid as that tread's own, after everything
 ##     else. Only props are appended; nothing laid before them moves.
 ##     (Provisional; restamped at landing.)
-const GEN := 51
+## 52. The colossi's feet keep off only the landmarks that carry the world's
+##     load (keeper stations, the landfall's clock, a landscape's room under
+##     one), no longer the ones the story was cast to: worldgen casts no story
+##     (GenTreads._bearing). A foot may now come down on a landmark that was
+##     kept only for the story, and the story is cast afterwards from the
+##     landmarks still standing. (Provisional; restamped at landing.)
+const GEN := 52
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

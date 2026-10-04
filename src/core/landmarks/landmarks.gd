@@ -517,9 +517,9 @@ static func _trod(world: WorldData) -> Dictionary:
 
 ## Every landmark the siting put down in a world, trodden or standing, biggest
 ## region first and in kind order inside a region, so the list is the same list
-## every time and `nth` never shifts. The story is cast from this (StoryCasting),
-## so a crater never moves a story place; everything that draws, walls or counts
-## a place reads `sites`.
+## every time and `nth` never shifts. The story is cast from this, each asking
+## `trodden` (StoryCasting); everything that draws, walls or counts a place reads
+## `sites`.
 ##
 ## ONE SCAN PER REGION. Asking the region's bounds again for every kind and every
 ## loosening pass is a dozen sweeps of the island, which cost 1.2 SECONDS on a
