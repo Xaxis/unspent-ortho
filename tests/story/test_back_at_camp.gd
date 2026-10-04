@@ -237,6 +237,48 @@ func test_the_goal_line_leads_him_back_across_to_dace_then_rook() -> void:
 	Story.forget()
 
 
+## THE WAY BACK CROSSES THE DITCH FIRST (#70): on a world whose lame walker's
+## foot comes down across another water (StoryCrossing.to_walker), the way back to
+## the camp starts from the walker's body: the survey pins the ditch's landing
+## while he stands there, and the narrows once he is back on the Covenant's.
+func test_the_way_back_crosses_the_ditch_first_where_the_walker_is_across_it() -> void:
+	Story.forget()
+	Sx.use_root("camp-ditch")
+	var g := Sx.game(tree, ["--seed=7", "--hour=10", "--weather=clear:0"])
+	await frames(3)
+	var ditch := _placed(g, StoryCrossing.WALKER_LANDING)
+	check(ditch.is_finite(), "seed 7's walker comes down across the ditch")
+	if not ditch.is_finite():
+		Sx.end(g)
+		return
+	_past_the_holdfast(g)
+	g.body.fed_until = g.clock.minutes + 100000.0
+	_across()
+	Story.beat(&"war_relay", -INF)
+	for who: StringName in [&"dace", &"rook"]:
+		@warning_ignore("return_value_discarded")
+		Story.meet(who)
+	await _next_day(g)
+	Story.beat(&"tradecraft")
+	Story.beat(&"teague_sold")
+	await _next_day(g)
+	_hop(g, &"camp_back", "both felt: the old soldier first")
+	_stand(g, ditch)
+	check(_marked_as(g, "the ditch", ditch), "on the walker's body, the way back is the ditch (%s)" % [UiMapScreen.told(g)])
+	check(not _marked_as(g, "the narrows", _placed(g, &"the_landing")), "and not yet the narrows")
+	_stand(g, _placed(g, &"the_landing"))
+	check(_marked_as(g, "the narrows", _placed(g, &"the_landing")), "back on the Covenant's body, the narrows (%s)" % [UiMapScreen.told(g)])
+	Sx.end(g)
+	Story.forget()
+
+
+func _marked_as(g: Game, word: String, at: Vector2) -> bool:
+	for m: Dictionary in UiMapScreen.told(g):
+		if String(m.word) == word and (m.at as Vector2).distance_to(at) < 0.5:
+			return true
+	return false
+
+
 ## What Story remembers of a talk: the minute of the last, saved and loaded, and
 ## a save from before it knows nobody was spoken to since anything.
 func test_the_last_talk_is_remembered_and_saved() -> void:

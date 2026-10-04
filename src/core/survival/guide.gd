@@ -371,7 +371,10 @@ const WAY: Array[Dictionary] = [
 	# his word on Teague has settled, the half-broken walker, until the enclave in
 	# its crown is met: the far shore's last thread. Only where a crater of it lies
 	# on the Covenant's body (`where`): the goal never sends him to another leg's.
-	{"key": &"walker", "after": &"walker_told", "once": &"teague_sold", "where": &"crater:the_covenant", "until": &"enclave_met"},
+	# Where its lame foot comes down across another water (StoryCrossing.to_walker,
+	# placed by 49_cast), the raft over to it first, until he has stood there.
+	{"key": &"walker_crossing", "after": &"walker_told", "once": &"teague_sold", "where": StoryCrossing.WALKER_LAUNCH, "heard": [StoryCrossing.WALKER_CROSSED], "until": &"enclave_met"},
+	{"key": &"walker", "after": &"walker_told", "once": &"teague_sold", "where": &"crater:the_tread", "until": &"enclave_met"},
 	# BACK AT THE CAMP (slice 3 step 8). Once what the archive showed him has been
 	# felt, the old soldier, until he has spoken to him since, whatever he said, so
 	# the confession is never forced, or Dace is gone; once what the warden said of
@@ -461,7 +464,7 @@ static func keeper_goal(game: Game) -> String:
 ## the hop says `felt` (a person who waits on a revelation is not there to be sent
 ## to until it has settled); its `once` beat, where it names one, has landed and
 ## been felt as well; the hop it is `behind`, where it names one, has not opened
-## or is done; and its `where`, a place on this world (StoryMap.crater_pos), is.
+## or is done; and its `where`, a place on this world (StoryMap.place_pos), is.
 static func _hop_open(game: Game, hop: Dictionary) -> bool:
 	if not Story.landed(hop.after):
 		return false
@@ -473,7 +476,7 @@ static func _hop_open(game: Game, hop: Dictionary) -> bool:
 		for other: Dictionary in WAY:
 			if other.key == hop.behind and _hop_open(game, other) and not _hop_done(game, other):
 				return false
-	return not hop.has("where") or StoryMap.crater_pos(game, hop.where).is_finite()
+	return not hop.has("where") or StoryMap.place_pos(game, hop.where).is_finite()
 
 
 ## Whether a WAY hop is behind him: a beat landed (`until`), a person met (`met`),

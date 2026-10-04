@@ -17,6 +17,12 @@ const LANDING := &"the_landing"
 
 const PUT_IN := &"seen:raft_put_in"
 const CROSSED := &"seen:far_shore"
+## THE WALKER'S CROSSING (#70): where the lame walker's foot comes down on a body
+## other than the Covenant's, a second raft, put in on the Covenant's shore or
+## home's. Its two places, and the first time he stands on the tread's body.
+const WALKER_LAUNCH := &"the_walker_crossing"
+const WALKER_LANDING := &"the_walker_landing"
+const WALKER_CROSSED := &"seen:walker_shore"
 
 
 ## How far off the camp-to-archive line a put-in or a landing may lie, in tiles.
@@ -129,6 +135,44 @@ static func to_port(world: WorldData, from: Vector2, port: Vector2) -> Dictionar
 ## its far shore within ASHORE of it, the home shore within PUT_IN_REACH.
 const ASHORE := 48.0
 const PUT_IN_REACH := 300.0
+
+
+## THE WALKER'S CROSSING: the lame walker is the one thing that steps over the
+## sea, and on most worlds its lame foot comes down across the water from the
+## Covenant's body (the tread is sited where a foot fits, GenTreads). A raft to
+## the tread's body from the Covenant's shore, the narrows within REACH of the line
+## between them as `find` pairs them, widened to WALKER_REACH where that band holds
+## no open water; and where no open water joins the two at all, from home's shore
+## instead (seed 42: home's body lies between the Covenant's and the walker's).
+## {} where the tread stands on the Covenant's body (he walks to it) or no water
+## joins it to either shore.
+## NO STOP IS NEARER HOME THAN THE LAST (docs/STORY.md) binds the stops, the
+## goals: the walker's crater and the enclave up the leg that stands in it,
+## never on home's body and
+## no nearer home by water than leg 1's (test_walker_reach). A put-in is a
+## route, not a stop: going back over the narrows to put in from home's shore
+## breaks nothing.
+static func to_walker(world: WorldData, cast: Dictionary) -> Dictionary:
+	if world == null or not cast.has(&"the_tread") or not cast.has(&"the_covenant"):
+		return {}
+	var to: Vector2 = cast[&"the_tread"].pos
+	if world.same_body(cast[&"the_covenant"].pos, to):
+		return {}
+	for at: StringName in [&"the_covenant", &"the_camp"]:
+		if not cast.has(at):
+			continue
+		var from: Vector2 = cast[at].pos
+		var c := find(world, from, to)
+		if c.is_empty():
+			c = find_within(world, from, to, WALKER_REACH)
+		if not c.is_empty():
+			return c
+	return {}
+
+
+## How far off the Covenant-to-crater line the walker's crossing may be sought
+## when the narrows' own band holds none.
+const WALKER_REACH := 360.0
 
 
 ## THE LANDFALL FIRST (StorySlot.LANDFALL): the raft comes ashore where the

@@ -465,7 +465,15 @@ static func _name(rng: RandomNumberGenerator, cc: int, used: Dictionary) -> Stri
 		if not used.has(nm):
 			used[nm] = true
 			return nm
-	return "%s %d" % [list[0], used.size()]
+	# Every name of the land taken (a slum's blocks run past its list): its first,
+	# numbered from how many are taken, each number once, and registered like any
+	# other name, or every block past the list is called the same.
+	var n := used.size()
+	while used.has("%s %d" % [list[0], n]):
+		n += 1
+	var numbered := "%s %d" % [list[0], n]
+	used[numbered] = true
+	return numbered
 
 
 static func _level_here(c: GenContext, tx: int, ty: int) -> int:
@@ -586,7 +594,14 @@ static func settle_square(seed_value: int, settle_rows: Dictionary, pools: Packe
 ## 7.6 is in the square, when it is on open ground the village never claimed. Ask
 ## this instead, and you are asking the same shape the ground was laid to.
 static func village_wander(ph: Vector2, ang: float) -> float:
-	return 1.0 + 0.12 * sin(ang * 2.0 + ph.x) + 0.08 * sin(ang * 3.0 + ph.y)
+	return 1.0 + WANDER_2 * sin(ang * 2.0 + ph.x) + WANDER_3 * sin(ang * 3.0 + ph.y)
+
+
+## How far the lobe swings off `CORE`, on its two-lobed and three-lobed turns.
+const WANDER_2 := 0.12
+const WANDER_3 := 0.08
+## The farthest any village's own ground reaches, at its widest angle.
+const CORE_MOST := CORE * (1.0 + WANDER_2 + WANDER_3)
 
 
 static func village_phases(s: int, vp: Vector2) -> Vector2:
