@@ -25,6 +25,18 @@ func _system(g: Game) -> Node:
 	return g.get_node("32_disposition")
 
 
+## Standing ground `dist` tiles from the player on network `net`, found by bearing.
+## A keeper files a curfew on its own network, and a fixed offset lands on another
+## network on a fresh seed-1 world (east of the spawn is network 0); it read the
+## right one only on a world an earlier test had left behind.
+func _off_on(g: Game, net: int, dist: float) -> Vector2:
+	for i in 32:
+		var p := g.player.pos + Vector2(dist, 0.0).rotated(TAU * float(i) / 32.0)
+		if Interference.network(g.world, p) == net and g.query.standable(floori(p.x), floori(p.y)):
+			return p
+	return Vector2.INF
+
+
 func test_the_crouch_key_gets_the_player_down_and_the_world_reads_it() -> void:
 	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"]))
 	await frames(3)
@@ -133,8 +145,11 @@ func test_being_filed_and_being_out_in_a_keepers_hours_both_reach_the_network() 
 	# And a warden that has you at its own hours is a broken curfew.
 	var w: MobState = g.player.sim.mobs[0]
 	eq(w.role, Roles.KEEPER, "a warden keeps its site and its hours")
-	# Well off across the land, so it is coming for the player and not yet on them.
-	w.pos = g.player.pos + Vector2(22.0, 0.0)
+	# Well off across the land, so it is coming for the player and not yet on them,
+	# and on the player's own network, where the keeper files the curfew.
+	var off := _off_on(g, net, 22.0)
+	check(off != Vector2.INF, "ground 22 tiles off on the player's network")
+	w.pos = off
 	w.home = w.pos
 	w.set_mood(MobState.CHASING, g.player.sim.now)
 	await frames(30)

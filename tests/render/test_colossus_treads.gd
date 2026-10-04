@@ -333,11 +333,11 @@ func test_every_shipped_world_carries_a_footprint() -> void:
 
 
 ## THE LAME LEG COMES DOWN ON THE COVENANT'S BODY (GenTreads LEG1_FIRST), where
-## the story sends him to climb (StoryMap `crater:the_covenant`): home-first, it
+## the story sends him to climb without a second raft (StoryMap `crater:the_tread`): home-first, it
 ## stood there on two seeds of five. Where the foot fits nowhere on that body
 ## (seed 7: water under the strata; seed 42: no room between its coast, roads,
 ## villages, yards and keeper) it is sited home-first as before, and the walker
-## lead goes home (test_walker_lead). On every seed where he comes ashore stays
+## lead takes a second raft to it (test_walker_reach). On every seed where he comes ashore stays
 ## clear of every pad, and no landmark the story is cast to is trodden.
 func test_the_lame_leg_comes_down_on_the_covenants_body() -> void:
 	const Worlds := preload("res://tests/core/test_world_gen.gd")

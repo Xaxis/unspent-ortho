@@ -298,26 +298,31 @@ const UNKNOWN := "unknown"
 ##     first name, each number once (GenSettle._name). Seed 1's eight slum
 ##     blocks past the list were all "Ninth Shift 24". Names only; nothing
 ##     moves.
-## 51. The glass desert lays its strike fields: nine rods ruled three by three
+## 51. The tread's people keep a holding at the lame leg's tread, wherever it
+##     lands, which `site` marks as theirs (`folk`; the story casts `the_tread`
+##     from it): a shack, a fire and a bench round its lip (GenTreads.dress
+##     `_holding`, Treads.folk_lip), laid as that tread's own, after everything
+##     else. Only props are appended; nothing laid before them moves.
+## 52. The glass desert lays its strike fields: nine rods ruled three by three
 ##     on the survey bearing, fulgurite dug out between them, the survey at the
 ##     corners, one to each region big enough to keep the anvil, sited where a
 ##     den off the rods keeps every way its design declares
 ##     (GenWorks.station_holds, asked of the den the keeper takes). A walker's
 ##     tread keeps off a keeper's first station (GenTreads `_built`).
 ##     (Provisional; restamped at landing.)
-## 52. The crags lay their survey benches, the plumb's stations, with lintels,
+## 53. The crags lay their survey benches, the plumb's stations, with lintels,
 ##     carved faces, hollow ways, the barrow and limestone pavement. Every
 ##     keeper's station is sited where its den keeps its ways, the salt flats'
 ##     pans and brine houses too, and a refused site is tried again elsewhere:
 ##     brine houses go to every region big enough to keep the rake, benches
 ##     to bare rock and then half spacing, locks to the next canal reach.
 ##     (Provisional; restamped at landing.)
-## 53. The frost sea opens its leads, lines of black water wandering through
+## 54. The frost sea opens its leads, lines of black water wandering through
 ##     the ice along a contour of the broad field, and lays its own:
 ##     seal holes, frozen hulls, pressure blocks, the floe camp, and the
 ##     soundings lines, the listener's stations, sited by the station rule.
 ##     The scatter keeps off black water. (Provisional; restamped at landing.)
-const GEN := 53
+const GEN := 54
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

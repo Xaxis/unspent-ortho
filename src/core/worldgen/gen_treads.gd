@@ -13,7 +13,8 @@ extends RefCounted
 ##           is not taken out here -- that would renumber every prop after it --
 ##           it is crushed at load by 19_colossi, from the tread, every time.
 ##   `dress` spoil and torn plate on the rims, the survey posts the plan keeps
-##           round its own treads, and one under the ankle -- appended.
+##           round its own treads, one under the ankle, and the tread's people's
+##           holding at the tread `site` marks theirs (`folk`) -- appended.
 ##
 ## Reached by path (world_gen.gd preloads it), never by class_name.
 
@@ -71,7 +72,8 @@ static func site(c: GenContext) -> void:
 		w.landmarks.append({"kind": &"tread", "pos": at, "country": int(w.country[floori(at.y) * w.size + floori(at.x)]),
 			"region": region, "walker": row.walker, "leg": int(row.leg), "j": int(row.j), "yaw": yaw,
 			"floor": float(floor_l) * WorldData.STEP, "pads": pads,
-			"half": Vector2.ONE * _extent(d), "trod": _trod(w, pads, bears)})
+			"half": Vector2.ONE * _extent(d), "trod": _trod(w, pads, bears),
+			"folk": i == 0})
 	# The strata climb a level per STEP_W and stop at the reach, so on land that
 	# rises faster than that a cut ends in a step, and a road across it would
 	# climb it. Graded again as settle grades every road.
@@ -211,8 +213,9 @@ const ROOMY := 40.0
 const HOME_FIRST := 100.0
 ## THE FIRST TREAD IS ON LEG 1'S BODY, NEAR WHERE HE COMES ASHORE. The first
 ## wanted plant is the lame leg's, the one the climb goes up, and the story
-## sends him to climb from leg 1 (the landfall body, StoryJourney): the crater
-## nearest the Covenant on its body (`crater:the_covenant`). Scored home-first,
+## sends him to climb from leg 1 (the landfall body, StoryJourney): its crater
+## (`crater:the_tread`) on the Covenant's body is a walk, not a second raft
+## (StoryCrossing.to_walker). Scored home-first,
 ## on GEN 47's worlds of several bodies no crater stood on leg 1's on seeds 7, 3
 ## and 42, and the set piece was gone. So the first tread scores leg 1's body
 ## first, and on it the nearer the landfall anchor (where GenBodies says the
@@ -886,16 +889,43 @@ static func dress(c: GenContext) -> void:
 		# Under the ankle, between the toes, one more post: the only thing in
 		# the arch a person's size.
 		_put(c, PropKind.SURVEY, at + Vector2(3.0, -2.0), others)
+		if bool(m.get("folk", false)):
+			_holding(c, at, pads, float(m.yaw), others)
 		# What this stage laid is the tread's own and is never crushed by it
 		# (19_colossi reads these ids).
 		m["props"] = Vector2i(first, w.props.size())
+
+
+## THE TREAD'S PEOPLE'S HOLDING (docs/STORY.md: the walkers; Tull speaks for
+## them), at the tread `site` marks theirs (`folk`: the lame leg's, wherever it
+## came down), round the lip they stand on (Treads.folk_lip): a shack HOLD_SHACK out
+## past it, turned to the crater they farm, and a fire and a bench between it and
+## the lip, to one side of the line out so Tull's spot stays open. Colour, never
+## load: nothing here is asked for by the story or the climb, and nothing here
+## asks the story; the story casts `the_tread` from the row (StoryCasting).
+static func _holding(c: GenContext, ankle: Vector2, pads: Array, yaw: float, others: Array[Vector3]) -> void:
+	var lip := Treads.folk_lip(ankle, pads, yaw)
+	var pad: Vector3 = pads[Treads.MIDDLE_TOE]
+	var out := (lip - Vector2(pad.x, pad.y)).normalized()
+	var side := Vector2(-out.y, out.x)
+	_put(c, PropKind.SHACK, lip + out * HOLD_SHACK, others, (-out).angle())
+	_put(c, PropKind.FIRE, lip + out * HOLD_FIRE + side * HOLD_ASIDE, others)
+	_put(c, PropKind.BENCH, lip + out * HOLD_FIRE + side * (HOLD_ASIDE + 1.8), others)
+
+
+## Tiles out from the lip to the shack and to the fire, and aside of the line out
+## to the fire: the lip is FOLK_LIP_IN inside the rim, so the shack stands four
+## past it and the fire just over it.
+const HOLD_SHACK := 6.0
+const HOLD_FIRE := 2.5
+const HOLD_ASIDE := 1.5
 
 
 ## Nothing the foot throws lands in a village's own ground: the crater is sited
 ## clear of the clearings, but its spoil reaches past the rim, and a tread sited
 ## near one would drop plate in the square (seed 42, Chalkstone). Nor in another
 ## tread's craters (`others`, their pads), out to the rim.
-static func _put(c: GenContext, kind: int, p: Vector2, others: Array[Vector3]) -> void:
+static func _put(c: GenContext, kind: int, p: Vector2, others: Array[Vector3], rot := NAN) -> void:
 	var w := c.w
 	for op: Vector3 in others:
 		if p.distance_to(Vector2(op.x, op.y)) < Treads.rim_r(op):
@@ -910,4 +940,5 @@ static func _put(c: GenContext, kind: int, p: Vector2, others: Array[Vector3]) -
 	# Turn and scale from where it lies, as GenScatter._add's (S4b).
 	var px := roundi(p.x * 256.0)
 	var py := roundi(p.y * 256.0)
-	w.props.append(WorldProp.new(id, kind, p, Rng.hash01(c.s, px, py, kind, 0, 77) * TAU, 0.8 + Rng.hash01(c.s, px, py, kind, 0, 78) * 0.4))
+	var turn := rot if not is_nan(rot) else Rng.hash01(c.s, px, py, kind, 0, 77) * TAU
+	w.props.append(WorldProp.new(id, kind, p, turn, 0.8 + Rng.hash01(c.s, px, py, kind, 0, 78) * 0.4))
