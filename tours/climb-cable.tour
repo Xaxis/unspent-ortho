@@ -1,0 +1,21 @@
+# THE WAY UP, SEEN BEFORE IT IS TAKEN (43_climb `_show_cable`, #32): the cable
+# that hangs from the lame walker's drum into its middle toe's crater, from the
+# lip, coming down over it, and at its foot. One round rope lit its whole length,
+# two dark strands laid round it, a band at every ledge and the longest at its
+# foot on the crater floor: by day one line, by night the line the eye goes to.
+# Shoot it at dusk and night too by passing the hour (`--hour=20.4`, `--hour=23`,
+# with the rest of the run line, which the command line then replaces).
+#   TOUR_TIMEOUT=900 tools/tour.sh tours/climb-cable.tour --seed=1 --place=tread0 --colossus=2@tread0+5 --hour=12 --weather=clear:0
+at climb:lip
+zoom 30
+shot 00-from-the-lip-zoomed-out-the-rope-hangs-into-the-crater with colossus_tread,climb_patch,climb_foot_seen
+zoom 15
+wait 2.0
+walkto at:climb:cable 60 till:climb_foot_seen
+shot 01-over-the-lip-the-rope-comes-into-view with colossus_tread,climb_patch,climb_foot_seen
+walkto at:climb:cable 60
+# The walk stops WALK_NAMED_NEAR (3 tiles) short; the frame wants him beside the foot.
+at climb:cable
+back here 1.2
+wait 1.0
+shot 02-at-the-foot-the-rope-and-its-lit-band with colossus_tread,climb_cable,climb_patch

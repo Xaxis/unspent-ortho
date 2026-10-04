@@ -12,6 +12,12 @@ const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 
 ## Triangles one pitch's patch may cost.
 const BUDGET := 6000
+## The play camera's bearings round a planted foot that are asked, and where it
+## stands and clips: CameraRig's own `distance` (its least back) and the near
+## plane its _ready sets.
+const SEEN_BEARINGS := 72
+const SEEN_BACK := 30.0
+const SEEN_NEAR := 1.0
 
 
 ## The nearest vertex of `k` to `p`, of colour `only` if given (the hardware is
@@ -37,11 +43,13 @@ func test_every_hold_has_something_to_hold() -> void:
 		for i in climb.holds_in(p):
 			var h := climb.hold_at(p, i)
 			var at := climb.surface_at(def, p, h.x * WalkerClimb.LEVEL, h.y, Leg.PROUD)
-			# Within the part's own half-diagonal: a rung's or a clamp's, or a
-			# ledge's shelf's or a cable's seat's.
-			var part := Vector3(Leg.SHELF.x, 0.12, Leg.SHELF.y) if climb.is_stance(i) else Vector3(Leg.RUNG.x, 0.06, Leg.RUNG.y)
+			# Within the part's own half-diagonal: a rung's or a ledge's shelf's.
+			# On the cable the hold is the rope itself: its surface, not a vertex
+			# of it, within the rope's round.
 			if hangs:
-				part = Vector3(Leg.SEAT.x, 0.08, Leg.SEAT.y) if climb.is_stance(i) else Vector3(Leg.CLAMP.x, 0.08, Leg.CLAMP.y)
+				lt(_nearest_tri(k, at, Leg.ROPE_LIGHT), Leg.HAWSER + 0.05, "pitch %d hold %d: the rope where he hangs" % [p, i])
+				continue
+			var part := Vector3(Leg.SHELF.x, 0.12, Leg.SHELF.y) if climb.is_stance(i) else Vector3(Leg.RUNG.x, 0.06, Leg.RUNG.y)
 			lt(_nearest(k, at, Leg.Model.RIM), part.length() + 0.05, "pitch %d hold %d: a rung or a shelf where he hangs" % [p, i])
 		lt(float(k.verts.size() / 3), float(BUDGET), "pitch %d: %d triangles" % [p, k.verts.size() / 3])
 
@@ -139,6 +147,56 @@ func test_the_cable_hangs_clear_of_the_foot() -> void:
 	var off := Vector2(base.x, base.z).distance_to(centre)
 	gt(off, Treads.floor_r(Vector3(0.0, 0.0, pad.z)), "its foot is out past the crater's floor, beside the pad (%.1f m from its middle)" % off)
 	lt(off, Treads.rim_r(Vector3(0.0, 0.0, pad.z)), "and inside the crater's rim")
+
+
+## THE PLAY CAMERA SEES THE CABLE FROM EVERY SIDE. The foot is planted at any yaw
+## and the camera's never turns, so the cable's run in the play frame (the
+## ground up to half the view over cos of the pitch) must stand clear of the near
+## foot whichever way the camera looks along it: a ray from every half metre of it
+## toward the eye meets no part of the foot the frame draws (one in front of the
+## near plane). At FOOT_TURN 7 the pad's side hid its lowest metre and a half,
+## the lit band on its foot, from 18 of 72 bearings.
+func test_the_play_camera_sees_the_cable_from_every_side() -> void:
+	var def: RefCounted = Def.tripod(&"C")
+	var climb := WalkerClimb.begin(1, 1)
+	var cable := WalkerClimb.pitch_of(&"cable")
+	var foot := PackedVector3Array()
+	for part: StringName in FootModel.PARTS:
+		foot.append_array(FootModel.build(def, part).verts)
+	var pitch := deg_to_rad(CameraRig.PITCH_DEG)
+	var top := CameraRig.VIEW_HEIGHT * 0.5 / cos(pitch)
+	var back := maxf(SEEN_BACK, Air.frame_depth(CameraRig.VIEW_HEIGHT, CameraRig.PITCH_DEG) + CameraRig.DEPTH_ROOM)
+	var base := climb.surface_at(def, cable, 0.0, 0.0, Leg.PROUD)
+	var run: Array[Vector3] = []
+	var up := 0.0
+	while up <= top:
+		run.append(climb.surface_at(def, cable, up, 0.0, Leg.PROUD))
+		up += 0.5
+	var near := _tris_in(foot, AABB(base, Vector3.ZERO).grow(back * 2.0))
+	var hidden: Array[String] = []
+	for step in SEEN_BEARINGS:
+		var a := TAU * step / SEEN_BEARINGS
+		var d := Vector3(cos(pitch) * cos(a), -sin(pitch), cos(pitch) * sin(a))
+		for p: Vector3 in run:
+			var depth := (p - base).dot(d) + back
+			var t := _first_hit(_tris_in(near, AABB(p, Vector3.ZERO).expand(p - d * depth)), p - d * 0.05, -d)
+			if t < INF and depth - t >= SEEN_NEAR:
+				hidden.append("%.0f deg at %.1f m up" % [rad_to_deg(a), p.y - base.y])
+				break
+	check(hidden.is_empty(), "the near foot hides the cable from the play camera at %s" % [hidden])
+	gt(float(run.size()), 20.0, "and a run of it was asked (%d points, %.0f m)" % [run.size(), top])
+
+## How near `p` the surface of `k`'s triangles of colour `only` comes.
+func _nearest_tri(k: MeshKit, p: Vector3, only: Color) -> float:
+	var best := INF
+	for i in range(0, k.verts.size(), 3):
+		if not k.colors[i].is_equal_approx(only):
+			continue
+		var a := k.verts[i]
+		if a.distance_to(p) > 4.0:
+			continue
+		best = minf(best, p.distance_to(_closest_on_tri(p, a, k.verts[i + 1], k.verts[i + 2])))
+	return best
 
 
 ## The nearest point to `p` on triangle a, b, c.

@@ -208,6 +208,41 @@ func test_the_climbs_hints_name_his_own_key_in_their_moment() -> void:
 	await process_frames(2)
 
 
+## THE CABLE HANGS BEFORE ANYBODY CLIMBS IT. Its foot is where the climb's hint
+## is said, and the cable was drawn only once a climb had begun, so he stood at
+## the foot of nothing. From anywhere in its crater it is drawn hanging (43_climb
+## CABLE_SEEN); far off it is not, and nobody is climbing either way.
+func test_the_cable_hangs_at_its_foot_before_the_climb() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=7", "--place=tread0", "--colossus=2@tread0+30",
+		"--hour=12", "--weather=clear:0"])))
+	g.player.sim.clear_mobs()
+	var sys := _system(g, "43_climb")
+	await process_frames(4)
+	var rim: Dictionary = {}
+	for f: Dictionary in sys.call(&"_feet_in_treads"):
+		if bool(f.planted):
+			rim = f
+			break
+	check(not rim.is_empty(), "a foot stands in a tread")
+	if not rim.is_empty():
+		var on: Vector2 = sys.call(&"_cable_foot", rim)
+		_stand(g, on + Vector2(4.0, 0.0))
+		for i in 120:
+			await process_frames(1)
+			if bool(sys.call(&"tour_seen", &"climb_patch")):
+				break
+		check(bool(sys.call(&"tour_seen", &"climb_patch")), "by its foot the cable is drawn hanging")
+		check(not bool(sys.call(&"tour_seen", &"climbing")), "and nobody is climbing it")
+		var seen: float = (sys.get_script() as GDScript).get_script_constant_map()[&"CABLE_SEEN"]
+		_stand(g, on + Vector2(seen * 2.0, 0.0))
+		await process_frames(3)
+		check(not bool(sys.call(&"tour_seen", &"climb_patch")), "far off it is not drawn")
+	g.queue_free()
+	await process_frames(2)
+
+
 ## EVERY RIDE UP INSIDE THE BONE IS SAID, keyed by the pitch just climbed, and
 ## the hub's own pitch, which ends at the panel, and the cable, which goes
 ## straight on up the drum, have none.
