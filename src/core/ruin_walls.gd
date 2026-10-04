@@ -102,8 +102,8 @@ static func of_world(w: WorldData) -> Array[Vector3]:
 		if not KINDS.has(kind) or w.depleted.has(t.id[row]):
 			continue
 		var pos: Vector2 = t.pos[row]
-		var c := w.dress_country(floori(pos.x), floori(pos.y))
 		var p := w.prop_at(row)
+		var c := w.built_country(p)
 		var v := PropModels.variant_of(p, w.seed_value, c)
 		var s := float(t.scale[row])
 		var walls := model(v, BiomeDressing.of(c).ruin_form == &"tower") if kind == PropKind.RUIN else drowned(kind, v)

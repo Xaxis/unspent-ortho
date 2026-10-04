@@ -298,6 +298,36 @@ func dress_country(x: int, y: int) -> int:
 	return Country.COAST
 
 
+## The landscape a prop was BUILT by, which every drawing of it and everything
+## that stops a body at it have to agree on. A house is its village's: GenScatter
+## deals its form and sets its `solid` from the village's own stock, and a house
+## at a border drawn in the stock of the tile under it stood as a croft walled
+## like a tower (seed 7 at 512: 10 of 97). Anything else is its tile's
+## (`dress_country`), which is what RuinWalls builds a ruin's walls from.
+func built_country(p: WorldProp) -> int:
+	if p.kind == PropKind.HOUSE or p.kind == PropKind.HOUSE_BURNT:
+		var v := village_of_house(p.pos)
+		if not v.is_empty():
+			return int(v.get("country", Country.COAST))
+	return dress_country(floori(p.pos.x), floori(p.pos.y))
+
+
+## The village a building standing at `at` belongs to: the one whose square is
+## nearest. Every house is laid round its own square (GenScatter), and squares
+## stand far enough apart that no house is nearer another's
+## (tests/render/test_built_country.gd holds that on real worlds). {} with no
+## villages.
+func village_of_house(at: Vector2) -> Dictionary:
+	var best: Dictionary = {}
+	var best_d := INF
+	for v: Dictionary in villages:
+		var d := (v.pos as Vector2).distance_squared_to(at)
+		if d < best_d:
+			best_d = d
+			best = v
+	return best
+
+
 ## The region holding a tile, or -1 out at sea and on ground too small to be a
 ## place.
 func region_at(x: int, y: int) -> int:
@@ -452,6 +482,10 @@ func to_3d(p: Vector2) -> Vector3:
 ## A prop set down after generation: appended and filed in its section, so a
 ## reader asking by section sees it. Its id comes from `next_id()`.
 func add_prop(p: WorldProp) -> void:
+	# A burnt house stands on the walls its house had: the form's ground, not one
+	# circle for every form (1.6 walled a tower's shell short and a stall's long).
+	if p.kind == PropKind.HOUSE_BURNT:
+		p.solid = BiomeForms.of(built_country(p)).reach(maxi(p.variant, 0)) * p.scale
 	if not packed:
 		props.append(p)
 	table.append(p)

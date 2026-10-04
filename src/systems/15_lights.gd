@@ -858,7 +858,7 @@ static func index_of(w: WorldData, from: int, into: Array[Dictionary], cells: Di
 			# needed the same two numbers and could not see them: a hearth was
 			# placed at the front wall of coast variant 0 whatever house the baker
 			# had actually built.
-			var country := maxi(Country.COAST, w.country_at(floori(p.pos.x), floori(p.pos.y)))
+			var country := w.built_country(p)
 			var variant := PropModels.variant_of(p, w.seed_value, country)
 			if PLACED_SOURCES.has(p.kind):
 				var pts := PropModels.glow_points(p.kind, variant, country)
@@ -914,7 +914,7 @@ func _tube_of(s: Dictionary) -> void:
 	if s.has("neon_at") or bool(s.get("dark", false)):
 		return
 	var p := _prop_of(s)
-	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var country := game.world.built_country(p)
 	var tube := PropModels.neon_point(p.kind, PropModels.variant_of(p, game.world.seed_value, country), country)
 	if tube.is_empty():
 		s.dark = true
@@ -1219,7 +1219,7 @@ static func _may_glow(kind: int, glow: Dictionary) -> bool:
 
 
 static func _points_of(w: WorldData, p: WorldProp, glow: Dictionary) -> Array:
-	var country := maxi(Country.COAST, w.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var country := w.built_country(p)
 	var variant := PropModels.variant_of(p, w.seed_value, country)
 	var key := (p.kind * PropModels.MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
 	if not glow.has(key):

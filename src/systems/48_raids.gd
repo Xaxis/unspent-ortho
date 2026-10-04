@@ -2012,8 +2012,7 @@ func _burn_what_is_due() -> void:
 ## Both are world rows, so the save keeps the gap and the shell (SaveCore).
 func _burn(house: WorldProp) -> void:
 	var w := game.world
-	var c := maxi(Country.COAST, w.country_at(floori(house.pos.x), floori(house.pos.y)))
-	var form := PropModels.variant_of(house, w.seed_value, c)
+	var form := PropModels.variant_of(house, w.seed_value, w.built_country(house))
 	w.depleted[house.id] = INF
 	if game.view != null:
 		game.view.refresh_props(house)
