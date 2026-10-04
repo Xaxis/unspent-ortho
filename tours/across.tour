@@ -69,8 +69,9 @@ mark the_raft
 wait 1.0
 # The landing is the drowned city's port stair (StoryCrossing, rule 1): the raft
 # comes in where the shortest water from home does, the clock standing over it in
-# the shallows, the one tall line he steps off under.
-shot 03-the-raft-left-at-the-port-under-the-clock with parked:raft,land:drowned_city,landmark:clock_tower
+# the shallows, the one tall line he steps off under. No `land:` here: he stands
+# on the stair itself, over the water, and the ground under a stair is sea.
+shot 03-the-raft-left-at-the-port-under-the-clock with parked:raft,landmark:clock_tower
 # The sign the story stands at the stair (`the_port`, `port_arrivals`), read on
 # `use`: it files boats, not people. `reading`, not a beat: `counted` has long
 # since landed.
