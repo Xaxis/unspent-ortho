@@ -33,6 +33,9 @@ rules="$rules,test_world_gen:test_every_prop_kind_and_ground_is_placed,test_worl
 # keep something to say that isn't a revelation. land/mended and land/enclave
 # went red on these (2026-09-30) after green filtered runs.
 rules="$rules,test_marks,test_sketch,test_tool_hint,test_arcs:test_every_word_fits,test_pacing"
+# A new BiomeDef field must be classified TERRAIN or LOOK, or the save stamp stops
+# covering it; look/frost-props reached CI red on `leads` (2026-10-03). About 1 s.
+rules="$rules,test_world_stamp"
 [ -n "${1:-}" ] && rules="$rules,$1"
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-preflight.XXXXXX")"
 tools/test.sh "$rules" >"$log" 2>&1; code=$?

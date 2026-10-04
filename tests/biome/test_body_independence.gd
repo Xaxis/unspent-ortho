@@ -27,7 +27,7 @@ func _places(w: WorldData) -> Dictionary:
 	var out := {"home tiles": h, "spawn": w.spawn}
 	for nm: StringName in [&"home", &"the_yard", &"the_camp", &"the_covenant", &"the_archive"]:
 		out[String(nm)] = cast[nm].pos if cast.has(nm) else Vector2(-1, -1)
-	var cr := StoryCrossing.find(w, out["the_camp"], out["the_archive"])
+	var cr := StoryCrossing.of(w, cast)
 	out["landing"] = cr.get("land", Vector2(-1, -1))
 	var lairs: Array[Vector2] = []
 	for st: SentinelState in Sentinels.states(w):

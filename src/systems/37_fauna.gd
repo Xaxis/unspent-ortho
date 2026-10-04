@@ -22,9 +22,12 @@ const NEAR := 36.0
 const FAR := 48.0
 const GRAZE: Array[int] = [Ground.GRASS, Ground.HEATH, Ground.MOSS]
 const SHORE: Array[int] = [Ground.SAND, Ground.SHINGLE]
-## Hours: gulls leave from DUSK and come back from DAWN.
-const DUSK := 20.5
-const DAWN := 5.5
+## Hours: gulls leave from DUSK and come back from DAWN, off the same curve as the
+## villagers (35_folk): beasts settle SETTLE_BEFORE ahead of people, before the
+## light has quite gone.
+const SETTLE_BEFORE := 0.5
+const DUSK := Weather.DUSK_END - SETTLE_BEFORE
+const DAWN := Weather.DAWN_END - 0.5
 
 ## One animal: {model, kind, pos, home, facing, state, t, wait, target, village, fly}
 var beasts: Array[Dictionary] = []

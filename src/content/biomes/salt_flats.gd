@@ -197,11 +197,11 @@ static func make() -> BiomeDef:
 	# them, the machines that already rake and haul answer to the same orders.
 	var crust := ["salt", "pan", "gravel", "sand", "shingle", "road", "grass"]
 	d.roster = {
-		&"cutter": {"weight": 0.8, "hours": Vector2(6, 20), "grounds": crust},
-		&"hauler": {"weight": 1.0, "grounds": crust},
-		&"watcher": {"weight": 1.2, "grounds": crust},
-		&"runner": {"weight": 0.6, "hours": Vector2(10, 17), "grounds": crust},
-		&"gulls": {"weight": 0.4, "hours": Vector2(6, 20), "grounds": ["salt", "pan", "sand", "shingle", "gravel"]},
+		&"cutter": {"hours": Vector2(6, 20), "grounds": crust},
+		&"hauler": {"grounds": crust},
+		&"watcher": {"grounds": crust},
+		&"runner": {"hours": Vector2(10, 17), "grounds": crust},
+		&"gulls": {"hours": Vector2(6, 20), "grounds": ["salt", "pan", "sand", "shingle", "gravel"]},
 	}
 	# Its keeper: the rake that made the pans and still goes round them
 	# (src/core/sentinel/designs/pan_rake.gd, docs/VISION.md).

@@ -553,6 +553,15 @@ extends TestCase
 ## design's ways (GenWorks._n_station, station_holds). Only seed 1's `props`
 ## move: its one intake stands across the island, (227, 166) -> (48, 170), where
 ## a den by it keeps the Reaper's ways, with its pipe (49 -> 48 lengths).
+## GEN 48 (2026-10-02) CHANGED NO DIGEST: its content is where the lame leg's
+## tread comes down and which landmarks yield to a foot, and a world of 256
+## holds no tread at all (no walker's route passes over an island that small),
+## so nothing a world of the six makes moves.
+## AT GEN 49 (2026-10-03, provisional): the drowned city's port lays a stair at
+## the landfall. The six hold to the bit, and nothing is re-accepted: none of
+## them is the drowned city.
+## GEN 50 (2026-10-03, provisional) CHANGED NO DIGEST: village names past a
+## landscape's list are numbered once each now, and no world of 256 runs a list out.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

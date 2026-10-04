@@ -185,10 +185,10 @@ static func make() -> BiomeDef:
 	# drop is, which is 52_hazards reading `WorldData.level` round the body.
 	d.hazards = {&"heat": 0.5, &"thirst": 0.55}
 	d.roster = {
-		&"cutter": {"weight": 1.0, "grounds": ["rock", "scree", "gravel"]},
-		&"hauler": {"weight": 0.8},
-		&"watcher": {"weight": 1.0, "hours": Vector2(5, 21)},
-		&"dog.feral": {"weight": 0.8},
+		&"cutter": {"grounds": ["rock", "scree", "gravel"]},
+		&"hauler": {},
+		&"watcher": {"hours": Vector2(5, 21)},
+		&"dog.feral": {},
 		# Its own watcher, the kite (Roster `kite`), is NOT here yet: it flies,
 		# and nothing in the game flies (docs/LANDSCAPES.md, shared system 6).
 		# Its row and model are built; it joins this roster, by day and near the
