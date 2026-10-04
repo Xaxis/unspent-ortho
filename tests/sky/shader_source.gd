@@ -32,7 +32,8 @@ static func number(code: String, decl: String) -> float:
 	var num := ""
 	for i in rest.length():
 		var ch := rest[i]
-		if ch.is_valid_int() or ch == "." or ch == "-":
+		# And an exponent's (`1.1e-5`), which would otherwise read as 1.1.
+		if ch.is_valid_int() or ch == "." or ch == "-" or (num != "" and (ch == "e" or ch == "E" or ch == "+")):
 			num += ch
 		elif num != "":
 			break

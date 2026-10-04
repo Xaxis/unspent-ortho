@@ -185,6 +185,7 @@ func _dress(mat: ShaderMaterial, i: int, p: Dictionary, cam: Camera3D, ortho: bo
 	mat.set_shader_parameter("comp_l", _l)
 	mat.set_shader_parameter("comp_ortho", ortho)
 	mat.set_shader_parameter("land_fog", fog)
+	mat.set_shader_parameter("aloft", 0.0 if ortho else SkyLight.aloft_share(cam.global_position.y))
 	mat.set_shader_parameter("thick", thick)
 	mat.set_shader_parameter("lens_glow", night)
 	mat.set_shader_parameter("px_angle", px_angle)
