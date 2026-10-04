@@ -122,13 +122,13 @@ static func make() -> BiomeDef:
 	d.mist = 0.22
 	d.hazards = {&"wet": 0.3}
 	d.roster = {
-		&"harvester": {"weight": 1.0},
-		&"flock": {"weight": 1.0, "hours": Vector2(6, 19)},
-		&"hauler": {"weight": 1.0},
-		&"dredger": {"weight": 1.0},
-		&"dog.yard": {"weight": 1.0}, &"dog.feral": {"weight": 1.0},
-		&"bull.field": {"weight": 1.0},
-		&"gulls": {"weight": 1.0, "hours": Vector2(6, 20)},
+		&"harvester": {},
+		&"flock": {"hours": Vector2(6, 19)},
+		&"hauler": {},
+		&"dredger": {},
+		&"dog.yard": {}, &"dog.feral": {},
+		&"bull.field": {},
+		&"gulls": {"hours": Vector2(6, 20)},
 	}
 	# Its keeper: the reaper on the gantry at the machines' intake
 	# (src/core/sentinel/designs/tide_reaper.gd, docs/VISION.md).
