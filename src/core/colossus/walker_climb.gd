@@ -103,7 +103,10 @@ const HATCH_TURN := -22.5
 ## The foot's pitches run this many degrees round from the middle toe (bearing 0
 ## of the foot's frame), and the cable hangs from the belt's foot (BELT_Y) out to
 ## its own foot, HANG_FOOT_R from the ankle's axis at the height its pitch starts.
-const FOOT_TURN := 7.0
+## Far enough round that the pad's side never stands between the play camera and
+## the cable's lit foot, whichever way the foot is planted (test_walker_leg): at
+## 7 it hid the lowest metre and a half from a quarter of the camera's bearings.
+const FOOT_TURN := 7.3
 const BELT_Y := -52.0
 const HANG_FOOT_R := 190.0
 ## A fall's cost: a wound per FALL_LEVELS levels fallen, at most WOUND_MOST, and
