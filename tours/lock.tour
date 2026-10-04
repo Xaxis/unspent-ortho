@@ -6,13 +6,17 @@
 coast calm
 place pinewood
 wait 1.0
+# A way through the pines by name (40_fight `tour_place`: two solids no wider
+# apart than the lock shuts), the player on its near side. A timed walk in a
+# heading met no gap once the scatter laid new pines, and the lock never came.
+near gap
+wait 0.6
 # Hunted: a runner out of the trees has the player.
 spawn runner
 await noticed 10
-try 6
-walk 1,0.3 1.5
-await locked 0.5
-end
+# Out through the way with it coming on behind: shut behind him.
+walkto gap 6
+await locked 1.0
 wait 0.3
 shot 01-a-way-shut-behind with prop:pine,mob:runner
 # At eye level: the runner stopped at the shut way, and the sheet of light it

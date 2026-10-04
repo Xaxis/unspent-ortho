@@ -62,20 +62,19 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 				if not rows.is_empty():
 					out[s.id] = (rows[0] as Dictionary).duplicate()
 			continue
-		# A crater is not dealt: it is the one the walker lead pins, nearest the
-		# slot it names on that slot's body (crater_near), or none: a tread's
-		# middle toe's crater (Treads.MIDDLE_TOE). Its row keeps the tread's ankle,
-		# pads and yaw, so whoever stands there is stood by it without walking the
+		# A crater is not dealt: it is the one the world marks as its people's
+		# (GenTreads `folk`: the lame leg's, wherever its foot came down), its
+		# middle toe's (Treads.MIDDLE_TOE), on whatever body; or none. The walker
+		# lead pins it (`crater:the_tread`), across another water where it lies
+		# there (StoryCrossing.to_walker). Its row keeps the tread's ankle, pads
+		# and yaw, so whoever stands there is stood by it without walking the
 		# world's landmarks again (49_cast).
 		if s.needs == StorySlot.TREAD:
-			if s.realm == world.realm and out.has(s.near):
+			if s.realm == world.realm:
 				var treads := _candidates(world, s)
-				var craters: Array[Vector2] = []
-				for c: Dictionary in treads:
-					craters.append(c.pos as Vector2)
-				var at := crater_near(world, craters, (out[s.near] as Dictionary).pos as Vector2)
-				if at.is_finite():
-					var row: Dictionary = (treads[craters.find(at)] as Dictionary).duplicate()
+				if not treads.is_empty():
+					var row: Dictionary = (treads[0] as Dictionary).duplicate()
+					var at: Vector2 = row.pos
 					row["land"] = _land_at(world, at)
 					row["body"] = world.continent_at(floori(at.x), floori(at.y))
 					out[s.id] = row
@@ -182,8 +181,10 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 			for pt: Portal in Portals.in_world(world):
 				out.append({"pos": pt.pos, "region": pt.region, "land": _land_at(world, pt.pos), "site": StorySlot.PORTAL})
 		StorySlot.TREAD:
+			# Read off the world, never chosen here: worldgen laid the people's
+			# holding at that tread before any story was cast.
 			for m: Dictionary in world.landmarks:
-				if StringName(m.get("kind", &"")) == &"tread":
+				if StringName(m.get("kind", &"")) == &"tread" and bool(m.get("folk", false)):
 					var pad: Vector3 = (m.pads as Array)[Treads.MIDDLE_TOE]
 					out.append({"pos": Vector2(pad.x, pad.y), "region": -1, "land": &"", "site": StorySlot.TREAD,
 						"ankle": m.pos, "pads": m.pads, "yaw": m.yaw})

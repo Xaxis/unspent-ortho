@@ -61,7 +61,7 @@ static func make() -> SentinelDef:
 	# working part. The crown driven into the ice all round it throws a blow off,
 	# and it bites by driving a spear at whatever comes close enough to hear.
 	var listening := SentinelPhase.make(&"listening", 1.0, &"back",
-		{"swing": [600, 160, 760, 880], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 8.0, "knock_ms": 300})
+		{"swing": [641, 160, 760, 880], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 8.0, "knock_ms": 300})
 	listening.guarded = true
 	listening.pace = 2.4
 	listening.dash = 6.0
@@ -73,7 +73,7 @@ static func make() -> SentinelDef:
 	# comes down: it saws a ring in the ice round the player, and the gear that
 	# drives the saw is open on that side.
 	var cutting := SentinelPhase.make(&"cutting", 0.6, &"left",
-		{"swing": [500, 150, 640, 760], "reach": 2.0, "width": 2.4, "dmg": 4, "knock": 9.0, "knock_ms": 320})
+		{"swing": [730, 150, 640, 760], "reach": 2.0, "width": 2.4, "dmg": 4, "knock": 9.0, "knock_ms": 320})
 	cutting.pace = 4.8
 	cutting.dash = 9.5
 	cutting.quick = 330
@@ -90,7 +90,7 @@ static func make() -> SentinelDef:
 	# Phase three: breaching. It runs, skis hissing: fast, straight charges that
 	# it turns badly out of, with its bare face the last thing left open.
 	var breaching := SentinelPhase.make(&"breaching", 0.3, &"front",
-		{"swing": [640, 170, 700, 900], "reach": 2.2, "width": 2.0, "dmg": 5, "knock": 12.0, "knock_ms": 380})
+		{"swing": [671, 170, 700, 900], "reach": 2.2, "width": 2.0, "dmg": 5, "knock": 12.0, "knock_ms": 380})
 	breaching.pace = 6.0
 	breaching.dash = 12.0
 	breaching.quick = 380
