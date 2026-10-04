@@ -11,11 +11,19 @@ extends RefCounted
 ##   19_colossi.prepare_world  what every tread's pads flatten, in the world's
 ##                             own record, before any view draws it
 ##   WorksMap.prepare      the machines' works cut into the ground (WorldView)
-##   Landmarks.record      the landmarks' rows in the world's list, FIRST: a
-##                         keeper stationed at a landmark dens there only once its
-##                         row is, so every ask of its den, here or on the
-##                         crossing (21_doors, before 22_landmarks), gets the one
-##                         answer (22_landmarks takes the same rows)
+##   the world's own list of places, FIRST and whole: the shafts' rows
+##                         (Portals.record), the landmarks' (Landmarks.record) and
+##                         the depots' (Works.record), in the order 20_realms,
+##                         22_landmarks and 34_works write them at their setup,
+##                         where they now find them written. A keeper stationed
+##                         at a landmark dens there only once its row is, so every
+##                         ask of its den gets the one answer, and every answer
+##                         keyed on the list's length (Works.sites, Sentinels'
+##                         lairs) holds from here on
+##   Sentinels.states, Works.sites   every keeper's den and every depot, for the
+##                         list as it stands: the systems that ask at setup
+##                         (21_doors, 34_works, 44_sentinels, 49_cast) find them
+##   StoryPlan.prepare     the story's casting, taken by the first ask of it
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
 
@@ -33,8 +41,10 @@ static func prepare(w: WorldData) -> void:
 		return
 	var ms := {}
 	var t := Time.get_ticks_usec()
+	Portals.record(w)
 	Landmarks.record(w)
-	t = _took(ms, "landmarks", t)
+	Works.record(w)
+	t = _took(ms, "rows", t)
 	SkyGround.prepare(w)
 	t = _took(ms, "sky_ground", t)
 	SkyWear.prepare(w)
@@ -44,7 +54,14 @@ static func prepare(w: WorldData) -> void:
 	(load(_COLOSSI) as GDScript).call(&"prepare_world", w)
 	t = _took(ms, "treads", t)
 	WorksMap.prepare(w)
-	_took(ms, "works", t)
+	t = _took(ms, "works", t)
+	@warning_ignore("return_value_discarded")
+	Sentinels.states(w)
+	@warning_ignore("return_value_discarded")
+	Works.sites(w)
+	t = _took(ms, "keepers", t)
+	StoryPlan.prepare(w)
+	_took(ms, "cast", t)
 	# Read off a web run's console: this is the raise's time a title has to hide.
 	print("realm warm %s: %s ms" % [w.realm, ms])
 

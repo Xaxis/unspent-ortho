@@ -934,11 +934,13 @@ func _tube_of(s: Dictionary) -> void:
 
 ## Where a house's lit front is, in its own frame: the middle of the glow points
 ## that are its OWN light. A stolen tube is somebody else's and hangs where the
-## model runs it, so it must not drag the hearth's pool off the door.
+## model runs it, so it must not drag the hearth's pool off the door, and it is
+## not asked for: reading it builds the house, and the index asks this of every
+## house on the island, on the raise's worker (1.6 s of its 1.8 s at 1840).
 static func _front_of(kind: int, variant: int, country: int) -> Vector3:
 	var sum := Vector3.ZERO
 	var n := 0
-	for g: Dictionary in glow_points(kind, variant, country):
+	for g: Dictionary in PropModels.glow_points(kind, variant, country, false):
 		if bool(g.get("neon", false)):
 			continue
 		sum += g.at as Vector3

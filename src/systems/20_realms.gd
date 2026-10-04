@@ -593,25 +593,13 @@ func _read_portals() -> void:
 	if game.view == null or _gates == null:
 		return
 	var mat := game.view.world_material()
+	Portals.record(game.world)
 	for p in here:
-		_as_landmark(p)
 		var n := RealmGate.node(p, mat)
 		n.position = Vector3(p.pos.x, game.world.height_at(p.pos), p.pos.y)
 		n.rotation.y = -p.facing
 		_gates.add_child(n)
 		_nodes[p.id] = n
-
-
-## A shaft is a place worth walking to, so it goes in the world's own list of
-## them: the map draws it, a tour reaches it by name (`place shaft`) rather than
-## by a coordinate, and nothing else has to be taught what a portal is. Added
-## after generation, so no worldgen stage sees it and no island moves.
-func _as_landmark(p: Portal) -> void:
-	for m: Dictionary in game.world.landmarks:
-		if m.get("kind") == &"shaft" and (m.get("pos") as Vector2).distance_to(p.pos) < 0.5:
-			return
-	game.world.landmarks.append({"kind": &"shaft", "pos": p.pos,
-		"country": game.world.country_at(floori(p.pos.x), floori(p.pos.y))})
 
 
 func _by_id(id: int) -> Portal:
