@@ -303,7 +303,6 @@ const UNKNOWN := "unknown"
 ##     from it): a shack, a fire and a bench round its lip (GenTreads.dress
 ##     `_holding`, Treads.folk_lip), laid as that tread's own, after everything
 ##     else. Only props are appended; nothing laid before them moves.
-##     (Provisional; restamped at landing.)
 const GEN := 51
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
