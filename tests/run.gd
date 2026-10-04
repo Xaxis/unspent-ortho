@@ -199,6 +199,14 @@ func _run() -> void:
 			# many props a grown world keeps (32,028, 2026-10-03).
 			var failures := inst.failures
 			inst = null
+			# A FINISHED COROUTINE'S FRAME OUTLIVES IT (Godot 4.7, measured): every
+			# slot of the last test that awaited, a loop's array and every local,
+			# stays alive until the next coroutine runs to its end. A test that
+			# walked a world's props kept all of them into the tests after it, and
+			# the one that went red was a later test that never awaited (32,028
+			# props in test_prop_table, 2026-10-03). One empty coroutine run to its
+			# end lets go of it before anything is counted or the next test starts.
+			await _let_go_of_the_frame()
 			var kept := WorldProp.live - props_before
 			if kept > LEAK_PROPS:
 				failures.append("%s: left %d WorldProps alive (keep rows, not objects)" % [id, kept])
@@ -290,6 +298,12 @@ static func shard_of(paths: PackedStringArray, shards: int, times: Dictionary) -
 
 ## Script errors raised outside any test (loading scripts, making a test's
 ## instance): each is a load error, printed where it is counted.
+## One empty coroutine run to its end, so the last one that ran lets go of its
+## frame (the call says why).
+func _let_go_of_the_frame() -> void:
+	await process_frame
+
+
 func _load_script_errors() -> void:
 	for e: String in _script_errors.call(&"take"):
 		_load_errors += 1

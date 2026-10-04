@@ -9,7 +9,7 @@
 #   5. a last test that lets go of a realm raise  -> the runner claims it before
 #      it quits, so no worker is left in the pool (no "Pages in use" line)
 #   6. a test that keeps 5000 WorldProps alive -> IT fails, by name, and the
-#      test after it is green
+#      tests after it are green, one that walked 5000 after an await included
 #   7. a last test that leaves the shared bank baking -> the runner claims the
 #      bakes and EXITS, on a pool shaped like CI's four threads
 # The first is the control: without it a runner that is always red would pass.
@@ -140,11 +140,28 @@ func test_keeps_props() -> void:
 
 func test_then_runs_clean() -> void:
 	check(true)
+
+
+# Walking props after an await keeps nothing: the runner lets go of a finished
+# coroutine's frame, which Godot 4.7 otherwise holds until the next one ends.
+func test_walks_after_a_frame() -> void:
+	await tree.process_frame
+	var n := 0
+	for q: WorldProp in _views(5000):
+		n += 1
+	check(n == 5000)
+
+
+static func _views(count: int) -> Array[WorldProp]:
+	var out: Array[WorldProp] = []
+	for i in count:
+		out.append(WorldProp.new(i, PropKind.FIRE, Vector2(i, i), 0.0, 1.0))
+	return out
 PROBE
 code=$(run)
 if [ "$code" = 0 ] || ! grep -q "FAIL test_zz_runner_probe:test_keeps_props" "$log" || ! grep -q "left 5000 WorldProps alive" "$log" \
-    || ! grep -q "ok   test_zz_runner_probe:test_then_runs_clean" "$log"; then
-  echo "runner_red: a test that kept 5000 props was not red by name, or the test after it was (exit $code)"; grep "test_zz_runner_probe\|WorldProps" "$log"; fails=1
+    || ! grep -q "ok   test_zz_runner_probe:test_then_runs_clean" "$log" || ! grep -q "ok   test_zz_runner_probe:test_walks_after_a_frame" "$log"; then
+  echo "runner_red: a test that kept 5000 props was not red by name, or a test after it was (exit $code)"; grep "test_zz_runner_probe\|WorldProps" "$log"; fails=1
 else
   echo "runner_red: kept props red on the test that kept them (exit $code)"
 fi
