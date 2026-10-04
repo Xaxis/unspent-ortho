@@ -503,49 +503,23 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 		if s.get_script() == Lights:
 			lights = s
 	check(lights != null, "lights system")
-	# **THE LANDSCAPE THE HOUSE REALLY STANDS IN, ASKED OF THE WORLD.** Which
-	# forms a landscape builds, which of them are lit and where each one runs its
-	# tube are all PER LANDSCAPE (`BiomeForms.of`, `PropModels.neon_point`), and
-	# 15_lights passes the country under the prop. This named `Country.COAST` on
-	# both sides while the system named whatever the island grew there, so on a
-	# world that is not coast at the player's feet the test compared one
-	# landscape's tube against another's and called the difference a bug in the
-	# placement. The dark variant has to be one THIS landscape builds too, or
-	# "a house with nothing wired in" is a house with no model at all.
-	var here := int(g.world.country_at(floori(g.player.pos.x), floori(g.player.pos.y)))
+	# **THE LANDSCAPE THAT BUILT THE HOUSE, ASKED OF THE WORLD.** Which forms a
+	# landscape builds, which of them are lit and where each one runs its tube are
+	# all PER LANDSCAPE (`BiomeForms.of`, `PropModels.neon_point`), and 15_lights
+	# asks the landscape that built the prop (`WorldData.built_country`: a house's
+	# village's). This named `Country.COAST` on both sides once, and later the
+	# tile under each house, which on a size-64 island put two of green_towers'
+	# lit forms in the sulphur jungle's stock. Houses set down here belong to the
+	# village nearest them, as every house does.
+	var here := int(g.world.village_of_house(g.player.pos).get("country", Country.COAST))
 	var forms := BiomeForms.of(here)
 	var lit: Array[int] = forms.lit()
 	check(not lit.is_empty(), "the landscape at the spawn builds something lit (%s)" % BiomeRegistry.name_of(here))
-	# **AND EACH ONE STOOD IN THE LANDSCAPE WHOSE STOCK DEALT IT.** 15_lights reads
-	# the country under EACH PROP and asks that landscape where the tube hangs, so
-	# a form dealt from the landscape at the player's feet and then stood four
-	# tiles into the next one has no tube there and is filed `dark`. Measured at
-	# size 64, where the island is small enough that two landscapes meet beside the
-	# spawn: two of green_towers' five lit forms landed in the sulphur jungle and
-	# the test read "the lit house throws no light", which is a staging fault
-	# wearing a feature's failure. So each house is walked to the nearest tile that
-	# is really `here`, inside `Lights.REACH`, which the system needs anyway —
-	# it builds a source only for what is near the camera.
 	var houses: Array[WorldProp] = []
 	for i in lit.size():
-		var want := Vector2(3.0 + float(i % 3) * 4.0, 1.0 + float(i / 3) * 4.0)
-		var off := Vector2.INF
-		for r in 5:
-			for dy in range(-r, r + 1):
-				for dx in range(-r, r + 1):
-					if off.is_finite() or maxi(absi(dx), absi(dy)) != r:
-						continue
-					var try_at := want + Vector2(dx, dy)
-					var at := g.player.pos + try_at
-					if try_at.length() >= Lights.REACH:
-						continue
-					if int(g.world.country_at(floori(at.x), floori(at.y))) == here:
-						off = try_at
-		check(off.is_finite(), "house %d has ground of its own landscape to stand on" % i)
-		if not off.is_finite():
-			continue
-		var p := WorldProp.new(g.world.next_id(), PropKind.HOUSE, g.player.pos + off, 0.0, 1.0)
+		var p := WorldProp.new(g.world.next_id(), PropKind.HOUSE, g.player.pos + Vector2(3.0 + float(i % 3) * 4.0, 1.0 + float(i / 3) * 4.0), 0.0, 1.0)
 		p.variant = lit[i]
+		check(g.world.built_country(p) == here, "house %d is its spawn village's" % i)
 		g.world.add_prop(p)
 		houses.append(p)
 	var unlit := -1
