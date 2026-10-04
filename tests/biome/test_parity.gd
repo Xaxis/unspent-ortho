@@ -564,6 +564,8 @@ extends TestCase
 ## landscape's list are numbered once each now, and no world of 256 runs a list out.
 ## GEN 51 (2026-10-03, provisional) CHANGED NO DIGEST: the tread's people's
 ## holding is laid round a tread, and a world of 256 holds none.
+## GEN 52 (2026-10-04, provisional) CHANGED NO DIGEST: the treads keep off fewer
+## landmarks, and a world of 256 holds no tread.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

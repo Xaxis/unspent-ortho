@@ -55,8 +55,9 @@ src/core/sentinel/sentinels.gd::states::list
 src/core/story/story_casting.gd::_candidates::builder Portals.in_world
 src/core/story/story_casting.gd::_candidates::builder Works.sites
 src/core/story/story_casting.gd::_candidates::list
+src/core/story/story_casting.gd::_keeper_grounds::builder Sentinels.states
+src/core/story/story_casting.gd::_cast::builder StoryJourney.bodies
 src/core/story/story_casting.gd::_twin::builder WorldGen.generate
-src/core/story/story_casting.gd::cast::builder StoryJourney.bodies
 src/core/story/story_gates.gd::all::builder StoryPlan.cast
 src/core/story/story_journey.gd::bodies::list
 src/core/story/story_rooms.gd::_deal::builder Interiors.thresholds
