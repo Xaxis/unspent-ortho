@@ -111,6 +111,10 @@ const BODY_OUT := 0.45
 ## How near the foot of a planted foot's cable he may stand and take it, tiles:
 ## the crater's floor ring and the step above it, where the pad leaves room.
 const START_REACH := 6.0
+## How near the foot of a planted foot's cable he must be for the cable to be
+## drawn hanging there before he takes it, tiles: from anywhere in its crater,
+## and from its lip, he sees the way up.
+const CABLE_SEEN := 120.0
 ## Real seconds after the press that began a climb during which `use` is spent.
 const SETTLE := 0.4
 
@@ -123,6 +127,10 @@ var _cam: Camera3D
 ## one of `_feet_in_treads`).
 var _rim: Dictionary = {}
 var _hinted := false
+## The line of the cable drawn hanging while nobody climbs it (`_show_cable`),
+## and which walker's foot, by "walker:leg".
+var _hung: WalkerClimb = null
+var _hung_key := ""
 var _settle := 0.0
 var _use_was := false
 var _up_was := false
@@ -262,7 +270,7 @@ func _process(delta: float) -> void:
 	_use_was = use_down
 	var c := _colossi()
 	if climb == null:
-		leg_view.update(null, null, {}, {})
+		_show_cable(c)
 		_watch_cable(use_edge)
 		_cost_us = Time.get_ticks_usec() - t0
 		return
@@ -407,6 +415,29 @@ func _cable_takes() -> bool:
 ## The hint for the press the cable would take (UiLink.use_hint), or "".
 func use_line() -> String:
 	return "cable - climb" if game != null and not Survival.ask_pending(game) and _cable_takes() else ""
+
+
+## THE CABLE HANGS WHETHER OR NOT ANYBODY CLIMBS IT: at its foot, with the
+## climb's hint on the glass, there is a way up to see. It is the patch of the
+## climb's hanging pitch (colossus_leg_model.gd `_cable`), so the nearest planted
+## foot's cable within CABLE_SEEN is drawn hanging at its first hold, and a climb
+## begun on it takes the same patch.
+func _show_cable(c: Node) -> void:
+	var near: Dictionary = {}
+	for f: Dictionary in _feet_in_treads():
+		if bool(f.planted) and _cable_foot(f).distance_to(game.player.pos) <= CABLE_SEEN:
+			near = f
+			break
+	var pose: Dictionary = c.view.poses[int(near.walker)] if not near.is_empty() else {}
+	if pose.is_empty():
+		leg_view.update(null, null, {}, {})
+		return
+	var key := "%d:%d" % [int(near.walker), int(near.leg)]
+	if key != _hung_key:
+		_hung_key = key
+		_hung = WalkerClimb.begin(int(near.leg), game.world.seed_value)
+	var dome: Dictionary = game.sky.seen_air().get("dome", {}) if game.sky != null else {}
+	leg_view.update(c.view.defs[int(near.walker)], _hung, pose, dome)
 
 
 ## Where the cable of foot `f` (one of `_feet_in_treads`) comes down, on this

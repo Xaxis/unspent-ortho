@@ -311,6 +311,10 @@ static func _cable(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo: 
 			k.box(Vector3(-SEAT.x, 0.0, SEAT.y - 0.06), Vector3(SEAT.x, 0.05, SEAT.y), Model.STRIP)
 		else:
 			k.box(Vector3(-CLAMP.x, -0.08, -0.05), Vector3(CLAMP.x, 0.08, CLAMP.y), Model.RIM)
+		# Its foot is found by its light, as a ledge is: a lit band round the
+		# lowest clamp, read from the crater's lip by day and by night.
+		if i == 0:
+			k.box(Vector3(-CLAMP.x - 0.03, 0.08, -0.08), Vector3(CLAMP.x + 0.03, 0.08 + FOOT_BAND, CLAMP.y + 0.03), Model.STRIP)
 		k.pop()
 	# Over to the drum's own cable, beside its line, where this one ends.
 	if hi >= top:
@@ -321,6 +325,8 @@ static func _cable(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo: 
 ## The hanging cable's thickness, and a clamp's and a seat's half-width across
 ## and depth off it.
 const HAWSER := 0.07
+## How tall the lit band round the cable's lowest clamp stands.
+const FOOT_BAND := 0.12
 const CLAMP := Vector2(0.3, 0.22)
 const SEAT := Vector2(0.9, 0.7)
 
