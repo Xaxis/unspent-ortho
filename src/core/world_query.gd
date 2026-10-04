@@ -91,6 +91,24 @@ func ordinary_rows_near(p: Vector2, r: float) -> PackedInt32Array:
 	return out
 
 
+## The ordinary tier for a whole box `lo`..`hi` (a nav field asks once): every
+## solid up to ORDINARY whose tile could reach a body of radius `r` in it.
+func ordinary_rows_in(lo: Vector2, hi: Vector2, r: float) -> PackedInt32Array:
+	var t := world.table
+	var out := PackedInt32Array()
+	var reach := ORDINARY + r
+	for ty in range(maxi(0, floori(lo.y - reach)), mini(world.size - 1, floori(hi.y + reach)) + 1):
+		for tx in range(maxi(0, floori(lo.x - reach)), mini(world.size - 1, floori(hi.x + reach)) + 1):
+			var k := ty * world.size + tx
+			if not _cells.has(k):
+				continue
+			for row: int in _cells[k]:
+				var solid := t.solid[row]
+				if solid > 0.0 and solid <= ORDINARY:
+					out.append(row)
+	return out
+
+
 ## The wide tier alone: every wide solid whose coarse cell could reach a body of
 ## radius `r` anywhere in the box `lo`..`hi` (a whole nav field asks once).
 func wide_rows_in(lo: Vector2, hi: Vector2, r: float) -> PackedInt32Array:
