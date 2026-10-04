@@ -103,9 +103,15 @@ const HATCH_TURN := -22.5
 ## The foot's pitches run this many degrees round from the middle toe (bearing 0
 ## of the foot's frame), and the cable hangs from the belt's foot (BELT_Y) out to
 ## its own foot, HANG_FOOT_R from the ankle's axis at the height its pitch starts.
-const FOOT_TURN := 7.0
+## Far enough round that the pad's side never stands between the play camera and
+## the cable's lit foot, whichever way the foot is planted (test_walker_leg): at
+## 7 it hid the lowest metre and a half from a quarter of the camera's bearings.
+const FOOT_TURN := 7.3
 const BELT_Y := -52.0
 const HANG_FOOT_R := 190.0
+## How far the hanging cable bows out from the straight line at its middle: a
+## rope's own weight, so it reads as one hung and not a rod set at a slant.
+const HANG_SAG := 1.8
 ## A fall's cost: a wound per FALL_LEVELS levels fallen, at most WOUND_MOST, and
 ## the world minutes spent hanging on the cable before he climbs on.
 const FALL_LEVELS := 10
@@ -299,13 +305,15 @@ func _bearing(def: RefCounted, p: int) -> float:
 
 
 ## How far out of its bone's axis the body is at height `y` and bearing `a`. A
-## hanging cable runs straight from the belt's foot out to its own.
+## hanging cable runs from the belt's foot out to its own, bowed HANG_SAG out
+## at its middle as a rope's weight bows it.
 static func _radius(def: RefCounted, row: Dictionary, y: float, a: float) -> float:
 	match int(row.bone):
 		FOOT:
 			if row.has("hang") and y < BELT_Y:
 				var belt := Def.turned_radius(def.drum_profile(), Def.DRUM_SIDES, BELT_Y, a)
-				return lerpf(belt, HANG_FOOT_R, (BELT_Y - y) / (BELT_Y - float(row.from)))
+				var t := (BELT_Y - y) / (BELT_Y - float(row.from))
+				return lerpf(belt, HANG_FOOT_R, t) + HANG_SAG * 4.0 * t * (1.0 - t)
 			return Def.turned_radius(def.drum_profile(), Def.DRUM_SIDES, y, a)
 		HUB:
 			return Def.turned_radius(def.hull_profile(), Def.HULL_SIDES, y, a)
