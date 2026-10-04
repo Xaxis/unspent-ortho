@@ -720,7 +720,7 @@ func _beat() -> void:
 				if m.lost_beats >= _forget(m) and not hunting(m):
 					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
-				elif m.approach != &"dart" and m.pos.distance_to(m.home) > float(m.stat("tether", 30)):
+				elif m.approach != &"dart" and _tethered(m, d, float(m.stat("tether", 30))):
 					m.flee_home = true
 					m.set_mood(MobState.FLEEING, now)
 				elif m.approach != &"dart" and d <= reach and not waits(m):
@@ -732,7 +732,7 @@ func _beat() -> void:
 				elif d > reach + 4.0 and not m.committed(now):
 					m.charging = false
 					m.set_mood(MobState.CHASING, now)
-				elif m.pos.distance_to(m.home) > float(m.stat("tether", 30)) + 4.0:
+				elif _tethered(m, d, float(m.stat("tether", 30)) + 4.0):
 					m.flee_home = true
 					m.set_mood(MobState.FLEEING, now)
 			MobState.FLEEING:
@@ -914,6 +914,25 @@ func hunting(m: MobState) -> bool:
 	if now - m.lost_at > HUNT_MS:
 		return false
 	return m.hunt.is_empty() or m.hunt_i < m.hunt.size()
+
+
+## Past its tether a machine gives the chase up and goes home, unless the
+## player is still in the fight with it: inside its `safe` (the range a body
+## runs to before it feels clear of the player, so the range it is still in the
+## player's reach), and on its own landscape. A harvester walking home at full
+## health from a player five tiles off read as broken: a crowd's fight drifts
+## (the ploughshare's turned charges carried one 40 tiles from its home) and the
+## third body left mid-fight. A player who breaks off past that range ends the
+## chase at the tether as ever; nothing is dragged out of its own landscape; a
+## keeper keeps its own den.
+func _tethered(m: MobState, d: float, tether: float) -> bool:
+	if m.pos.distance_to(m.home) <= tether:
+		return false
+	if Sentinels.is_keeper(m.row):
+		return true
+	var home_land := world.country_at(floori(m.home.x), floori(m.home.y))
+	var here_land := world.country_at(floori(m.pos.x), floori(m.pos.y))
+	return d >= float(m.stat("safe", 12)) or here_land != home_land
 
 
 func _forget(m: MobState) -> int:
@@ -2422,6 +2441,13 @@ func _holding() -> void:
 	if h == null or not h.alive or h.removed:
 		hero.release()
 		emit(&"loose", {"by": h})
+		return
+	# A crushing grip (Blow.crush) not wrenched loose in time bites and lets go.
+	var b := h.blow if h.blow != null and h.blow.grip > 0 else h.bite
+	if b != null and b.crush > 0 and now - hero.grip_since >= FightRules.crush_ms(b):
+		hero.release()
+		emit(&"crushed", {"by": h, "damage": b.crush})
+		_hurt_hero(h, b.crush, (hero.pos - h.pos).normalized(), b.knock, b.knock_ms)
 		return
 	if now - hero.grip_since >= FightRules.HOLD_LIMIT_MS:
 		_end(&"carried")

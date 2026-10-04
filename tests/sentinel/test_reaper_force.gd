@@ -46,7 +46,9 @@ static func bout(w: WorldData, lair: Vector2, start: Vector2, ids: int, seconds:
 	var out := {"won": false, "t": 0.0, "blows": 0, "by_phase": blows, "grips": 0, "loose": 0, "end": &"time", "hurt": 0, "torn": 0, "tells": 0, "gap": 0.0}
 	# The longest the player stood beside it without a tell: the time beside it
 	# between one windup and the next. Time carried out of its reach (knocked out
-	# into the sea) is not time it owes a tell for.
+	# into the sea) is not time it owes a tell for, nor is time it stands spent,
+	# stopped by the player's blows, or holding them: that is an opening, or a
+	# bite that landed, not a wait.
 	var stood := 0.0
 	var over := false
 	while t < seconds * 1000.0 and not over:
@@ -57,7 +59,8 @@ static func bout(w: WorldData, lair: Vector2, start: Vector2, ids: int, seconds:
 		reader.act()
 		sim.slices(2)
 		t += 16.0
-		if sim.hero.pos.distance_to(m.pos) <= m.radius + sim.hero.radius + 1.0:
+		var owed := not (m.spent(sim.now) or m.stunned(sim.now) or sim.hero.held())
+		if owed and sim.hero.pos.distance_to(m.pos) <= m.radius + sim.hero.radius + 1.0:
 			stood += 16.0
 			out.gap = maxf(float(out.gap), stood / 1000.0)
 		for e in sim.drain():
@@ -236,8 +239,9 @@ func test_pulled_loose_the_chute_gear_is_there_to_take() -> void:
 ## 68 and 128 s: a keeper with the player pressed to it walked its field's way
 ## round to them (a prop by the line) instead of biting.
 const PLATE_SEEDS: Array[int] = [1, 7]
-## Seconds beside it without a tell: its slowest honest tell cycle is a bite
-## (820 ms windup) and its stand (800 + 900), then the turn round to the player.
+## Seconds beside it without a tell, not counting its stands: its slowest
+## honest wait is the turn round to a player who keeps to its back, and the
+## seconds a person spends going round before letting it come.
 const TELL_WAIT_MOST := 6.0
 const TRIES_MOST := 4
 

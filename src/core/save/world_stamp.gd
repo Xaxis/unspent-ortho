@@ -298,7 +298,12 @@ const UNKNOWN := "unknown"
 ##     first name, each number once (GenSettle._name). Seed 1's eight slum
 ##     blocks past the list were all "Ninth Shift 24". Names only; nothing
 ##     moves.
-const GEN := 50
+## 51. The tread's people keep a holding at the lame leg's tread, wherever it
+##     lands, which `site` marks as theirs (`folk`; the story casts `the_tread`
+##     from it): a shack, a fire and a bench round its lip (GenTreads.dress
+##     `_holding`, Treads.folk_lip), laid as that tread's own, after everything
+##     else. Only props are appended; nothing laid before them moves.
+const GEN := 51
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

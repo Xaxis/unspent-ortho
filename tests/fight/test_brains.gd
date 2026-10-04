@@ -323,3 +323,49 @@ func test_a_fleeing_body_in_a_fold_of_the_land_gets_out() -> void:
 	check(c.removed or c.mood != MobState.FLEEING or c.pos.distance_to(sim.hero.pos) >= float(c.stat("safe", 12)),
 		"out of the fold and clear within 15 s (at %s, %.1f from the player, %s)" % [c.pos, c.pos.distance_to(sim.hero.pos), c.mood])
 
+
+
+## PAST ITS TETHER, A MACHINE STAYS IN A FIGHT THE PLAYER IS STILL IN
+## (FightSim._tethered). A crowd's fight drifts, and a harvester walked home at
+## full health from a player five tiles off, mid-fight. Inside its `safe` and on
+## its own landscape it stays at them; a player who breaks off past that range
+## ends the chase at the tether as ever; a body dragged off its landscape, and a
+## keeper, still go home.
+func _past_tether(kind: StringName, player_off: float, other_land := false) -> MobState:
+	var w := F.flat_world(160)
+	if other_land:
+		for y in 160:
+			for x in range(80, 160):
+				w.country[y * 160 + x] = Country.BONELANDS
+	var sim := F.make_sim(w, Vector2(20.5, 80.5))
+	var m := sim.add_mob(kind, Vector2(20.5, 80.5))
+	m.home = Vector2(20.5, 80.5)
+	m.pos = m.home + Vector2(float(m.stat("tether", 30)) + 8.0 + (60.0 if other_land else 0.0), 0.0)
+	sim.hero.pos = m.pos + Vector2(player_off, 0.0)
+	m.facing = 0.0
+	m.aim = 0.0
+	m.calm_until = 0.0
+	m.disturbed = true
+	m.set_mood(MobState.CHASING, sim.now)
+	F.ms(sim, 1500)
+	return m
+
+
+func test_past_its_tether_a_machine_stays_in_a_fight_the_player_is_still_in() -> void:
+	var m := _past_tether(&"harvester", 5.0)
+	check(not m.flee_home, "five tiles from the player it stays in the fight (%s)" % m.mood)
+
+
+func test_a_player_who_breaks_off_ends_the_chase_at_the_tether() -> void:
+	var m := _past_tether(&"harvester", float(Roster.row(&"harvester").get("safe", 12)) + 3.0)
+	check(m.flee_home, "past its safe range it goes home (%s)" % m.mood)
+
+
+func test_a_machine_dragged_off_its_landscape_still_goes_home() -> void:
+	var m := _past_tether(&"harvester", 5.0, true)
+	check(m.flee_home, "off its own landscape it goes home with the player close (%s)" % m.mood)
+
+
+func test_a_keeper_keeps_its_own_den_past_its_tether() -> void:
+	var m := _past_tether(&"sentinel.coast", 5.0)
+	check(m.flee_home, "a keeper takes no fight-range exemption (%s)" % m.mood)

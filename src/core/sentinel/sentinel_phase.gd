@@ -34,6 +34,14 @@ var quick := 300
 ## Radians/s it comes round in. Every phase must leave the working side reachable
 ## by a player walking round it (tests/sentinel/test_phases.gd holds this).
 var turn := 1.5
+## Whether a body kept at its flank is swept (Sentinels.come_round_of). A phase
+## that turns to bite instead says false: its bite is the answer to a flank.
+var comes_round := true
+## Radians/s it turns while spent after a bite that closed on nothing (its
+## recovery and cooldown, MobState.spent), or -1 to keep `turn`. A phase that
+## turns faster than a player walks round gives this stand as the way to its
+## side: FightRules.walk_round_ms sizes the window (tests/sentinel/test_phases).
+var spent_turn := -1.0
 ## Levels its body may step in one move while this phase lasts (the roster's
 ## `climbs`), or -1 to leave the row's own. A keeper that walks up scarps and is
 ## brought down off them says so here, so the phase that lames it also puts it
@@ -55,7 +63,8 @@ static func make(phase_id: StringName, at_health: float, part_side: StringName, 
 
 ## The roster keys this phase writes onto a live body's own row copy.
 func row_patch() -> Dictionary:
-	var patch := {"part": part, "guarded": guarded, "bite": bite, "pace": pace, "dash": dash, "quick": quick}
+	var patch := {"part": part, "guarded": guarded, "bite": bite, "pace": pace, "dash": dash, "quick": quick,
+		"spent_turn": spent_turn}
 	if climbs >= 0:
 		patch["climbs"] = climbs
 	return patch
