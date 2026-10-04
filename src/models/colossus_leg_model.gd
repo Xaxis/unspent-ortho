@@ -289,46 +289,90 @@ static func _holds(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo: 
 
 
 ## THE CABLE A CLIMB BEGINS ON (WalkerClimb's hanging pitch): no plate of its
-## own, the belt and the toe under it are the near foot's. The cable itself up
-## the line, a clamp at every hold and a seat at every ledge, and at its top a
-## run across to where the drum's own cable hangs beside its line.
+## own, the belt and the toe under it are the near foot's. ONE ROPE, round and
+## continuous and lit along its whole length, so it is one line by day and the
+## line the eye goes to by night, with two dark strands wound round it for its
+## lay; a band round it at every ledge and the longest at its foot. Lit strands
+## on a dark rope read from above as a zip of chevrons. No plank, box, ring or knot on it:
+## seen from above, flat seats along a slanted line were a staircase of blocks,
+## foot loops a chain, and a knot at every hold a stack of nuts. At its top a run
+## across to where the drum's own cable hangs beside its line.
 static func _cable(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo: float, hi: float) -> void:
 	var top := float(WalkerClimb.PITCHES[p].levels) * WalkerClimb.LEVEL
-	var last := _at(def, climb, p, maxf(lo, 0.0), 0.0, PROUD)
-	var up := maxf(lo, 0.0) + CELL
-	while up <= minf(hi, top) + 1e-3:
-		var c := _at(def, climb, p, up, 0.0, PROUD)
-		k.strut(last, c, HAWSER, 6, Model.DARK)
-		last = c
+	var from := maxf(lo, 0.0)
+	var to := minf(hi, top)
+	# A rope point every CELL, and one where it meets the belt and turns up the
+	# drum, so the turn is a corner of the rope and never a chord cut across it.
+	var ups: Array[float] = []
+	# From under its foot: the rope goes into the ground the climb starts from,
+	# so it stands on it and never ends in the air over it.
+	if lo <= 0.0:
+		ups.append(-ROPE_IN_GROUND)
+	var up := from
+	while up <= to + 1e-3:
+		ups.append(up)
 		up += CELL
+	var belt := WalkerClimb.BELT_Y - float(WalkerClimb.PITCHES[p].from)
+	if belt > from and belt < to and not ups.has(belt):
+		ups.append(belt)
+		ups.sort()
+	var last := _at(def, climb, p, ups[0], 0.0, PROUD)
+	for j in range(1, ups.size()):
+		var c := _at(def, climb, p, ups[j], 0.0, PROUD)
+		k.strut(last, c, HAWSER, ROPE_SIDES, ROPE_LIGHT)
+		last = c
+	for phase: float in [0.0, PI]:
+		var turn := from
+		var wound := _strand(def, climb, p, turn, phase)
+		while turn + STRAND_STEP <= to + 1e-3:
+			turn += STRAND_STEP
+			var next := _strand(def, climb, p, turn, phase)
+			k.strut(wound, next, STRAND, 3, Model.RIM)
+			wound = next
+	# Every hold is on the rope itself; a ledge is found by its light, as on the
+	# plate: a band of the strip's light round the rope, the longest at its foot.
 	for i in climb.holds_in(p):
 		var at := climb.hold_at(p, i).x * WalkerClimb.LEVEL
-		if at < lo or at > hi:
+		if at < lo or at > hi or not (climb.is_stance(i) or i == 0):
 			continue
-		k.push(hold_frame(def, climb, p, i))
-		if climb.is_stance(i):
-			k.box(Vector3(-SEAT.x, -0.08, 0.0), Vector3(SEAT.x, 0.0, SEAT.y), Model.RIM)
-			k.box(Vector3(-SEAT.x, 0.0, SEAT.y - 0.06), Vector3(SEAT.x, 0.05, SEAT.y), Model.STRIP)
-		else:
-			k.box(Vector3(-CLAMP.x, -0.08, -0.05), Vector3(CLAMP.x, 0.08, CLAMP.y), Model.RIM)
-		# Its foot is found by its light, as a ledge is: a lit band round the
-		# lowest clamp, read from the crater's lip by day and by night.
-		if i == 0:
-			k.box(Vector3(-CLAMP.x - 0.03, 0.08, -0.08), Vector3(CLAMP.x + 0.03, 0.08 + FOOT_BAND, CLAMP.y + 0.03), Model.STRIP)
-		k.pop()
+		var c := _at(def, climb, p, at, 0.0, PROUD)
+		var along := (_at(def, climb, p, at + 0.5, 0.0, PROUD) - c).normalized()
+		var band := FOOT_BAND if i == 0 else LEDGE_BAND
+		k.strut(c - along * band * 0.5, c + along * band * 0.5, BAND_R, ROPE_SIDES, ROPE_LIGHT)
 	# Over to the drum's own cable, beside its line, where this one ends.
 	if hi >= top:
 		var drum := p + 1
-		k.strut(_at(def, climb, p, top, 0.0, PROUD), _at(def, climb, drum, 0.0, CABLE_OFF * 2.0, PROUD + 0.15), HAWSER, 6, Model.DARK)
+		k.strut(_at(def, climb, p, top, 0.0, PROUD), _at(def, climb, drum, 0.0, CABLE_OFF * 2.0, PROUD + 0.15), HAWSER, ROPE_SIDES, Model.DARK)
 
 
-## The hanging cable's thickness, and a clamp's and a seat's half-width across
-## and depth off it.
-const HAWSER := 0.07
-## How tall the lit band round the cable's lowest clamp stands.
-const FOOT_BAND := 0.12
-const CLAMP := Vector2(0.3, 0.22)
-const SEAT := Vector2(0.9, 0.7)
+## Where a lit strand lies `up` metres up the cable, `phase` round: on the rope's
+## skin, wound round it once every STRAND_TURN metres.
+static func _strand(def: RefCounted, climb: WalkerClimb, p: int, up: float, phase: float) -> Vector3:
+	var a := up / STRAND_TURN * TAU + phase
+	return _at(def, climb, p, up, cos(a) * (HAWSER + STRAND), PROUD + sin(a) * (HAWSER + STRAND))
+
+
+## The hanging cable: its thickness and how many sides its round has; its two
+## strands' thickness, how often they wind round, and the step they are laid in;
+## and the bands round it, their girth and how long one stands at a ledge and at
+## the foot.
+const HAWSER := 0.1
+const ROPE_SIDES := 6
+## How far below its first hold the rope runs on, into the crater's floor: the
+## hold is a metre over the pad's sole, and the step it stands on is at most a
+## level over the floor.
+const ROPE_IN_GROUND := 1.5
+const STRAND := 0.025
+const STRAND_TURN := 4.0
+const STRAND_STEP := 0.67
+const BAND_R := 0.16
+## The rope's light: the strip's colour, steady (vertex alpha over 0.5,
+## found.gdshader), and as bright as a steady light burns, so at dusk and by
+## night the rope is the line the eye goes to and not one more strip among the
+## city's.
+const ROPE_LIGHT := Color(0.7451, 0.7294, 0.8745, 0.52)
+const LEDGE_BAND := 0.25
+const FOOT_BAND := 0.5
 
 
 ## FOUND as the patch wears it, a copy of its own: the patch lays its plates in

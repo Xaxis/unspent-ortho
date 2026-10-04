@@ -741,6 +741,8 @@ func tour_seen(what: StringName) -> bool:
 			return leg_view.drawn
 		&"climb_cable":
 			return not _rim.is_empty()
+		&"climb_foot_seen":
+			return _foot_seen()
 		&"climb_ready":
 			return _ready_to_go()
 		&"climb_riding":
@@ -748,6 +750,20 @@ func tour_seen(what: StringName) -> bool:
 		&"climbed":
 			return climb == null and _climbed
 	return false
+
+
+## Whether the nearest planted foot's cable comes down FOOT_IN_FRAME inside the
+## play frame (CameraRig.sees_point): the way up, in sight, not on its edge.
+func _foot_seen() -> bool:
+	for f: Dictionary in _feet_in_treads():
+		if bool(f.planted):
+			var at := _cable_foot(f)
+			return at.is_finite() and CameraRig.sees_point(game.camera, game.world.to_3d(at), -FOOT_IN_FRAME)
+	return false
+
+
+## How far inside the frame's edge the cable's foot stands to be in sight, tiles.
+const FOOT_IN_FRAME := 3.0
 
 
 ## On a ledge with a full breath, and his leg standing through the time the next

@@ -43,11 +43,13 @@ func test_every_hold_has_something_to_hold() -> void:
 		for i in climb.holds_in(p):
 			var h := climb.hold_at(p, i)
 			var at := climb.surface_at(def, p, h.x * WalkerClimb.LEVEL, h.y, Leg.PROUD)
-			# Within the part's own half-diagonal: a rung's or a clamp's, or a
-			# ledge's shelf's or a cable's seat's.
-			var part := Vector3(Leg.SHELF.x, 0.12, Leg.SHELF.y) if climb.is_stance(i) else Vector3(Leg.RUNG.x, 0.06, Leg.RUNG.y)
+			# Within the part's own half-diagonal: a rung's or a ledge's shelf's.
+			# On the cable the hold is the rope itself: its surface, not a vertex
+			# of it, within the rope's round.
 			if hangs:
-				part = Vector3(Leg.SEAT.x, 0.08, Leg.SEAT.y) if climb.is_stance(i) else Vector3(Leg.CLAMP.x, 0.08, Leg.CLAMP.y)
+				lt(_nearest_tri(k, at, Leg.ROPE_LIGHT), Leg.HAWSER + 0.05, "pitch %d hold %d: the rope where he hangs" % [p, i])
+				continue
+			var part := Vector3(Leg.SHELF.x, 0.12, Leg.SHELF.y) if climb.is_stance(i) else Vector3(Leg.RUNG.x, 0.06, Leg.RUNG.y)
 			lt(_nearest(k, at, Leg.Model.RIM), part.length() + 0.05, "pitch %d hold %d: a rung or a shelf where he hangs" % [p, i])
 		lt(float(k.verts.size() / 3), float(BUDGET), "pitch %d: %d triangles" % [p, k.verts.size() / 3])
 
@@ -183,6 +185,19 @@ func test_the_play_camera_sees_the_cable_from_every_side() -> void:
 				break
 	check(hidden.is_empty(), "the near foot hides the cable from the play camera at %s" % [hidden])
 	gt(float(run.size()), 20.0, "and a run of it was asked (%d points, %.0f m)" % [run.size(), top])
+
+## How near `p` the surface of `k`'s triangles of colour `only` comes.
+func _nearest_tri(k: MeshKit, p: Vector3, only: Color) -> float:
+	var best := INF
+	for i in range(0, k.verts.size(), 3):
+		if not k.colors[i].is_equal_approx(only):
+			continue
+		var a := k.verts[i]
+		if a.distance_to(p) > 4.0:
+			continue
+		best = minf(best, p.distance_to(_closest_on_tri(p, a, k.verts[i + 1], k.verts[i + 2])))
+	return best
+
 
 ## The nearest point to `p` on triangle a, b, c.
 static func _closest_on_tri(p: Vector3, a: Vector3, b: Vector3, c: Vector3) -> Vector3:
