@@ -329,7 +329,7 @@ const TERRAIN: Array[String] = [
 	"border_elevation", "tongues", "reach_out_thin", "reach_in_thin", "reach_out_high", "reach_in_low",
 	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter", "scatter_ruled",
-	"sites", "tip_ground", "beached_wrecks", "pools", "villages", "village_names", "village_order",
+	"sites", "tip_ground", "beached_wrecks", "leads", "pools", "villages", "village_names", "village_order",
 	"villages_each_region", "village_platform",
 	"spawn_home",
 	"above",
