@@ -137,6 +137,7 @@ func test_their_holding_stands_round_his_lip() -> void:
 		Sx.use_root("tull-holding-%d" % seed_value)
 		var g := Sx.game(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0"])
 		await frames(3)
+		check(g.world.packed, "seed %d: the world is packed, its props read off the table" % seed_value)
 		var placed: Dictionary = Sx.system(g, "49_cast").get("placed")
 		var row: Dictionary = placed.get(&"the_tread", {})
 		var lip := Treads.folk_lip(row.ankle, row.pads, float(row.yaw)) if not row.is_empty() else Vector2.INF
@@ -148,19 +149,25 @@ func test_their_holding_stands_round_his_lip() -> void:
 			var own := {}
 			for id: int in PackedInt32Array(m.get("props", PackedInt32Array())):
 				own[id] = true
-			# Read by sections round the lip a holding would stand on (WorldSections).
+			# Read by sections round the lip a holding would stand on, row by row
+			# off the table (WorldSections.rows_in), never as WorldProps: objects
+			# made here outlive the test and count against the next file's bound
+			# (test_prop_table: a grown world holds no props as objects).
 			var near := Treads.folk_lip(m.pos, m.pads, float(m.yaw))
-			var props: Array[WorldProp] = []
+			var rows := PackedInt32Array()
 			for dy in range(-1, 2):
 				for dx in range(-1, 2):
-					props.append_array(WorldSections.props_in(g.world, WorldSections.of(near) + Vector2i(dx, dy)))
+					rows.append_array(WorldSections.rows_in(g.world, WorldSections.of(near) + Vector2i(dx, dy)))
+			var t := g.world.table
 			var kinds: Array[int] = []
-			for p: WorldProp in props:
-				if own.has(p.id) and HOLDING.has(p.kind):
-					kinds.append(p.kind)
-					check(not tull.is_empty() and (tull.pos as Vector2).distance_to(p.pos) > 1.0, "seed %d: Tull does not stand in his own %s" % [seed_value, PropKind.NAMES[p.kind]])
+			for r: int in rows:
+				var kind := int(t.kind[r])
+				var at: Vector2 = t.pos[r]
+				if own.has(t.id[r]) and HOLDING.has(kind):
+					kinds.append(kind)
+					check(not tull.is_empty() and (tull.pos as Vector2).distance_to(at) > 1.0, "seed %d: Tull does not stand in his own %s" % [seed_value, PropKind.NAMES[kind]])
 					if lip.is_finite():
-						lt(p.pos.distance_to(lip), 9.0, "seed %d: the %s stands round his lip (%.1f off it)" % [seed_value, PropKind.NAMES[p.kind], p.pos.distance_to(lip)])
+						lt(at.distance_to(lip), 9.0, "seed %d: the %s stands round his lip (%.1f off it)" % [seed_value, PropKind.NAMES[kind], at.distance_to(lip)])
 			if not row.is_empty() and (m.pos as Vector2) == (row.ankle as Vector2):
 				held += 1
 				for k: int in HOLDING:
