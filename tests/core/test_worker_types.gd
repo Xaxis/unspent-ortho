@@ -22,8 +22,11 @@ func _allowed() -> Dictionary:
 
 func test_the_scan_reaches_the_known_worker_code() -> void:
 	var reached := Scan.reached(Scan.sources())
+	# The last two only through `(load(PATH) as GDScript).call(&"fn", ...)`, the
+	# way RealmWarm reaches the systems it cannot preload.
 	for k: String in ["res://src/ui/ui_sketch.gd::_raster", "res://src/ui/ui_sketch.gd::to_phosphor",
-			"res://src/audio/synth.gd::buffer", "res://src/core/worldgen/gen_fields.gd::batch"]:
+			"res://src/audio/synth.gd::buffer", "res://src/core/worldgen/gen_fields.gd::batch",
+			"res://src/systems/15_lights.gd::prepare_world", "res://src/systems/19_colossi.gd::prepare_world"]:
 		check(reached.has(k) or not FileAccess.file_exists(k.get_slice("::", 0)), "%s is reached from a worker" % k)
 	gt(float(reached.size()), 200.0, "the reach goes through the calls (%d functions)" % reached.size())
 

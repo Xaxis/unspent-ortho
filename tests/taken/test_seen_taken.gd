@@ -131,3 +131,44 @@ func test_who_has_seen_him_survives_a_save() -> void:
 	near(float(folk.call(&"seen_at", v)), was, 1e-3, "when they first saw him comes back")
 	Sx.end(g)
 	await frames(1)
+
+
+## `hour snatch` (98_tour): a tour stages the snatch by name, on the minute the
+## plan comes for the village that saw him first, whatever day a seed puts it on.
+func test_a_tour_stages_the_snatch_by_the_village_that_saw_him_first() -> void:
+	Story.forget()
+	var got := await _village_with_a_yard()
+	if got.is_empty():
+		return
+	var g: Game = got[0]
+	var v: int = got[1]
+	var raids := g.get_node("48_raids")
+	await _seen(g, v)
+	var folk := g.get_node("folk")
+	# Only the village he stood in: whoever saw him as the game began is not this test's.
+	var seen: Dictionary = folk.get("seen_by")
+	for k: int in seen.keys():
+		if k != v:
+			seen.erase(k)
+	var at: Vector2 = g.world.villages[v].get("pos", Vector2.INF)
+	_stand(g, at + Vector2(SnatchNight.AWAY + 10.0, 0.0))
+	var due := SnatchNight.due(float(seen[v]), g.world.seed_value, v)
+	var staged := float(raids.call(&"tour_hour", "snatch"))
+	near(staged, due, 1e-3, "the snatch is staged on the minute it is due")
+	var o := (v + 1) % g.world.villages.size()
+	if o != v:
+		seen[o] = float(seen[v]) - 60.0
+		near(float(raids.call(&"tour_hour", "snatch")), SnatchNight.due(float(seen[o]), g.world.seed_value, o), 1e-3,
+			"with two that saw him, the one that saw him first is staged")
+		seen.erase(o)
+	g.clock.minutes = staged
+	raids.call(&"sweep")
+	var people := _taken(g).people
+	eq(people.size(), 1, "and on that minute, away from them, one of them is taken")
+	if people.size() == 1:
+		eq(people[0].home_name, str(g.world.villages[v].get("name", "")), "out of the village that saw him")
+	g.clock.minutes += 60.0
+	near(float(raids.call(&"tour_hour", "snatch")), g.clock.minutes, 1e-3, "once it has come, staging it again keeps the clock")
+	Sx.end(g)
+	await frames(1)
+	Story.forget()

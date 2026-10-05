@@ -1074,6 +1074,7 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	c.mark(&"tiles.balance")
 	assign.call(1, parts)
 	c.mark(&"tiles.assign")
+	_dry_shores(c)
 	c.coarse_country = sample(country, size, cw, step)
 	_absorb_enclaves(c, roundi(ENCLAVE_TILES * c.body_k * c.body_k * _place_scale(c) * _place_scale(c)))
 	c.mark(&"tiles.enclaves")
@@ -1122,6 +1123,112 @@ static func _best_two(flat: PackedFloat32Array, n: int, i: int, types: int, c: G
 ## Pieces of a type smaller than min_tiles take the land type most common along
 ## their edge (islets, with no land neighbours, stay). Runs before the ecotones
 ## are measured, so the blend follows the borders that remain.
+## A LANDSCAPE BOUND TO THE SEA (BiomeDef.sea_bound: the coast, the frost sea)
+## HOLDS NO PLACE THE SEA DOES NOT REACH. Its keeper and works stand at the open
+## water (the coast's intake on the shore), and a run of it walled off from the
+## sea by another landscape was a coast with no coast: 90210's coast r23 (9,485 tiles, its nearest sea 16 off) and seed 1's
+## frost sea r22 (13,822 tiles, 54 off), with no keeper or works in either.
+## Asked of the PLAN (the sampled landscape every region is cut from,
+## `regions`): a run of a shore type none of whose cells touches the open sea
+## or the square's edge takes the landscape round it, by the votes of its
+## border, tile for tile, its own type kept as the second for the blend. A run
+## with no other land round it is left as it is.
+static func _dry_shores(c: GenContext) -> void:
+	var w := c.w
+	var cw := c.cw
+	var step := GenContext.STEP
+	var size := c.size
+	var types := c.types
+	var shore := PackedByteArray()
+	shore.resize(types)
+	var any := false
+	for cc: int in c.land_types:
+		if c.defs[cc].sea_bound:
+			shore[cc] = 1
+			any = true
+	if not any:
+		return
+	var plan := sample(w.country, size, cw, step)
+	var n := cw * cw
+	var sea := PackedByteArray()
+	sea.resize(n)
+	# THE OPEN SEA: water the square's edge reaches. Water the land closes round
+	# all the way is SEA to the plan too, and is no shore for a coast.
+	var open_sea := PackedByteArray()
+	open_sea.resize(n)
+	var reach := PackedInt32Array()
+	for k in n:
+		sea[k] = 1 if plan[k] == Country.SEA else 0
+		var gx := k % cw
+		var gy := k / cw
+		if sea[k] != 0 and (gx == 0 or gy == 0 or gx == cw - 1 or gy == cw - 1):
+			open_sea[k] = 1
+			reach.append(k)
+	var at := 0
+	while at < reach.size():
+		var k := reach[at]
+		at += 1
+		for m: int in [k - 1, k + 1, k - cw, k + cw]:
+			if m >= 0 and m < n and absi(m % cw - k % cw) <= 1 and sea[m] != 0 and open_sea[m] == 0:
+				open_sea[m] = 1
+				reach.append(m)
+	var sizes := PackedInt32Array()
+	var label := GenFields.patches(plan, sea, cw, sizes)
+	var wet := PackedByteArray()
+	wet.resize(sizes.size())
+	var votes := {}
+	for k in n:
+		var la := label[k]
+		if la < 0 or shore[plan[k]] == 0:
+			continue
+		var gx := k % cw
+		var gy := k / cw
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				var x := gx + dx
+				var y := gy + dy
+				if x < 0 or y < 0 or x >= cw or y >= cw or open_sea[y * cw + x] != 0:
+					wet[la] = 1
+					continue
+				if sea[y * cw + x] != 0:
+					continue
+				var m := y * cw + x
+				if (dx == 0 or dy == 0) and label[m] != la and shore[plan[m]] == 0:
+					var v: PackedInt32Array = votes.get(la, PackedInt32Array())
+					if v.is_empty():
+						v.resize(types)
+					v[plan[m]] += 1
+					votes[la] = v
+	var winner := {}
+	for la: int in votes:
+		if wet[la] != 0:
+			continue
+		var v: PackedInt32Array = votes[la]
+		var best := 0
+		for cc in range(1, types):
+			if v[cc] > v[best]:
+				best = cc
+		if best > 0:
+			winner[la] = best
+	if winner.is_empty():
+		return
+	var country := w.country
+	var country2 := w.country2
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var gy := mini(y / step, cw - 1)
+			for x in size:
+				var k := gy * cw + mini(x / step, cw - 1)
+				var la := label[k]
+				if la < 0 or not winner.has(la):
+					continue
+				var i := y * size + x
+				if country[i] == plan[k]:
+					country2[i] = country[i]
+					country[i] = winner[la]
+	)
+
+
 static func _absorb_enclaves(c: GenContext, min_tiles: int) -> void:
 	absorb(c.w.country, c.w.country2, c.size, c.types, min_tiles)
 

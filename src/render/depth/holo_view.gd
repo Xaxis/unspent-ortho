@@ -258,7 +258,7 @@ func follow(focus: Vector2) -> void:
 	for p: WorldProp in query.props_near(focus, REACH):
 		if world.depleted.has(p.id):
 			continue
-		var country := world.dress_country(floori(p.pos.x), floori(p.pos.y))
+		var country := world.built_country(p)
 		if p.kind == PropKind.HOUSE:
 			var f := BiomeForms.of(country)
 			roofs.append(f.fact(PropModels.variant_of(p, world.seed_value, country),

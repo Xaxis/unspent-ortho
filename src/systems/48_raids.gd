@@ -2012,8 +2012,7 @@ func _burn_what_is_due() -> void:
 ## Both are world rows, so the save keeps the gap and the shell (SaveCore).
 func _burn(house: WorldProp) -> void:
 	var w := game.world
-	var c := maxi(Country.COAST, w.country_at(floori(house.pos.x), floori(house.pos.y)))
-	var form := PropModels.variant_of(house, w.seed_value, c)
+	var form := PropModels.variant_of(house, w.seed_value, w.built_country(house))
 	w.depleted[house.id] = INF
 	if game.view != null:
 		game.view.refresh_props(house)
@@ -2073,6 +2072,27 @@ func _come_for_the_seen() -> void:
 			if sys.has_method("took") and sys.get("taken") is Taken:
 				sys.call("took", -1, "", -1, str(village.get("name", "")), region, due)
 				break
+
+
+## `hour snatch` in a tour (98_tour): the world minute the plan comes for the
+## village that saw him first, from the clock now on, so a tour waits for the
+## snatch by name and never by an hour (SnatchNight.due moves it by up to a day
+## between seeds). The clock now once it has come; NAN when nobody has seen him.
+func tour_hour(_spec: String) -> float:
+	var folk := _folk()
+	if folk == null or game.clock == null:
+		return NAN
+	var seen: Dictionary = folk.get("seen_by")
+	var first := -1
+	for v: int in seen:
+		if first < 0 or float(seen[v]) < float(seen[first]):
+			first = v
+	if first < 0:
+		return NAN
+	var now := game.clock.minutes
+	if came_for.has(first):
+		return now
+	return maxf(now, _due_again.get(first, SnatchNight.due(float(seen[first]), game.world.seed_value, first)))
 
 
 func _folk() -> Node:

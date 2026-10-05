@@ -81,6 +81,33 @@ tour_header_others() {
   ' "$file"
 }
 
+# Whether a tour is one of this checkout's own (in tours/). A copy elsewhere, a
+# builder's probe in a scratchpad, keeps its original's header on purpose and is
+# run with a note rather than refused (tools/tour.sh): one refused copy of
+# second-keeper cost a 20 min rerun.
+#
+#   tour_in_tours tours/x.tour       -> status 0; scratch/x.tour -> 1
+tour_in_tours() {
+  [ "$(cd "$(dirname "$1")" 2>/dev/null && pwd -P)" = "$(pwd -P)/tours" ]
+}
+
+# Why a tour is not one tools/tour.sh can run, from a `sweep: skip, WHY` line in
+# its header (tours/degrade_fit.tour runs on the Compatibility renderer), or
+# nothing. tour-sweep.sh passes over it with that reason and tour.sh refuses it
+# with it, so neither reads its header's other runs as its own.
+#
+#   tour_header_skip tours/x.tour    -> the reason
+tour_header_skip() {
+  awk '
+    !/^#/ { exit }
+    {
+      line = $0
+      sub(/^#[ \t]*/, "", line)
+      if (line ~ /^sweep: skip/) { sub(/^sweep: skip,?[ \t]*/, "", line); print (line == "" ? "skip" : line); exit }
+    }
+  ' "$1"
+}
+
 tour_header_env() {
   local file="$1"
   local base

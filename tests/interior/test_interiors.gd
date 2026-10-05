@@ -277,7 +277,7 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 	for p: WorldProp in w.each_prop():
 		if p.kind != PropKind.HOUSE:
 			continue
-		var land := w.country_at(floori(p.pos.x), floori(p.pos.y))
+		var land := w.built_country(p)
 		var d := BiomeRegistry.by_index(land)
 		if d == null:
 			continue
