@@ -326,6 +326,54 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 		"one villager still builds in the time a frame can spare (%.2f ms, the middle of %d)" % [each_ms, n])
 
 
+# ---------------------------------------------------------------- the ring
+
+## A ring asked for N stands N, on dry ground, wherever he is: the crowd's cost
+## (TourPeople `perf folk`) is divided by the N it asked for. Round a man on a
+## river bank the seats past the first ring that fell in the water were left
+## empty: 22 of 24 at Fennick on seed 1 (characters.tour), and the shot failed.
+func test_a_ring_on_a_shore_stands_everybody_asked_for_on_dry_ground() -> void:
+	var g := _game()
+	var f := _folk(g)
+	var at := _shore(g, f)
+	check(at.is_finite(), "a shore near the spawn whose outer seats are partly water")
+	g.player.pos = at
+	f.call("_ring", 24)
+	var folk: Array = f.get("folk")
+	eq(folk.size(), 24, "a ring of 24 on a shore stands 24")
+	for p: Dictionary in folk:
+		check(bool(f.call("_standable", p.pos)), "nobody stands in the water (%s)" % p.pos)
+	_free(g, f)
+
+
+## Dry ground near the spawn whose first ring is all dry and at least three of
+## the next ring's seats are water: a man standing on a bank.
+func _shore(g: Game, f: GameSystem) -> Vector2:
+	var first := int((f.get_script() as GDScript).get_script_constant_map()["RING_FIRST"])
+	var s := g.world.spawn
+	for r in 160:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var at := Vector2(floori(s.x) + dx + 0.5, floori(s.y) + dy + 0.5)
+				if not bool(f.call("_standable", at)):
+					continue
+				var dry := true
+				for i in first:
+					var a := TAU * i / first
+					dry = dry and bool(f.call("_standable", at + Vector2(cos(a), sin(a)) * (1.6 + 0.25 * (i % 2))))
+				if not dry:
+					continue
+				var wet := 0
+				for k in first:
+					if not bool(f.call("_standable", f.call("_ring_seat", at, k))):
+						wet += 1
+				if wet >= 3:
+					return at
+	return Vector2.INF
+
+
 # ---------------------------------------------------------------- indifference
 
 func test_a_village_looks_up_and_a_street_does_not() -> void:

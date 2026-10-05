@@ -40,8 +40,10 @@ shot 05-gulls-on-the-refuse with gulls
 village oyster_row square
 hour 15.5
 zoom 15
+# Shot the moment the crowd is there, with no settle between: from the square it
+# is three of the village's people at a time, and half a second of their walking
+# took one out of the count (a house between her and the camera hides her).
 await crowd 20
-wait 0.5
 shot 06-oyster-row-afternoon with crowd
 hour 19.6
 wait 2.5
