@@ -171,6 +171,22 @@ func test_breath_takes_the_sun_the_ground_takes_or_it_is_soot_on_snow() -> void:
 	lt(MobFx.VAPOUR_DARK, MobFx.VAPOUR_SUN * 0.5, "but a breath in the dark is a cloud, not a lamp")
 
 
+## A BREATH IS BREATHED OUT WHOLE AND THINS AS IT GOES. Its core was stippled a
+## sixth holes from the first frame, so at play zoom two of them off the mouth
+## were a speckled blob beside the head, sparkle and not breath (#80): the core
+## keeps every pixel until VAPOUR_WHOLE of its life, and only then comes apart.
+func test_a_breath_is_breathed_out_whole_and_thins_as_it_goes() -> void:
+	var src := _marks_source()
+	var at := src.find("vec4 vapour(")
+	gt(at, 0, "breath has a mark of its own")
+	var body := src.substr(at, src.find("\n}", at) - at)
+	check(body.contains("< smoothstep(VAPOUR_WHOLE, 1.0, pr)"),
+		"the core loses pixels only as its life runs on past VAPOUR_WHOLE")
+	gt(MobFx.VAPOUR_WHOLE, 0.2, "whole for long enough to be seen as a cloud at walking pace")
+	lt(MobFx.VAPOUR_WHOLE, 0.6, "and thinning for most of its life, so it goes as breath goes")
+	lt(MobFx.VAPOUR_PX, 40.0, "and no wider on screen than the head it comes out of (it was 54)")
+
+
 # --- A line of borrowed light is a line ----------------------------------------
 
 func test_a_magnet_line_is_drawn_whole_and_not_as_spaced_sparkles() -> void:

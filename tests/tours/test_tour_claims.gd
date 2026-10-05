@@ -98,11 +98,13 @@ func test_every_claimed_subject_is_one_the_runner_can_answer() -> void:
 						check(lands.has(StringName(id)),
 							"%s line %d: no landscape type %s" % [f, n, id])
 				if subject.begins_with("border:"):
-					var pair := subject.substr(7).split("-", false)
-					check(pair.size() == 2, "%s line %d: %s wants two ids joined by a dash" % [f, n, subject])
-					for id: String in pair:
-						check(lands.has(StringName(id)),
-							"%s line %d: no landscape type %s" % [f, n, id])
+					# `border:a-b|c-d`: any of those borders (98_tour `_on_border`).
+					for one: String in subject.substr(7).split("|", false):
+						var pair := one.split("-", false)
+						check(pair.size() == 2, "%s line %d: %s wants two ids joined by a dash" % [f, n, one])
+						for id: String in pair:
+							check(lands.has(StringName(id)),
+								"%s line %d: no landscape type %s" % [f, n, id])
 				if subject.begins_with("prop:"):
 					check(PropKind.NAMES.has(subject.substr(5).replace("_", " ")),
 						"%s line %d: no prop kind %s" % [f, n, subject])
@@ -341,11 +343,12 @@ func test_a_frame_named_after_something_says_what_it_holds() -> void:
 						# the coast/salt_flats border and says so. Requiring both spelled
 						# out made this a rule about how a frame is NAMED rather than about
 						# what it DECLARES, which is the opposite of the point.
-						var pair := s.substr(7).split("-", false)
-						var within := pair.size() == 2
-						for id: String in named:
-							within = within and pair.has(id)
-						said = said or within
+						for one: String in s.substr(7).split("|", false):
+							var pair := one.split("-", false)
+							var within := pair.size() == 2
+							for id: String in named:
+								within = within and pair.has(id)
+							said = said or within
 				check(said, "%s line %d: %s names %s and never says which ground it is on"
 					% [f, n, label, ", ".join(named)])
 			if names_it(label, "lamp"):

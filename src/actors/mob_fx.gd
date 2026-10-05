@@ -419,7 +419,6 @@ vec4 vapour(vec2 p, vec2 px, float pw, float pr) {
 	if (r > edge) {
 		return vec4(0.0);
 	}
-	float fade = 1.0 - pr;
 	if (edge - r < pw * 1.3) {
 		// The contour breaks into dashes as the breath thins away.
 		float seg = floor((a / TAU + 0.5) * 16.0);
@@ -428,7 +427,11 @@ vec4 vapour(vec2 p, vec2 px, float pw, float pr) {
 		}
 		return vec4(vapour_lit(col_b), 1.0);
 	}
-	if (ink_hash(px + vec2(seed * 31.0, seed * 17.0)) > 0.35 + 0.5 * fade) {
+	// A WHOLE CLOUD THAT THINS, NOT A SPRAY OF SPECKS. Its core was a sixth holes
+	// from the first frame, and at play zoom two of them off the mouth read as a
+	// speckled blob beside the head, sparkle and not breath (#80). It is breathed
+	// out whole and only comes apart as it goes, from VAPOUR_WHOLE of its life on.
+	if (ink_hash(px + vec2(seed * 31.0, seed * 17.0)) < smoothstep(VAPOUR_WHOLE, 1.0, pr)) {
 		return vec4(0.0);
 	}
 	return vec4(vapour_lit(col_a), 1.0);
@@ -650,8 +653,11 @@ const TELL_PX := 90.0
 ## pen behind a body that is still plainly a person (wave A2, art finding 3).
 const STREAK_PX := 102.0
 const BRACKET_PX := 78.0
-## Breath and steam: small, because they are a cue and not an event.
-const VAPOUR_PX := 54.0
+## Breath and steam: small, because they are a cue and not an event. At 54 a
+## breath was wider than the head it came out of (#80).
+const VAPOUR_PX := 34.0
+## How much of a breath's life it hangs whole before it starts to come apart.
+const VAPOUR_WHOLE := 0.3
 ## A magnet line's width in pixels of the frame: one PEN of the machines' cold
 ## with one of their dark each side, which is the least that reads over pale
 ## gravel. It is the one floor `look/marks` left at its 640x360 value, so the
@@ -722,9 +728,9 @@ static func _shader(key: StringName) -> Shader:
 	var s := Shader.new()
 	# One number for the open heart of a mark, and one for the pen every width in
 	# this file is drawn with, in the shaders and in the tests.
-	var open := ("#define PEN %0.4f\n#define OPEN %0.4f\n#define VAPOUR_SUN %0.4f\n#define VAPOUR_DARK %0.4f\n"
+	var open := ("#define PEN %0.4f\n#define OPEN %0.4f\n#define VAPOUR_SUN %0.4f\n#define VAPOUR_DARK %0.4f\n#define VAPOUR_WHOLE %0.4f\n"
 		+ "#define BURST_STROKES %d\n#define BURST_ROOT %0.4f\n#define BURST_TIP %0.4f\n#define BURST_SHORT %0.4f\n#define MARK_HALO %0.4f\n") % [
-		PEN, BURST_OPEN, VAPOUR_SUN, VAPOUR_DARK, BURST_STROKES, BURST_ROOT, BURST_TIP, BURST_SHORT, MARK_HALO]
+		PEN, BURST_OPEN, VAPOUR_SUN, VAPOUR_DARK, VAPOUR_WHOLE, BURST_STROKES, BURST_ROOT, BURST_TIP, BURST_SHORT, MARK_HALO]
 	match key:
 		&"over":
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _BILLBOARD + _MARKS

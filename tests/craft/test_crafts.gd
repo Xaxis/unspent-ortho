@@ -166,6 +166,30 @@ func test_boarding_is_refused_out_of_reach() -> void:
 	check(Crafts.nearest(list, Vector2(30, 30)) == null)
 
 
+## A BODY STEPS OFF ONTO DRY GROUND WHERE ANY IS IN REACH. Shallows are ground a
+## body can stand in, so the nearest standable tile used to win: at the drowned
+## city's port the raft set him in the water a tile short of the stair, on seed
+## 1 at (1411.5, 1132.5), beside the stair's dry tile at (1412, 1132).
+func test_a_body_steps_off_onto_dry_ground_not_into_the_shallows_beside_it() -> void:
+	var w := shore()
+	var q := WorldQuery.new(w)
+	# Nosed into the shallows, the shallow tile under the raft nearer than the shore.
+	var at := Vector2(13.2, 10.5)
+	var off := Crafts.step_off_spot(w, q, &"raft", at)
+	check(off != Vector2.INF, "there is somewhere to step")
+	check(not Ground.is_water(w.ground_at(floori(off.x), floori(off.y))), "and it is the dry shore, not the shallows (%s)" % [off])
+	lt(off.distance_to(at), CraftKinds.launch_reach(&"raft") + 0.01, "within a step")
+	# Where the only ground in reach is shallow, he wades off into it, as before.
+	var wet := shore()
+	for y in wet.size:
+		for x in 12:
+			wet.ground[y * wet.size + x] = Ground.WATER
+			wet.level[y * wet.size + x] = 0
+	var wq := WorldQuery.new(wet)
+	var wade := Crafts.step_off_spot(wet, wq, &"raft", at)
+	check(wade != Vector2.INF and wq.standable(floori(wade.x), floori(wade.y)), "with no dry ground in reach, the shallows still take him")
+
+
 ## A body boards a craft from as far as that craft sets a body down. A raft
 ## stepped him off three tiles from itself and then would not take him back from
 ## there: at a landing among the drowned city's roofs, it was stranded.
