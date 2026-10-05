@@ -302,6 +302,10 @@ func _process(delta: float) -> void:
 		_cam.fov = EYE_FOV
 		_cam.near = EYE_NEAR
 		_cam.global_transform = eye_at(f)
+	# The node goes with the figure (Player.hanging): his lamp, breath and sounds
+	# come from where he hangs, while `pos` stays on the land.
+	if game.player.model != null:
+		game.player.global_position = game.player.model.global_position
 	_quake()
 	_cost_us = Time.get_ticks_usec() - t0
 

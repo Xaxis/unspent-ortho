@@ -190,6 +190,8 @@ func why_not_open(n: StringName) -> String:
 	if n != &"pause" and not reads_only and _hostile_near():
 		return NEAR_LINE
 	if n == &"crafting":
+		if game.aloft:
+			return Survival.ALOFT_LINE
 		var here := UiLink.stations_here(game)
 		if here.is_empty() and not game.options.ui_demo:
 			return "Nothing here to make things at."
@@ -550,8 +552,9 @@ func _guide_hint() -> Dictionary:
 	return {"line": PlayerSettings.spell(String(h.line), keys), "key": PlayerSettings.cap_of(keys[0])}
 
 
+## Up a walker's leg nothing on the land holds his slate (Survival.threat_near).
 func _hostile_near() -> bool:
-	return UiRules.hostile_near(get_tree().get_nodes_in_group(&"mobs"), game.player.pos)
+	return not game.aloft and UiRules.hostile_near(get_tree().get_nodes_in_group(&"mobs"), game.player.pos)
 
 
 ## Tours ask what is on the glass: the location ping standing on its own scrap

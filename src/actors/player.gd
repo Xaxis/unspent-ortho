@@ -40,8 +40,9 @@ var ride: CraftRide = null
 var sunk := 0.0
 ## OFF THE LAND ALTOGETHER, up a walker's leg (43_climb, the only writer): the
 ## figure is drawn where the climb hangs it, in world space, placed by the climb
-## the same frame as the leg it hangs from, and this node leaves its transform
-## alone. `pos` and the fight body stay where it left the ground.
+## the same frame as the leg it hangs from, and the climb puts this node with it,
+## so what is seen and heard of him (his lamp, his breath, his sounds) is up
+## there too. `pos`, the fight body and `on_land` stay where it left the ground.
 var hanging := false:
 	set(v):
 		hanging = v
@@ -225,7 +226,8 @@ func _sync(delta: float) -> void:
 	_wake(delta, was_swimming)
 	var target := world.height_at(pos)
 	_z = target if delta == 0.0 else lerpf(_z, target, 1.0 - exp(-14.0 * delta))
-	position = Vector3(pos.x, _z + lift - sunk, pos.y)
+	if not hanging:
+		position = on_land()
 	if model and not hanging:
 		model.swimming = swimming
 		model.rotation.y = -facing
@@ -246,6 +248,18 @@ func _sync(delta: float) -> void:
 	if flashing != _flashing and model != null:
 		_flashing = flashing
 		MobFx.set_flash(model, flashing, _flash_at, FLASH_WHOLE)
+
+
+## Where he is on the land: the node's own place, except up a walker's leg,
+## where the node is with the figure and this stays where he left the ground.
+func on_land() -> Vector3:
+	return Vector3(pos.x, _z + lift - sunk, pos.y)
+
+
+## Where he is heard from, in tile space: `pos`, except up a walker's leg, where
+## it is under the figure.
+func heard_at() -> Vector2:
+	return Vector2(position.x, position.z) if hanging else pos
 
 
 ## Screen-relative input to world-space intent for a camera at yaw_deg.
