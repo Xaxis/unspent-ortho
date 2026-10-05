@@ -2,7 +2,7 @@ class_name WorksDepot
 ## The drawn depot of the plan (docs/VISION.md), and the three working parts
 ## a player has to get through to put one out.
 ##
-##   WorksDepot.yard(site, stage, made_material) -> Node3D
+##   WorksDepot.yard(site, stage, made_material, form, cable) -> Node3D
 ##   WorksDepot.part(kind_index, seed_value, made_material) -> Node3D
 ##   WorksDepot.set_dark(node, dark)        every light on it, out for good
 ##   WorksDepot.set_broken(part_node, done)  that part, opened and spilling
@@ -55,8 +55,21 @@ const CORD := Color(0.5882, 0.5412, 0.4627)
 const SPOIL := Color(0.2314, 0.1961, 0.2196)
 
 
-## The yard: deck, mast, bays for `stage`, and the ladder somebody left on it.
-static func yard(site: WorksSite, stage: int, made_material: Material) -> Node3D:
+## The forms a depot is drawn as (BiomeDef.depot_form): the raised deck under its
+## lit mast, and the crags' winch house on a shelf's lip.
+const DECK := &"deck"
+const WINCH := &"winch"
+const FORMS: Array[StringName] = [DECK, WINCH]
+## Where a winch house's cable comes down when none is given (a gallery, a
+## measure): in the yard's frame, off its long side and two levels down.
+const CABLE_SAMPLE := Vector3(0.6, -2.4, -5.6)
+
+
+## The yard as `form` draws it, for `stage`. A deck: deck, mast, bays and the
+## ladder somebody left on it. A winch house: the house, its winch and the cable
+## down to `cable` (in the yard's own frame, tiles along the bearing, up and
+## across: where Works.lip_foot came down), its stock by stage, and no light.
+static func yard(site: WorksSite, stage: int, made_material: Material, form: StringName = DECK, cable := Vector3.INF) -> Node3D:
 	var root := Node3D.new()
 	root.name = "works_%d" % maxi(0, site.region)
 	var found := MeshKit.new()
@@ -69,6 +82,15 @@ static func yard(site: WorksSite, stage: int, made_material: Material) -> Node3D
 	made.style = Ink.HAND
 	made.style2 = Ink.HAND
 	var s := maxi(0, site.region) * 31 + 7
+	if form == WINCH:
+		var foot := cable if cable.is_finite() else CABLE_SAMPLE
+		_house(found, made, s)
+		_winch(found, made, foot, s)
+		for i in clampi(stage + 1, 1, Works.STAGES):
+			_stock(found, i)
+		root.add_child(_mesh("found", found, PropModels.found_material()))
+		root.add_child(_mesh("made", made, made_material))
+		return root
 	_deck(found, made, lamps, s)
 	_mast(found, lamps)
 	for i in clampi(stage + 1, 1, Works.STAGES):
@@ -147,8 +169,20 @@ static func set_broken(node: Node3D, done: bool) -> void:
 ## The deck is a wall and not a floor: the game has no height in its collision, so
 ## a raised deck a body cannot climb is a thing it goes round. The ramp is drawn
 ## and passable, which is the door into the yard.
-static func yard_blocks() -> Array[Vector3]:
+##
+## A winch house is its own walls and its drum: two circles over the house, one
+## over its end where the stock is stacked, and one at the drum on the lip side
+## (`cable`, as `yard` takes it). The jib leans out over the drop, where nobody
+## walks.
+static func yard_blocks(form: StringName = DECK, cable := Vector3.INF) -> Array[Vector3]:
 	var out: Array[Vector3] = []
+	if form == WINCH:
+		out.append(Vector3(-0.85, 0.0, 1.2))
+		out.append(Vector3(0.85, 0.0, 1.2))
+		out.append(Vector3(-HOUSE_LONG * 0.5 - STOCK_OUT, 0.0, 0.62))
+		var drum := _drum_at(cable if cable.is_finite() else CABLE_SAMPLE)
+		out.append(Vector3(drum.x, drum.z, 0.55))
+		return out
 	for i in 4:
 		out.append(Vector3(lerpf(-2.2, 2.2, i / 3.0), 0.0, 1.62))
 	return out
@@ -166,10 +200,10 @@ static func part_blocks(i: int) -> Array[Vector3]:
 ## The yard, measured off the mesh it really builds: `{high, wide, draws}`, so a
 ## test can hold the mast to the height the silhouette needs and the whole thing
 ## to a draw-call budget.
-static func measure(stage: int) -> Dictionary:
+static func measure(stage: int, form: StringName = DECK) -> Dictionary:
 	var site := WorksSite.new()
 	site.region = 0
-	var root := yard(site, stage, null)
+	var root := yard(site, stage, null, form)
 	var box := AABB()
 	var first := true
 	var draws := 0
@@ -405,6 +439,270 @@ static func _leavings(k: MeshKit, seed_value: int) -> void:
 	k.prism(-hl + 0.95, DECK_HIGH + 0.66, -z - 0.2, 0.05, DECK_HIGH + 0.72, 0.05, 5, CORD)
 
 
+# --- the winch house (the crags) -----------------------------------------------
+
+## The house, in tiles: long along the bearing, low, its roof falling to the
+## yard. Squat because it was cut into a shelf, and old because the plan found
+## nothing here it wanted and left it standing.
+const HOUSE_LONG := 2.9
+const HOUSE_WIDE := 2.1
+const HOUSE_HIGH := 1.3
+## How far past the house's end its stock is stacked.
+const STOCK_OUT := 0.75
+## Weathered plate: the plan's own plate, a value down and gone to rust at the
+## seams. No enamel and no light: nothing of the plan is live in the crags.
+const OLD_PLATE := Color(0.2745, 0.2902, 0.3176)
+const OLD_TOP := Color(0.3647, 0.3804, 0.4078)
+const OLD_RUST := Color(0.3804, 0.1961, 0.1373)
+
+
+## THE HOUSE: a plinth of cut stone it was set on, plate walls of three batches
+## with their seams standing proud, a single-pitch roof falling to the yard and
+## overhanging it, a door well, and a stub vent. ART §2's slab is the risk of a
+## low house, so no face is one quad: the walls are banded, the roof steps, the
+## plinth is proud of the walls.
+static func _house(k: MeshKit, made: MeshKit, seed_value: int) -> void:
+	var hl := HOUSE_LONG * 0.5
+	var hw := HOUSE_WIDE * 0.5
+	# The plinth: the shelf's own stone, squared, proud of the walls.
+	k.box(Vector3(-hl - 0.14, 0.0, -hw - 0.14), Vector3(hl + 0.14, 0.2, hw + 0.14), P.STONE[1], P.STONE[2])
+	# Three runs of wall plate, each from its own batch, with the seam between
+	# them a dark gap and a raised strap over it.
+	var runs: Array[Vector2] = [Vector2(-hl, -hl + 1.05), Vector2(-hl + 1.05, hl - 0.75), Vector2(hl - 0.75, hl)]
+	for i in runs.size():
+		var r: Vector2 = runs[i]
+		var face := OLD_PLATE if i != 1 else _tone(OLD_PLATE, 0.86)
+		k.box(Vector3(r.x, 0.2, -hw), Vector3(r.y, HOUSE_HIGH, hw), face, OLD_TOP)
+		if i > 0:
+			for side: float in [-1.0, 1.0]:
+				k.box(Vector3(r.x - 0.05, 0.22, side * hw - 0.03), Vector3(r.x + 0.05, HOUSE_HIGH - 0.04, side * hw + 0.03), PLATE_DARK, PLATE_DARK)
+	# Rust where the plate met the stone, run down from under every strap, and
+	# bleeding round the ends: a wall this low is mostly what a player passes,
+	# and one weathered value from end to end is the slab again.
+	for side: float in [-1.0, 1.0]:
+		k.box(Vector3(-hl + 0.1, 0.2, side * hw - 0.012), Vector3(hl - 0.1, 0.4, side * hw + 0.012), OLD_RUST, OLD_RUST)
+		for x: float in [-hl + 1.05, hl - 0.75]:
+			k.box(Vector3(x + 0.05, 0.4, side * hw - 0.014), Vector3(x + 0.22, HOUSE_HIGH - 0.2, side * hw + 0.014), _tone(OLD_RUST, 0.9), OLD_RUST)
+	for end: float in [-1.0, 1.0]:
+		k.box(Vector3(end * hl - 0.012, 0.2, -hw + 0.1), Vector3(end * hl + 0.012, 0.55, hw - 0.1), OLD_RUST, OLD_RUST)
+	# The door well on the yard side (+across), a plate door ajar in it.
+	k.box(Vector3(-0.42, 0.2, hw - 0.04), Vector3(0.28, 1.08, hw + 0.01), SHADOW, SHADOW)
+	k.push(Transform3D(Basis(Vector3.UP, -0.5), Vector3(0.28, 0.0, hw)))
+	k.box(Vector3(-0.7, 0.22, 0.0), Vector3(0.0, 1.06, 0.05), OLD_PLATE, OLD_TOP)
+	k.pop()
+	_rivets(k, Vector3(-hl + 0.1, HOUSE_HIGH - 0.12, hw + 0.02), Vector3(hl - 0.1, HOUSE_HIGH - 0.12, hw + 0.02), 7)
+	# The roof: one pitch, high at the back (-across) and low over the door, in two
+	# plates that overlap down the slope, overhanging all round.
+	var fall := 0.24
+	var tilt := atan2(fall, HOUSE_WIDE + 0.4)
+	# THE ROOF IS MOST OF WHAT THE PLAY CAMERA SEES OF IT, so it is never one
+	# plate: the back run whole, the front run in three sheets of three batches,
+	# the middle one gone to rust, and a sheet missing at the far end with the
+	# joists and the dark under them showing.
+	k.push(Transform3D(Basis(Vector3.RIGHT, -tilt), Vector3(0.0, HOUSE_HIGH + fall * 0.5, 0.0)))
+	k.box(Vector3(-hl - 0.18, 0.0, -hw - 0.22), Vector3(hl + 0.18, 0.08, 0.1), PLATE_DARK, OLD_TOP)
+	var sheets: Array[Vector3] = [Vector3(-hl - 0.12, -hl + 1.05, 0.95), Vector3(-hl + 1.1, hl - 0.95, 0.0), Vector3(hl - 0.9, hl + 0.14, 0.86)]
+	for i in sheets.size():
+		var sh: Vector3 = sheets[i]
+		var top := _tone(OLD_TOP, sh.z) if i != 1 else _tone(OLD_RUST, 1.25)
+		if i == 2:
+			# The missing sheet: joists over the dark of the house.
+			k.box(Vector3(sh.x, -0.2, 0.06), Vector3(sh.y, -0.16, hw + 0.2), SHADOW, SHADOW)
+			for j in 3:
+				var jx := lerpf(sh.x + 0.1, sh.y - 0.1, j / 2.0)
+				k.box(Vector3(jx - 0.035, -0.04, 0.04), Vector3(jx + 0.035, 0.04, hw + 0.24), PLATE_DARK, PLATE)
+			continue
+		k.box(Vector3(sh.x, -0.03, 0.02), Vector3(sh.y, 0.05, hw + 0.26), PLATE_DARK, top)
+	for i in 5:
+		var x := -hl + 0.3 + i * (HOUSE_LONG - 0.6) / 4.0
+		k.box(Vector3(x - 0.03, 0.06, -hw - 0.2), Vector3(x + 0.03, 0.11, 0.08), PLATE_DARK, PLATE)
+	k.pop()
+	# The vent: a stub of pipe through the roof with a cowl, cold.
+	k.prism(hl - 0.55, HOUSE_HIGH, -hw + 0.45, 0.1, HOUSE_HIGH + 0.7, 0.1, 6, PLATE_DARK, PLATE)
+	k.prism(hl - 0.55, HOUSE_HIGH + 0.7, -hw + 0.45, 0.17, HOUSE_HIGH + 0.82, 0.12, 6, OLD_PLATE, OLD_TOP)
+	# MADE: a sheet of sacking over the roof's back edge, weighted with stones,
+	# and spoil round the plinth where the shelf was cut.
+	made.box(Vector3(-hl + 0.2, HOUSE_HIGH + fall - 0.02, -hw - 0.3), Vector3(-hl + 1.3, HOUSE_HIGH + fall + 0.05, -hw + 0.4), SACKING, SACKING)
+	for i in 2:
+		made.rock(-hl + 0.45 + i * 0.6, HOUSE_HIGH + fall + 0.03, -hw - 0.05, 0.1, 0.08, seed_value + 40 + i, P.STONE[2], 5)
+	for i in 5:
+		var a := Rng.hash01(seed_value, i, 0x3C) * TAU
+		var r := hl + 0.35 + Rng.hash01(seed_value, i, 0x3D) * 0.7
+		made.rock(cos(a) * r, 0.0, sin(a) * r * 0.75, 0.18 + Rng.hash01(seed_value, i, 0x3E) * 0.16, 0.13, seed_value + i, SPOIL, 5)
+
+
+## The winch's cable: its thickness and round, its colour (dark against the
+## crags' pale rock), how far it sags for its length, and how many runs draw it.
+const CABLE_R := 0.085
+const CABLE_SIDES := 6
+const CABLE := Color(0.0980, 0.1020, 0.1098)
+const CABLE_SAG := 0.07
+const CABLE_RUNS := 14
+
+
+## Where the jib's head stands: JIB_OUT out from the drum toward the lip, and
+## swung along the drum's axis, a step at a time either way, until neither it
+## nor the rope from it to `foot` hangs over a working housing
+## (Works.PART_OFFSETS). Seed 1's lip fell past the breaker, and the sheave sat
+## in its cap with the rope down through the cabinet. The first swing that
+## clears both, else straight out.
+static func _jib_head(drum: Vector3, o: Vector3, side: Vector3, foot: Vector3) -> Vector3:
+	var straight := drum + o * JIB_OUT + Vector3(0.0, JIB_HIGH, 0.0)
+	for swing: float in [0.0, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0]:
+		var head := straight + side * swing * JIB_SWING
+		if _jib_clear(head, foot):
+			return head
+	return straight
+
+
+## Whether a jib's head at `head` and its rope down to `foot` keep off every
+## housing: the head by JIB_CLEAR, and the rope by ROPE_CLEAR for as long as it is
+## over the shelf the housings stand on (it falls below the shelf's floor at the
+## lip, and a foot may come down beside a housing on the terrace under it).
+static func _jib_clear(head: Vector3, foot: Vector3) -> bool:
+	var h := Vector2(head.x, head.z)
+	var top := head.y - 0.22
+	var low := foot.y + 0.12
+	var over := clampf(top / (top - low), 0.0, 1.0) if low < 0.0 else 1.0
+	var lip := h.lerp(Vector2(foot.x, foot.z), over)
+	for p: Vector2 in Works.PART_OFFSETS:
+		if h.distance_to(p) < JIB_CLEAR or Geometry2D.get_closest_point_to_segment(p, h, lip).distance_to(p) < ROPE_CLEAR:
+			return false
+	return true
+
+
+## The jib's reach out from the drum, its head's height, the step it swings by,
+## and how far its head and the rope keep off a housing's middle (a housing's
+## mass reaches 0.6, WorksDepot.part_blocks, and its cap a little more).
+const JIB_OUT := 1.75
+const JIB_HIGH := 2.15
+const JIB_SWING := 0.55
+const JIB_CLEAR := 1.2
+const ROPE_CLEAR := 0.85
+
+
+## THE LAY: two pale strands wound round the dark cable down its whole length,
+## so it reads as a rope against the pale rock it hangs over AND the dark face it
+## hangs down, where a dark line alone was lost; seen from far off the turns are
+## a zip of chevrons, as on the climb's rope (#32). Unlit: nothing of the plan
+## burns in the crags.
+static func _lay(k: MeshKit, line: Array[Vector3]) -> void:
+	var run := 0.0
+	for strand in 2:
+		var last := Vector3.INF
+		run = 0.0
+		for i in range(1, line.size()):
+			var a := line[i - 1]
+			var b := line[i]
+			var along := (b - a).normalized()
+			var n1 := along.cross(Vector3.UP if absf(along.y) < 0.95 else Vector3.RIGHT).normalized()
+			var n2 := along.cross(n1)
+			var length := a.distance_to(b)
+			var steps := maxi(1, ceili(length / LAY_STEP))
+			for j in range(0, steps + 1):
+				var s := run + length * float(j) / float(steps)
+				var turn := s / LAY_TURN * TAU + float(strand) * PI
+				var p := a.lerp(b, float(j) / float(steps)) + (n1 * cos(turn) + n2 * sin(turn)) * (CABLE_R + LAY_R * 0.5)
+				if last.is_finite():
+					k.strut(last, p, LAY_R, 3, LAY)
+				last = p
+			run += length
+
+
+## The lay's strands: thickness, the length of road one winds round in, how
+## finely it is drawn, and its colour, the dull grey of weathered wire. A long
+## turn and a bright, thick strand read up close as a screw thread, an auger and
+## not a cable (05 from the terrace below); this lay is wire rope's, tight and
+## dull, and from above still a striped line.
+const LAY_R := 0.016
+const LAY_TURN := 0.27
+const LAY_STEP := 0.055
+const LAY := Color(0.4196, 0.4118, 0.3882)
+
+
+## Where the drum stands, in the yard's frame: against the house's wall on the
+## side the cable goes down, a little out from it.
+static func _drum_at(foot: Vector3) -> Vector3:
+	var out := Vector2(foot.x, foot.z)
+	out = out.normalized() if out.length() > 0.01 else Vector2(0.0, -1.0)
+	var t := minf(HOUSE_LONG * 0.5 / maxf(absf(out.x), 0.001), HOUSE_WIDE * 0.5 / maxf(absf(out.y), 0.001))
+	var at := out * (t + 0.45)
+	return Vector3(at.x, 0.0, at.y)
+
+
+## THE WINCH AND ITS CABLE: a drum on a frame against the wall, an A-frame jib
+## leaning out over the lip with a sheave at its head, and the cable from the drum
+## up over the sheave and down to `foot` on the terrace below, where it is made
+## fast to a deadman with a sling of cores left lying by it. The cable sags, as a
+## line that long does, and is what says there is a drop here before the drop is
+## seen. MADE: a tarp lashed over the drum.
+static func _winch(k: MeshKit, made: MeshKit, foot: Vector3, seed_value: int) -> void:
+	var drum := _drum_at(foot)
+	var out := Vector2(drum.x, drum.z).normalized()
+	var o := Vector3(out.x, 0.0, out.y)
+	var side := Vector3(-out.y, 0.0, out.x)
+	# The drum frame, in the drum's own frame (x out over the lip, z along the
+	# drum): two cheeks on a sill.
+	k.push(Transform3D(Basis(Vector3.UP, atan2(-out.y, out.x)), drum))
+	k.box(Vector3(-0.22, 0.0, -0.56), Vector3(0.22, 0.14, 0.56), PLATE_DARK, OLD_TOP)
+	for sgn: float in [-1.0, 1.0]:
+		k.box(Vector3(-0.12, 0.14, sgn * 0.42 - 0.08), Vector3(0.12, 0.72, sgn * 0.42 + 0.08), OLD_PLATE, OLD_TOP)
+	k.pop()
+	k.strut(drum - side * 0.36 + Vector3(0, 0.5, 0), drum + side * 0.36 + Vector3(0, 0.5, 0), 0.2, 8, _tone(OLD_PLATE, 0.8))
+	k.strut(drum + side * 0.42 + Vector3(0, 0.5, 0), drum + side * 0.66 + o * 0.12 + Vector3(0, 0.5, 0), 0.04, 4, PLATE_DARK)
+	# The jib: two legs from either side of the drum out over the lip to one head,
+	# swung aside where a housing stands under it (`_jib_head`).
+	var head := _jib_head(drum, o, side, foot)
+	for sgn: float in [-1.0, 1.0]:
+		k.strut(drum + side * 0.62 * sgn + o * 0.15, head, 0.07, 4, OLD_PLATE)
+	# A back-stay from the head to a stake in the shelf behind the drum.
+	var stay := drum - o * 1.1
+	k.strut(head, stay + Vector3(0, 0.05, 0), 0.025, 3, PLATE_DARK)
+	k.block(stay.x, 0.0, stay.z, 0.12, 0.3, 0.12, PLATE_DARK)
+	# The sheave at the head, turned across the jib.
+	k.strut(head - side * 0.12, head + side * 0.12, 0.24, 8, PLATE_DARK)
+	# The cable: drum to sheave, then down to the foot, sagging. It is what makes
+	# the house a winch house, so it is drawn as the climb's rope is (#32): thick
+	# enough to read as a rope at the zoom the game is played at, round, and
+	# dark against the pale rock it hangs over, its sag a curve of short runs
+	# rather than a chord.
+	k.strut(drum + Vector3(0, 0.7, 0) + o * 0.1, head + Vector3(0, 0.2, 0), CABLE_R, CABLE_SIDES, CABLE)
+	var drop := head - Vector3(0, 0.22, 0)
+	var sag := CABLE_SAG * drop.distance_to(foot)
+	var line: Array[Vector3] = [drop]
+	for i in range(1, CABLE_RUNS + 1):
+		var t := float(i) / float(CABLE_RUNS)
+		line.append(drop.lerp(foot + Vector3(0, 0.12, 0), t) - Vector3(0, sag * 4.0 * t * (1.0 - t), 0))
+		k.strut(line[i - 1], line[i], CABLE_R, CABLE_SIDES, CABLE)
+	_lay(k, line)
+	var cable := CABLE
+	# The deadman below: a plate driven into the lower terrace, the cable's eye on
+	# it, and the sling of cores it last let down, left lying.
+	var sling := foot + side * 0.65
+	k.push(Transform3D(Basis(Vector3.UP, atan2(-out.y, out.x)), foot))
+	k.box(Vector3(-0.22, -0.08, -0.22), Vector3(0.22, 0.18, 0.22), PLATE_DARK, OLD_TOP)
+	k.box(Vector3(-0.24, -0.05, 0.35), Vector3(0.24, 0.32, 0.95), _tone(OLD_PLATE, 0.9), OLD_TOP)
+	k.pop()
+	k.strut(foot + Vector3(0, 0.16, 0), sling + Vector3(0, 0.3, 0), 0.025, 3, cable)
+	# MADE: a tarp lashed over the drum against the wet, and its cord.
+	made.push(Transform3D(Basis(Vector3.UP, atan2(-out.y, out.x)), drum))
+	made.box(Vector3(-0.26, 0.66, -0.4), Vector3(0.26, 0.76, 0.4), SACKING, SACKING)
+	made.pop()
+	made.prism(drum.x, 0.0, drum.z, 0.03, 0.66, 0.03, 4, CORD)
+	made.rock(sling.x + 0.5, foot.y - 0.05, sling.z, 0.16, 0.1, seed_value + 77, SPOIL, 5)
+
+
+## The store's stock, one stack a plan stage, at the house's far end: cases of
+## cores the plan cut and never sent on. The plan advancing here is more of them.
+static func _stock(k: MeshKit, i: int) -> void:
+	var x := -HOUSE_LONG * 0.5 - STOCK_OUT + (0.22 if i % 2 == 0 else -0.22)
+	var z := -0.45 + float(i / 2) * 0.62
+	var y := 0.0
+	var high := 0.42 if i % 2 == 0 else 0.34
+	k.box(Vector3(x - 0.28, y, z - 0.26), Vector3(x + 0.28, y + high, z + 0.26), _tone(OLD_PLATE, 0.92 + 0.05 * float(i % 3)), OLD_TOP)
+	k.box(Vector3(x - 0.3, y + high - 0.05, z - 0.04), Vector3(x + 0.3, y + high + 0.01, z + 0.04), PLATE_DARK, PLATE_DARK)
+
+
 # --- the three working parts ---------------------------------------------------
 
 ## The feed: three drums on a cradle with a pipe run into the deck, a lens on the
@@ -520,6 +818,8 @@ static func gallery() -> Array:
 	var dark := yard(site, Works.STAGES - 1, mat)
 	set_dark(dark, true)
 	out.append({"name": "works_yard_dark", "node": dark})
+	out.append({"name": "works_winch", "node": yard(site, 0, mat, WINCH)})
+	out.append({"name": "works_winch_stage3", "node": yard(site, Works.STAGES - 1, mat, WINCH)})
 	for i in Works.PART_NAMES.size():
 		var whole := part(i, 5, mat)
 		out.append({"name": "works_part_%s" % Works.PART_NAMES[i], "node": whole})

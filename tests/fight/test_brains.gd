@@ -157,6 +157,46 @@ func test_lunge_presses_in_and_bites() -> void:
 	gt(F.count(events, &"hurt"), 0, "a dog in reach bites within two seconds")
 
 
+func test_a_lunge_never_tells_a_bite_across_a_ledge_it_cannot_land_over() -> void:
+	# A yard dog on the floor below a bank two levels up drew nine bite rings in
+	# eight seconds at a player on the bank and landed none (cb's hit audit): no
+	# blow passes between levels that far apart (FightRules.levels_meet), so the
+	# ring promised a bite that could never come.
+	var w := F.flat_world(64, Ground.GRASS, Country.COAST, 2)
+	for y in 64:
+		for x in 22:
+			w.level[y * 64 + x] = 4
+	var sim := F.make_sim(w, Vector2(21.5, 20.5))
+	var dog := F.still(sim, &"dog.yard", Vector2(23.0, 20.5), PI)
+	dog.calm_until = 0.0
+	dog.set_mood(MobState.ATTACKING, sim.now)
+	check(not sim.meets_hero(dog.pos), "the bank is two levels over the dog")
+	var tells := 0
+	for i in 8:
+		F.ms(sim, 1000)
+		tells += F.count(sim.drain(), &"windup")
+	eq(tells, 0, "no bite told across the ledge in 8 s")
+
+
+func test_a_charge_never_tells_a_bite_across_a_ledge_it_cannot_land_over() -> void:
+	# The same promise from a charger: a longlegs below a bank two levels up.
+	var w := F.flat_world(64, Ground.GRASS, Country.COAST, 2)
+	for y in 64:
+		for x in 22:
+			w.level[y * 64 + x] = 4
+	var sim := F.make_sim(w, Vector2(21.5, 20.5))
+	var m := F.still(sim, &"longlegs", Vector2(24.5, 20.5), PI)
+	m.calm_until = 0.0
+	m.disturbed = true
+	m.set_mood(MobState.ATTACKING, sim.now)
+	check(not sim.meets_hero(m.pos), "the bank is two levels over the longlegs")
+	var tells := 0
+	for i in 8:
+		F.ms(sim, 1000)
+		tells += F.count(sim.drain(), &"windup")
+	eq(tells, 0, "no bite told across the ledge in 8 s")
+
+
 func test_errand_never_chases() -> void:
 	var sim := F.make_sim(F.flat_world(64, Ground.NEEDLES, Country.PINEWOOD), Vector2(20.5, 30.5))
 	var s := sim.add_mob(&"sweeper", Vector2(20.5, 20.5))

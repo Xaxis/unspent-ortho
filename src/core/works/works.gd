@@ -424,6 +424,97 @@ static func _room_at(world: WorldData, x: int, y: int) -> bool:
 	return true
 
 
+## THE LIP A TERRACE YARD STANDS AT (BiomeDef.depot_form `winch`): the nearest
+## tile within LIP_REACH of `at` that stands LIP_DROP levels or more below it ON
+## A TERRACE (dry, its eight neighbours within a level of it), with nothing
+## between it and the yard higher than the yard, and the ground running on past
+## it, away from the yard, for LIP_OPEN tiles no higher than a level over it: the
+## shelf falls to open ground, so the winch's cable hangs over the drop to the
+## terrace below. A pit, or a gully at the foot of a higher crag, is no lip:
+## seed 1's first store hung its cable into the gully between its shelf and the
+## crag behind it, twice. INF where the shelf has no such drop by it. One rule
+## for both hands: the crags site their store only where it answers (the_crags
+## `_store_on`), and 34_works hangs the cable to it.
+const LIP_REACH := 9
+const LIP_DROP := 2
+const LIP_OPEN := 5
+## THE SIDE THE PLAY CAMERA SEES A DROP FROM (PlayView.toward_eye): a face
+## falling toward the eye is turned to it and the cable reads down it from jib to
+## foot; one falling away is hidden behind its own lip, and seed 1's first cable
+## stopped at the edge. A foot on that side is taken over a nearer one on the far
+## side.
+const PlayView := preload("res://src/core/view/play_view.gd")
+
+
+static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
+	var cx := floori(at.x)
+	var cy := floori(at.y)
+	# Every tile this asks: the reach, a neighbour round each foot, and the open
+	# ground run on past it.
+	var r := LIP_REACH + LIP_OPEN + 1
+	var t := TileWindow.of(world, cx - r, cy - r, cx + r + 1, cy + r + 1)
+	if not t.has(cx, cy):
+		return Vector2.INF
+	var top: int = t.level[t.at(cx, cy)]
+	var best := Vector2.INF
+	var best_d := INF
+	var seen := Vector2.INF
+	var seen_d := INF
+	var eye := PlayView.toward_eye()
+	for dy in range(-LIP_REACH, LIP_REACH + 1):
+		var y := cy + dy
+		for dx in range(-LIP_REACH, LIP_REACH + 1):
+			var x := cx + dx
+			if not t.has(x - 1, y - 1) or not t.has(x + 1, y + 1):
+				continue
+			var d := Vector2(dx, dy).length()
+			var faces := Vector2(dx, dy).dot(eye) > 0.0
+			if d > float(LIP_REACH) or d >= (seen_d if faces else best_d):
+				continue
+			var i := t.at(x, y)
+			var low: int = t.level[i]
+			if top - low < LIP_DROP or Ground.is_water(t.ground[i]):
+				continue
+			var terrace := true
+			for o: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
+				var j := t.at(x + o.x, y + o.y)
+				if absi(int(t.level[j]) - low) > 1 or Ground.is_water(t.ground[j]):
+					terrace = false
+					break
+			if not terrace:
+				continue
+			# Down off the shelf all the way: no ground between rises over it.
+			var rises := false
+			var to := Vector2(x + 0.5, y + 0.5)
+			var steps := ceili(d * 2.0)
+			for k in range(1, steps):
+				var p := at.lerp(to, float(k) / float(steps))
+				if int(t.level[t.at(floori(p.x), floori(p.y))]) > top:
+					rises = true
+					break
+			if rises:
+				continue
+			# And open past it: the lower terrace, not a trench under a crag.
+			var away := (to - at).normalized()
+			var shut := false
+			for k in range(1, LIP_OPEN + 1):
+				var q := to + away * float(k)
+				var qx := floori(q.x)
+				var qy := floori(q.y)
+				if not t.has(qx, qy) or int(t.level[t.at(qx, qy)]) > low + 1:
+					shut = true
+					break
+			if shut:
+				continue
+			if faces:
+				seen = to
+				seen_d = d
+			else:
+				best = to
+				best_d = d
+	return seen if seen.is_finite() else best
+
+
 ## The round the depot's own walk: out along the survey bearing and back, which
 ## is the line every ruled thing the machines built in this world lies on, so a
 ## patrol crossing the land is crossing it the way the plan reads. [from, to].
