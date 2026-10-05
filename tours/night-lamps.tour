@@ -46,6 +46,11 @@ spawn runner@90
 spawn harvester@180
 spawn cutter@270
 wait 1.0
+# The frame is taken while the crowd stands where it was put: half a minute of
+# measuring with four machines on a player who never moves can end in a down,
+# and the jump after a down clears every body (30_mobs CLEARING), so a frame
+# taken after the measures had no crowd to claim.
+shot 03-crowd-dusk with mob:runner,mob:harvester,mob:cutter
 perf stats begin
 wait 3.0
 perf stats end crowd_dusk
@@ -53,4 +58,3 @@ perf lit
 perf noise 8
 perf lamps 8
 perf lamp_shadows 8
-shot 03-crowd-dusk with mob:runner,mob:harvester,mob:cutter
