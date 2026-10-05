@@ -38,7 +38,10 @@ func test_every_system_that_answers_use_leaves_an_asks_press_alone() -> void:
 ## `use` in 49_story, and every system that reads the key before them would take
 ## a press meant for a person or a page in front of him: a cache took Otto's, and
 ## the gate home took June's and crossed him back to 2098. So each one that runs
-## before the words leaves that press be. A system after them (50_survival) is
+## before the words leaves that press be. A thing he presses at his hand (a works
+## housing, a road's barrier) keeps it only against words farther off than it is
+## (Survival.words_nearer_than): a survey stake behind a quarry's housing took
+## every press meant for the housing (#67). A system after them (50_survival) is
 ## left the press only when the words did not spend it (49_story `use_spent`).
 ## Found by what each script reads, as above.
 func test_every_system_before_the_words_leaves_a_faced_press_to_them() -> void:
@@ -51,6 +54,7 @@ func test_every_system_before_the_words_leaves_a_faced_press_to_them() -> void:
 		if reads.search(src) == null:
 			continue
 		found += 1
-		check(src.contains("Survival.words_in_front(game)"), "%s answers `use` before the words, so it leaves a faced press to them (Survival.words_in_front)" % f)
+		check(src.contains("Survival.words_in_front(game)") or src.contains("Survival.words_nearer_than(game, "),
+			"%s answers `use` before the words, so it leaves a faced press to them (Survival.words_in_front, or words_nearer_than its own thing)" % f)
 	gt(float(found), 5.5, "the systems that answer `use` before the words were found by what they read (%d)" % found)
 
