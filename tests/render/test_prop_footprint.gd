@@ -40,35 +40,26 @@ const EXEMPT := {
 ## its numbers fails; one that comes under DISC_TOL is struck off.
 const OVER := {
 	PropKind.PYLON: Vector2(0.10, 0.42),
-	PropKind.HOUSE: Vector2(1.70, 1.30),
+	# Long and thin: they wait for a capsule shape and a nav that sees a wall
+	# between two tile centres (#102); fitted as circles, a field routed across them.
+	PropKind.FENCE: Vector2(0.00, 1.43),
+	PropKind.PIPE: Vector2(0.00, 1.06),
+	PropKind.CONVEYOR: Vector2(0.00, 1.39),
+	PropKind.SEA_WALL: Vector2(0.41, 1.10),
+	PropKind.SALT_RIDGE: Vector2(0.00, 1.40),
+	PropKind.WRECKAGE: Vector2(0.00, 1.10),
 	PropKind.TIP: Vector2(0.00, 0.41),
 	PropKind.WRECK: Vector2(0.57, 0.67),
 	PropKind.BENCH: Vector2(0.10, 0.85),
 	PropKind.KILN: Vector2(0.00, 0.41),
-	PropKind.FENCE: Vector2(0.00, 1.43),
-	PropKind.BARRICADE: Vector2(0.22, 1.00),
-	PropKind.SIGN: Vector2(0.00, 1.10),
-	PropKind.SHACK: Vector2(0.64, 1.08),
-	PropKind.VEHICLE: Vector2(0.40, 1.30),
-	PropKind.SEA_WALL: Vector2(0.41, 1.10),
-	PropKind.TIDE_GAUGE: Vector2(0.00, 1.00),
-	PropKind.INTAKE: Vector2(0.30, 1.52),
-	PropKind.PUMP_HOUSE: Vector2(0.10, 0.95),
-	PropKind.PIPE: Vector2(0.00, 1.06),
 	PropKind.FIRE_TOWER: Vector2(0.20, 0.50),
 	PropKind.STACK: Vector2(0.00, 0.70),
 	PropKind.DRILL_RIG: Vector2(0.58, 0.36),
-	PropKind.CONVEYOR: Vector2(0.00, 1.39),
 	PropKind.WATER_TANK: Vector2(0.10, 0.42),
 	PropKind.SLAG_HEAP: Vector2(0.40, 0.71),
-	PropKind.ARCHIVE: Vector2(0.32, 1.00),
-	PropKind.WRECKAGE: Vector2(0.00, 1.10),
 	PropKind.MEMORIAL: Vector2(0.20, 0.50),
-	PropKind.SALT_RIDGE: Vector2(0.00, 1.40),
 	PropKind.MAGNET_HEAP: Vector2(0.00, 0.78),
-	PropKind.LINTEL: Vector2(1.27, 0.32),
 	PropKind.PRESSURE_BLOCK: Vector2(0.30, 0.80),
-	PropKind.FROZEN_HULL: Vector2(0.30, 1.50),
 	PropKind.GLASS_BLISTER: Vector2(0.00, 0.66),
 	PropKind.FUSED_CAR: Vector2(0.10, 0.71),
 	PropKind.STRIKE_ROD: Vector2(0.10, 0.67),
@@ -76,10 +67,6 @@ const OVER := {
 	PropKind.SHOPFRONT: Vector2(0.60, 0.54),
 	PropKind.STAIR_TO_WATER: Vector2(0.00, 0.72),
 	PropKind.HOODOO: Vector2(0.14, 0.50),
-	PropKind.FALLEN_SPAN: Vector2(0.30, 0.92),
-	PropKind.CISTERN: Vector2(0.00, 1.30),
-	PropKind.SPRAYER_GANTRY: Vector2(1.10, 1.41),
-	PropKind.HOUSE_BURNT: Vector2(1.70, 1.34),
 }
 
 
@@ -105,6 +92,14 @@ func test_the_table_holds_every_walled_drawing() -> void:
 				float(F.measure(polys, cs).get("gap", 0.0)), float(F.measure(mid, cs).get("walk", 0.0))])
 	print("  info walls: %d models of %d walled kinds" % [n, PropWalls.KINDS.size()])
 	eq(bad.size(), 0, "every walled model stands inside its walls within %.2f (regenerate: tools/bake_walls.sh): %s" % [PropWalls.TOL, bad])
+
+
+func test_a_walled_kind_is_neither_named_nor_exempt() -> void:
+	for kind: int in PropWalls.KINDS:
+		check(not OVER.has(kind) and not EXEMPT.has(kind), "%s is walled: strike it from OVER and EXEMPT" % PropKind.NAMES[kind])
+		# The view casts every prop but a cable's (WorldView.prop_xform) and its
+		# walls are cast the same way (PropWalls.of_row).
+		check(WorldView.cable_points(kind).is_empty(), "%s hangs no cable" % PropKind.NAMES[kind])
 
 
 func test_every_other_kind_stops_a_body_where_it_is_drawn() -> void:

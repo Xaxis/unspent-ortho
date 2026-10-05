@@ -26,6 +26,10 @@ const KINDS: Array[int] = [
 	PropKind.FALLEN_TOWER, PropKind.DECK_SPAN, PropKind.CHECKPOINT,
 	PropKind.DEMOLITION_GANTRY, PropKind.ARCH_RIB, PropKind.HOLLOW_WAY,
 	PropKind.HULL, PropKind.LOCK_GATE, PropKind.MURAL, PropKind.DROWNED_TRAM,
+	PropKind.HOUSE, PropKind.HOUSE_BURNT, PropKind.LINTEL, PropKind.SPRAYER_GANTRY,
+	PropKind.INTAKE, PropKind.FROZEN_HULL, PropKind.CISTERN, PropKind.VEHICLE,
+	PropKind.SIGN, PropKind.SHACK, PropKind.BARRICADE, PropKind.TIDE_GAUGE,
+	PropKind.ARCHIVE, PropKind.PUMP_HOUSE, PropKind.FALLEN_SPAN,
 ]
 
 ## How far a prop's collision may miss its drawing, both ways, in tiles: the
