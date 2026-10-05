@@ -4,7 +4,10 @@ extends Camera3D
 ## target, snapped to whole texels so the picture never crawls. Also owns the
 ## full-screen shaft pass, on the tiers that have no volumetric air.
 
-@export var yaw_deg := 45.0
+## Its bearing is a rule the world reads too (PlayView: a winch's lip is sited
+## where the eye sees its drop), so it is set there, once.
+const PlayView := preload("res://src/core/view/play_view.gd")
+@export var yaw_deg := PlayView.YAW_DEG
 ## As with VIEW_HEIGHT below: a test rasterising a model the way the play camera
 ## sees it asks for this rather than writing 57 down a second time.
 const PITCH_DEG := 57.0
