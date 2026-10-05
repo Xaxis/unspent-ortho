@@ -29,7 +29,11 @@ extends MachineModel
 ##        down out of its belly to a person's height
 ## windup a front stilt comes right up out of the water, and the blade lifts:
 ##        the leg is the tell, two units of it
-## strike the stilt stamps and the blade drops to the bed: a gate across the canal
+## strike the stilt stamps and the blade drops to the bed: a gate across the
+##        canal, and the water it held surges out from under it, a breaking
+##        sheet to where the blow lands (the bite box's front, MachineModel.
+##        strike_front), drawn only while it is live: the hull rides three units
+##        up and its gate hangs under it; what reaches a person is the surge
 ## hurt   the hull rolls on its legs; nothing else moves
 ## dead   the after legs fold, the hull goes down stern first into the canal and
 ##        lies canted on its splayed legs with the blade fallen out under it: a
@@ -63,6 +67,14 @@ const BLADE_H := 1.5
 const BLADE_W := 2.3
 ## The pump hangs off the transom on its suction pipe to a hand's height.
 const PUMP_DROP := 2.2
+## The strike's hull and blade: the blade's foot is where the surge breaks out.
+const STRIKE_HULL := [Vector3(0.1, -0.25, 0.0), Vector3(-0.04, 0.0, -0.06)]
+const STRIKE_BLADE := Vector3(0.15, -1.35, 0.0)
+## The surge: rows of broken water from the gate's foot out to the crest, each
+## row this wide across, and the crest's height (a person's waist).
+const SURGE := 6
+const SURGE_ACROSS := 0.7
+const CREST := 0.95
 
 var _t := 0.0
 
@@ -90,6 +102,7 @@ func build() -> void:
 	_pump(hull, R, D, DD)
 	var blade := joint(&"blade", hull, Vector3(BLADE_X, BLADE_TOP, 0))
 	_blade(blade, R, D, DD)
+	_surge()
 	finish_rig()
 
 
@@ -312,6 +325,35 @@ func _blade(blade: Node3D, R: Array, D: Array, DD: Array) -> void:
 	wear_mesh(w, blade)
 
 
+## The surge out from under the dropped gate: rows of canal water on their own
+## joints, low and foaming at the gate and rising to a breaking crest, which the
+## strike pose lays out to where the blow lands (_surge_at).
+func _surge() -> void:
+	var surge := holder("surge", self)
+	strike_only(surge)
+	var water: Array = [Palette.BRINE[2], Palette.BRINE[3], Palette.RIME[3], Palette.RIME[4], Palette.LINEN[4], Palette.LINEN[5]]
+	for i in SURGE:
+		var row := joint(StringName("surge%d" % i), surge, Vector3.ZERO)
+		var t := float(i + 1) / SURGE
+		var rr := lerpf(0.22, 0.34, t)
+		var hh := lerpf(0.25, CREST, t * t)
+		var m := FoundKit.matter_kit(Ink.NONE)
+		for j in 3:
+			var z := (float(j) - 1.0) * SURGE_ACROSS
+			m.rock(0.0, 0.0, z, rr, hh * (1.0 - absf(float(j) - 1.0) * 0.25), 760 + i * 3 + j, water[mini(5, 2 + i / 2 + j % 2)], 6)
+		matter_mesh(m, row)
+
+
+## Row `i` of the surge at the strike, in model space: from the gate's foot out
+## to the crest, the crest's front at strike_front.
+func _surge_at(i: int) -> Vector3:
+	var hull := Transform3D(Basis.from_euler(STRIKE_HULL[1]), Vector3(0, HULL_Y, 0) + STRIKE_HULL[0])
+	var foot := hull * (Vector3(BLADE_X, BLADE_TOP - BLADE_H, 0) + STRIKE_BLADE)
+	var crest := strike_reach() - 0.34
+	var t := float(i + 1) / SURGE
+	return Vector3(lerpf(foot.x + 0.2, crest, t), 0.0, 0.0)
+
+
 ## Everything is said with the legs, the hull's height and the blade. The
 ## pump's turn rides on the drum in `_routine`, so the two never fight.
 func _pose_deltas(p: StringName) -> Dictionary:
@@ -333,10 +375,14 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"hull"] = pr(Vector3(-0.15, 0.1, 0.0), Vector3(0.1, 0.0, 0.08))
 			d[&"blade"] = pr(Vector3(0.0, 0.1, 0.0))
 		&"strike":
-			# It stamps, and the blade drops to the bed: a wall across the canal.
+			# It stamps, and the blade drops to the bed: a wall across the canal,
+			# and the water it held surges out to where the blow lands.
 			d[&"leg_fr"] = r(Vector3(0.05, 0.0, -0.12))
-			d[&"hull"] = pr(Vector3(0.1, -0.25, 0.0), Vector3(-0.04, 0.0, -0.06))
-			d[&"blade"] = pr(Vector3(0.15, -1.35, 0.0))
+			d[&"hull"] = pr(STRIKE_HULL[0], STRIKE_HULL[1])
+			d[&"blade"] = pr(STRIKE_BLADE)
+			if strike_front > 0.0:
+				for i in SURGE:
+					d[StringName("surge%d" % i)] = pr(_surge_at(i))
 		&"hurt":
 			d[&"hull"] = r(Vector3(0.12, 0.0, 0.0))
 		&"dead":

@@ -27,7 +27,10 @@ extends MachineModel
 ## alert  the body drops toward the rock and the tail comes up: it is braced
 ## windup the tail swings forward over its back and the front rears: the
 ##        counterweight thrown before it lets go of the wall
-## strike the body comes down nose first and the tail slams back: the drop
+## strike the body comes down nose first and the tail slams back: the drop, and
+##        the right foreleg is thrown out at you, its grapnel laid where the
+##        blow lands (the bite box's front, MachineModel.strike_front): what
+##        hooks a person is the hook
 ## hurt   the carapace judders on its legs
 ## dead   the body goes down flat, the legs fold up over it the way a dead spider
 ##        curls, and the tail comes down behind with the weight in the dust
@@ -59,6 +62,12 @@ const KNEE_UP := 1.05
 const TAIL: Array[Vector3] = [Vector3(0.0, 0.0, 0.0), Vector3(-0.48, 0.5, 0.0), Vector3(-0.74, 1.2, 0.0),
 	Vector3(-0.76, 1.96, 0.0), Vector3(-0.56, 2.58, 0.0)]
 const WEIGHT_R := 0.36
+## The strike's body: down nose first.
+const STRIKE_BODY := [Vector3(0.3, -0.32, 0.0), Vector3(0.0, 0.0, -0.2)]
+## The struck grapnel: how far its tines stand ahead of the foot, and the
+## lowest it comes (the hooks rake the ground, they do not go into it).
+const HOOK_AHEAD := 0.3
+const HOOK_FLOOR := 0.25
 
 var _t := 0.0
 
@@ -287,9 +296,12 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"leg_fr"] = r(Vector3(0.0, 0.0, 0.14))
 			d[&"leg_fl"] = r(Vector3(0.0, 0.0, 0.14))
 		&"strike":
-			# And it comes down: nose first, the tail slammed back behind it.
+			# And it comes down: nose first, the tail slammed back behind it, the
+			# right foreleg thrown out to hook where the blow lands.
 			d[&"tail"] = r(Vector3(0.0, 0.0, 0.34))
-			d[&"body"] = pr(Vector3(0.3, -0.32, 0.0), Vector3(0.0, 0.0, -0.2))
+			d[&"body"] = pr(STRIKE_BODY[0], STRIKE_BODY[1])
+			if strike_front > 0.0:
+				d[&"leg_fr"] = r(_strike_leg())
 			d[&"leg_br"] = r(Vector3(0.0, 0.0, -0.12))
 			d[&"leg_bl"] = r(Vector3(0.0, 0.0, -0.12))
 		&"hurt":
@@ -306,6 +318,22 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"tail"] = r(Vector3(0.0, 0.2, 0.95))
 			d[&"head"] = r(Vector3(0.25, 0.0, 0.18))
 	return d
+
+
+## The right foreleg's turn at the strike: laid out from its hip so the
+## grapnel's tines land at strike_front, its foot no lower than HOOK_FLOOR,
+## swung out to its own side as far as its length needs.
+func _strike_leg() -> Vector3:
+	var body := Transform3D(Basis.from_euler(STRIKE_BODY[1]), Vector3(0, BODY_Y, 0) + STRIKE_BODY[0])
+	var hip := Vector3(HIP_X, -0.02, HIP_Z)
+	var foot := Vector3(FOOT_X, -BODY_Y, FOOT_Z) - hip
+	var at := body * hip
+	var run := foot.length()
+	var dx := minf(strike_reach() - HOOK_AHEAD - at.x, run)
+	var dy := maxf(HOOK_FLOOR - at.y, -sqrt(maxf(0.0, run * run - dx * dx)))
+	var dz := sqrt(maxf(0.0, run * run - dx * dx - dy * dy))
+	var to := body.basis.inverse() * Vector3(dx, dy, dz)
+	return Basis(Quaternion(foot.normalized(), to.normalized())).get_euler()
 
 
 func _timing(p: StringName, j: StringName) -> Vector2:

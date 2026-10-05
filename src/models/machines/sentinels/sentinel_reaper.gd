@@ -25,7 +25,10 @@ extends MachineModel
 ##        masts run up off the beam, the drum stops dead
 ## windup the whole arch REARS BACK and the drum swings up and forward into plain
 ##        sight — the thing about to take you is the thing you have to hit
-## strike the arch throws forward over its front axles, drum down and through
+## strike the arch throws forward over its front axles, drum down and through,
+##        the drum's arm running out along its rails under the beam until the
+##        dividers' points are where the blow lands (the bite box's front,
+##        MachineModel.strike_front)
 ## hurt   the drum's light stutters out; nothing flinches
 ## dead   one leg folds and the beam comes down across the ground: the arch, broken,
 ##        which is the only silhouette on the coast that says a sentinel died here
@@ -44,6 +47,21 @@ const HULL_Y := 0.52
 const BEAM_Y := 2.02
 const BEAM_HALF := 1.34
 const WHEEL_R := 0.155
+
+## The strike's frame and drum arm, before the arm runs out.
+const STRIKE_FRAME := [Vector3(0.34, -0.06, 0), Vector3(0, 0, -0.1)]
+const STRIKE_ARM := [Vector3(0.1, -0.1, 0), Vector3(0, 0, -0.16)]
+const ARM_AT := Vector3(0.86, 1.46, 0.0)
+## A divider's point and the drum's axle, in the arm's frame, and how far the
+## drum's teeth stand off its axle: the front of the reaping head is the
+## farther of the points and the teeth.
+const DIVIDER_TIP := Vector3(0.61, -1.23, 0.0)
+const DRUM_AT := Vector3(0.3, -1.2, 0.0)
+const TEETH := 0.4
+## The rails the arm runs out along, back from its pivot, and the sleeves on
+## the frame under the beam they slide in: long enough to overlap at full run.
+const RAIL := 2.0
+const SLEEVE := Vector2(-0.4, 0.95)
 
 var _travel := 0.0
 var _drum_t := 0.0
@@ -249,10 +267,17 @@ func _drum(frame: Node3D, R: Array, D: Array) -> void:
 	# Slung off the FRONT of the arch, not inside it: the gap between the legs is
 	# the whole silhouette and nothing may fill it. The drum hangs where a reaping
 	# head hangs, out in front of the tracks and low enough to take a person.
-	var arm := joint(&"arm", frame, Vector3(0.86, 1.46, 0.0))
+	var sk := FoundKit.kit()
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.tbar(sk, Vector3(SLEEVE.x, ARM_AT.y + 0.08, sz * 0.86), Vector3(SLEEVE.y, ARM_AT.y + 0.08, sz * 0.86), 0.08, 0.08, 6, D, 0.015)
+	body_mesh(sk, frame)
+	var arm := joint(&"arm", frame, ARM_AT)
 	var k := FoundKit.kit()
 	for sz: float in [-1.0, 1.0]:
 		FoundKit.tbar(k, Vector3(-0.12, 0.08, sz * 0.86), Vector3(0.28, -1.1, sz * 1.0), 0.1, 0.075, 6, R, 0.02)
+		# The rail the arm runs out on, back into its sleeve under the beam: in
+		# the strike it carries the head out to where the blow lands.
+		FoundKit.tbar(k, Vector3(0.0, 0.08, sz * 0.86), Vector3(-RAIL, 0.08, sz * 0.86), 0.05, 0.05, 4, D, 0.01)
 		FoundKit.tbar(k, Vector3(-0.1, -0.5, sz * 0.9), Vector3(0.3, -0.62, sz * 1.0), 0.04, 0.032, 4, D)
 	# The hood over the drum: a plate that keeps the amber a slot of light and not
 	# a bare cylinder, and the thing a blow into the front actually rings off.
@@ -282,7 +307,7 @@ func _drum(frame: Node3D, R: Array, D: Array) -> void:
 	# The drum itself: a turned barrel of amber, big enough to be the thing the eye
 	# goes to on a machine this size. It is the working part, and at 640x360 a
 	# working part that reads as three pixels is a working part nobody aims at.
-	var drum := joint(&"drum", arm, Vector3(0.3, -1.2, 0.0))
+	var drum := joint(&"drum", arm, DRUM_AT)
 	var dk := FoundKit.kit()
 	# The barrel takes the DARK end of the amber and the teeth the bright end, so
 	# the drum reads as ribbed light and not as one blown bar.
@@ -300,6 +325,15 @@ func _drum(frame: Node3D, R: Array, D: Array) -> void:
 				[Vector2(-0.06, 0.05), Vector2(0.12, 0.014), Vector2(0.12, -0.014), Vector2(-0.06, -0.05)], 0.05, amber)
 	part_mesh(dk, drum)
 	set_part_anchor(arm, Vector3(0.5, -1.2, 0.0), 1.1)
+
+
+## How far the arm runs out along the frame at the strike, so the reaping
+## head's front lands at strike_front.
+func _arm_out() -> float:
+	var frame := Transform3D(Basis(), Vector3(0, HULL_Y, 0)) * Transform3D(Basis.from_euler(STRIKE_FRAME[1]), STRIKE_FRAME[0])
+	var arm := Transform3D(Basis.from_euler(STRIKE_ARM[1]), ARM_AT + STRIKE_ARM[0])
+	var front := maxf((frame * arm * DIVIDER_TIP).x, (frame * arm * DRUM_AT).x + TEETH)
+	return maxf(0.0, (strike_reach() - front) / frame.basis.x.x)
 
 
 ## A slab has no limbs; an arch has the whole frame. Every pose here is the gantry
@@ -334,9 +368,11 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"mast_r"] = pr(Vector3(0, 0.42, 0))
 			d[&"chute"] = r(Vector3(0.0, 0.5, 0.0))
 		&"strike":
-			# And throws the whole gantry forward over its front axles.
-			d[&"frame"] = pr(Vector3(0.34, -0.06, 0), Vector3(0, 0, -0.1))
-			d[&"arm"] = pr(Vector3(0.1, -0.1, 0), Vector3(0, 0, -0.16))
+			# And throws the whole gantry forward over its front axles, the arm
+			# running out on its rails to where the blow lands.
+			d[&"frame"] = pr(STRIKE_FRAME[0], STRIKE_FRAME[1])
+			var out := _arm_out() if strike_front > 0.0 else 0.0
+			d[&"arm"] = pr(STRIKE_ARM[0] + Vector3(out, 0, 0), STRIKE_ARM[1])
 			d[&"mast_l"] = pr(Vector3(0, 0.26, 0), Vector3(0, 0, -0.3))
 			d[&"mast_r"] = pr(Vector3(0, 0.26, 0), Vector3(0, 0, -0.3))
 		&"hurt":

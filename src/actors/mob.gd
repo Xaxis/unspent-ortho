@@ -134,9 +134,15 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	_wake(delta, swimming)
 	model.rotation.y = -s.facing
 	var p := _pose(now_ms)
+	if model is MachineModel:
+		var mm := model as MachineModel
+		if p != model.pose and p == &"windup" and s.blow != null:
+			mm.tell_s = s.blow.windup / 1000.0
+		# Where the blow lands and whether it is live: the strike is drawn to it.
+		if s.blow != null:
+			mm.strike_front = s.radius + s.blow.reach
+		mm.blow_live = s.blow_phase(now_ms) == &"active" or _holding
 	if p != model.pose:
-		if p == &"windup" and s.blow != null and model is MachineModel:
-			(model as MachineModel).tell_s = s.blow.windup / 1000.0
 		model.set_pose(p)
 	# Asleep in a dock its optics are dark, beams and all, until it stirs: they
 	# come on as it grows unsure, which is how a player sees one waking.

@@ -25,7 +25,9 @@ extends MachineModel
 ## stand  the share lifted clear, idling, the stack breathing slow
 ## alert  it has you: the share drops and the hull settles onto it
 ## windup the hull rears back on its rear rollers and the share comes up
-## strike the whole mass throws forward, share first
+## strike the whole mass throws forward, share first, as far as the blow lands
+##        (the bite box's front, MachineModel.strike_front): the share is the
+##        bite, so its curl stops where the bite does
 ## hurt   the grille stutters; nothing flinches
 ## dead   the share digs in and the hull noses down into it, the stack cold
 
@@ -43,6 +45,11 @@ const SHARE_H := 1.02
 ## outside the body the fight stands it in (roster radius 1.5), and a player at its
 ## flank stood inside the drawing.
 const SIZE := 1.2
+## The strike: the hull's pitch and the share's own shove, and the share's
+## front in the hull's frame (the rime along the curl's lip at the prow).
+const STRIKE_PITCH := Vector3(0, 0, -0.08)
+const STRIKE_SHARE := Vector3(0.1, -0.04, 0)
+const SHARE_FRONT := Vector3(PROW_X + 0.42, -HULL_Y + SHARE_H + 0.04, 0)
 
 var _travel := 0.0
 var _steam_in := 0.0
@@ -258,8 +265,11 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"share"] = pr(Vector3(0.02, 0.16, 0), Vector3(0, 0, 0.12))
 			d[&"head"] = r(Vector3(0, 0, -0.16))
 		&"strike":
-			d[&"hull"] = pr(Vector3(0.36, -0.04, 0), Vector3(0, 0, -0.08))
-			d[&"share"] = pr(Vector3(0.1, -0.04, 0))
+			var throw := 0.36
+			if strike_front > 0.0:
+				throw = maxf(0.0, strike_reach() - (Basis.from_euler(STRIKE_PITCH) * (SHARE_FRONT + STRIKE_SHARE)).x)
+			d[&"hull"] = pr(Vector3(throw, -0.04, 0), STRIKE_PITCH)
+			d[&"share"] = pr(STRIKE_SHARE)
 		&"hurt":
 			d[&"head"] = r(Vector3(0, 0, 0.1))
 		&"dead":
