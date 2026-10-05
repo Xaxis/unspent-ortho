@@ -130,8 +130,8 @@ func _read_sites() -> void:
 			var st := WorksState.new()
 			st.region = s.region
 			_states[s.region] = st
-		_as_landmark(s)
 		_make(s)
+	Works.record(game.world)
 	_set_walls()
 
 
@@ -164,25 +164,6 @@ func indoors(inside: bool) -> void:
 
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	_read_sites()
-
-
-## A depot is a place worth walking to, so it goes in the world's own list of
-## them: the map draws it, the reads app names it, and a tour reaches it by name
-## (`place works`) instead of by a coordinate that the next change to worldgen
-## quietly invalidates. Added after generation, so no island moves.
-## Recorded at its first working part rather than at the middle of its deck, for
-## the same reason a landmark is recorded at its cache: arriving at a works means
-## arriving where the hands go. Its other two housings are reached by name too
-## (`works_breaker`, `works_coolant`), through `GenPlaces`, without being marks
-## of their own on the map.
-func _as_landmark(s: WorksSite) -> void:
-	var at := s.part(0)
-	for m: Dictionary in game.world.landmarks:
-		if m.get("kind") == &"works" and (m.get("pos") as Vector2).distance_to(at) < 0.5:
-			return
-	game.world.landmarks.append({"kind": &"works", "pos": at,
-		"country": game.world.country_at(floori(at.x), floori(at.y)),
-		"dir": Vector2.from_angle(s.facing)})
 
 
 func _process(delta: float) -> void:
@@ -410,9 +391,9 @@ func use_line() -> String:
 ## A part only takes the key while nothing the player could take from is nearer:
 ## standing at a part with a seam beside it, they mean the part.
 func _part_wins(s: WorksSite, i: int) -> bool:
-	if Survival.words_in_front(game):
-		return false
 	var d := s.part(i).distance_to(sim.hero.pos)
+	if Survival.words_nearer_than(game, d):
+		return false
 	# A named person of the cast standing nearer than the housing is who the
 	# key means: Sefa waits at the Tether's own works, and a player at her side
 	# with a knife in hand was answered by the housing's ring every time.

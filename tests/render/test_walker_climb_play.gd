@@ -140,6 +140,83 @@ func test_a_ride_takes_in_the_island() -> void:
 	await process_frames(2)
 
 
+## THINGS THE SAME DISTANCE OFF SIT IN THE SAME AIR: on a ride, from the drum and
+## from the knee, the leg he is in takes as much of the air at each point down
+## its length as the sea the same distance off does, within AIR_SAME (#33: from
+## the thigh the leg 38 km off sat in 0.37 of air against the sea's 0.08 and came
+## out the sea's own colour). The walker's air is the shader's (colossus.gdshader),
+## worked here from its own constants and the uniforms the view hands it; the
+## sea's is the engine's depth fog as SkyLight leaves it.
+const AIR_SAME := 0.02
+const ShaderText := preload("res://tests/sky/shader_source.gd")
+
+
+func test_on_a_ride_the_leg_sits_in_the_seas_air() -> void:
+	var src := ShaderText.text("res://src/render/colossus/colossus.gdshader")
+	check(src.contains("air = mix(air, seen, aloft);"), "aloft the walker takes the depth fog's law")
+	for stage: Array in [["drum", 10.43], ["knee", 15.9]]:
+		var g := Game.new()
+		tree.root.add_child(g)
+		g.setup(BootOptions.parse(PackedStringArray(["--seed=7", "--place=tread0", "--colossus=2@tread0+30",
+			"--hour=%s" % stage[1], "--weather=clear:0"])))
+		g.player.sim.clear_mobs()
+		var sys := _system(g, "43_climb")
+		await process_frames(4)
+		sys.call(&"_stage", "%s:ride:0.5" % stage[0])
+		await process_frames(4)
+		var colossi := tree.get_first_node_in_group(&"colossi")
+		var w: int = sys.get("walker")
+		var c: WalkerClimb = sys.get("climb")
+		check(c != null and c.state == WalkerClimb.RIDE, "%s: riding" % stage[0])
+		if c == null:
+			g.queue_free()
+			await process_frames(2)
+			continue
+		var cam: Camera3D = sys.get("_cam")
+		var eye := cam.global_position
+		var e: Environment = g.sky.env.environment
+		var mat: ShaderMaterial = (colossi.view.get("_mats") as Array)[w][1]
+		var fog: Vector4 = mat.get_shader_parameter("land_fog")
+		var aloft: float = mat.get_shader_parameter("aloft")
+		var pose: Dictionary = colossi.view.poses[w]
+		var ankle: Vector3 = (pose.ankles as Array)[c.leg]
+		var knee: Vector3 = (pose.knees as Array)[c.leg]
+		var hip: Vector3 = (pose.hips as Array)[c.leg]
+		for at: Vector3 in [ankle, ankle.lerp(knee, 0.5), knee, knee.lerp(hip, 0.5)]:
+			var d := eye.distance_to(at)
+			var sea := pow(smoothstep(e.fog_depth_begin, e.fog_depth_end, d), e.fog_depth_curve) * e.fog_density
+			var leg := _walker_air(src, eye, at, fog, float(mat.get_shader_parameter("thick")), aloft)
+			print("  %s ride, eye %.0f m up (aloft %.2f): %.0f m off the leg at %.0f m up, leg %.3f, sea %.3f" % [
+				stage[0], eye.y, aloft, d, at.y, leg, sea])
+			lt(absf(leg - sea), AIR_SAME, "%s: %.0f m off, the leg in %.3f of air and the sea in %.3f" % [stage[0], d, leg, sea])
+		g.queue_free()
+		await process_frames(2)
+
+
+## The air colossus.gdshader lays on a walker's plate at `p`, from its own
+## constants and the uniforms the view hands it: the low and high layers and
+## the air by distance, mixed toward the depth fog's law by `aloft`.
+static func _walker_air(src: String, eye: Vector3, p: Vector3, fog: Vector4, thick: float, aloft: float) -> float:
+	var thicken := 1.0 + thick * 2.0
+	var low_len := _layer_len(eye, p, ShaderText.number(src, "uniform float h_low") * thicken)
+	var low := clampf(pow(smoothstep(fog.x, fog.y, low_len), fog.z) * fog.w, 0.0, ShaderText.number(src, "const float LOW_MOST"))
+	var high := ShaderText.number(src, "uniform float beta_high") * thicken * _layer_len(eye, p, ShaderText.number(src, "uniform float h_high"))
+	var d := eye.distance_to(p)
+	var air := 1.0 - (1.0 - low) * exp(-high - ShaderText.number(src, "uniform float beta_far") * d)
+	var seen := clampf(pow(smoothstep(fog.x, fog.y, d), fog.z) * fog.w, 0.0, 1.0)
+	return lerpf(air, seen, aloft)
+
+
+## colossus.gdshader's layer_len.
+static func _layer_len(eye: Vector3, p: Vector3, scale: float) -> float:
+	var d := eye.distance_to(p)
+	var dh := p.y - eye.y
+	var e0 := exp(-maxf(eye.y, 0.0) / scale)
+	if absf(dh) < 1.0:
+		return d * e0
+	return d * scale * (e0 - exp(-maxf(p.y, 0.0) / scale)) / dh
+
+
 ## THE CLIMB'S TWO HINTS NAME HIS OWN KEY, IN THEIR MOMENT: nothing is hinted
 ## away from every cable; at the foot of a planted foot's cable, in its tread,
 ## the hint names the key `use` is on, puts it on the cap, and follows it when it is rebound; and as
@@ -204,6 +281,41 @@ func test_the_climbs_hints_name_his_own_key_in_their_moment() -> void:
 	for s: Array in said:
 		eq(String(s[1]), "", "and names no key")
 	Events.hint.disconnect(listen)
+	g.queue_free()
+	await process_frames(2)
+
+
+## THE CABLE HANGS BEFORE ANYBODY CLIMBS IT. Its foot is where the climb's hint
+## is said, and the cable was drawn only once a climb had begun, so he stood at
+## the foot of nothing. From anywhere in its crater it is drawn hanging (43_climb
+## CABLE_SEEN); far off it is not, and nobody is climbing either way.
+func test_the_cable_hangs_at_its_foot_before_the_climb() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=7", "--place=tread0", "--colossus=2@tread0+30",
+		"--hour=12", "--weather=clear:0"])))
+	g.player.sim.clear_mobs()
+	var sys := _system(g, "43_climb")
+	await process_frames(4)
+	var rim: Dictionary = {}
+	for f: Dictionary in sys.call(&"_feet_in_treads"):
+		if bool(f.planted):
+			rim = f
+			break
+	check(not rim.is_empty(), "a foot stands in a tread")
+	if not rim.is_empty():
+		var on: Vector2 = sys.call(&"_cable_foot", rim)
+		_stand(g, on + Vector2(4.0, 0.0))
+		for i in 120:
+			await process_frames(1)
+			if bool(sys.call(&"tour_seen", &"climb_patch")):
+				break
+		check(bool(sys.call(&"tour_seen", &"climb_patch")), "by its foot the cable is drawn hanging")
+		check(not bool(sys.call(&"tour_seen", &"climbing")), "and nobody is climbing it")
+		var seen: float = (sys.get_script() as GDScript).get_script_constant_map()[&"CABLE_SEEN"]
+		_stand(g, on + Vector2(seen * 2.0, 0.0))
+		await process_frames(3)
+		check(not bool(sys.call(&"tour_seen", &"climb_patch")), "far off it is not drawn")
 	g.queue_free()
 	await process_frames(2)
 

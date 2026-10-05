@@ -29,6 +29,9 @@ var grip := 0
 ## to the player, and stalls it this long, ms: the wrench jams what held on.
 ## 0 for a grip that just lets go.
 var torn := 0
+## A grip not wrenched loose in time (FightRules.crush_ms) ends in this much
+## damage, and lets go. 0 for a grip that only holds.
+var crush := 0
 ## Reaches past plate (a found edge). No made tool has it.
 var cuts := false
 ## The work verb of the tool that threw it (&"cut" pulls twice against a grip).
@@ -107,6 +110,7 @@ static func from_dict(d: Dictionary) -> Blow:
 	b.creep = float(d.get("creep", b.creep))
 	b.grip = int(d.get("grip", 0))
 	b.torn = int(d.get("torn", 0))
+	b.crush = int(d.get("crush", 0))
 	b.cuts = bool(d.get("cuts", false))
 	b.area = bool(d.get("area", false))
 	return b
@@ -142,7 +146,7 @@ static func for_item(id: StringName, edge: int = 10000) -> Blow:
 func copy() -> Blow:
 	var b := Blow.new()
 	for p: String in ["windup", "active", "recovery", "cooldown", "reach", "width", "dmg", "knock", "knock_ms",
-			"creep", "grip", "torn", "cuts", "verb", "wind_cost", "wick", "heavy", "area", "sweep"]:
+			"creep", "grip", "torn", "crush", "cuts", "verb", "wind_cost", "wick", "heavy", "area", "sweep"]:
 		b.set(p, get(p))
 	return b
 

@@ -353,7 +353,8 @@ static func bags(game: Game) -> Array[Vector2]:
 ## since a lead with nowhere to walk is no lead: a slot the story cast, or a
 ## StoryMap place (a keeper's lair, `lair:DESIGN`, on a leg he can reach, and
 ## unmarked until he can). The goal's own place (TOLD_WHILE) is a slot, or a
-## walker's crater (`crater:SLOT`). [{at, word}]
+## walker's crater (`crater:SLOT`), or the first of it and its `else` that holds
+## where he stands. [{at, word}]
 static func told(game: Game) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var placed: Dictionary = {}
@@ -369,12 +370,16 @@ static func told(game: Game) -> Array[Dictionary]:
 		if at.is_finite():
 			out.append({"at": at, "word": String(row.word)})
 	var pinned: Dictionary = StoryContent.TOLD_WHILE.get(Guide.last_goal_key, {})
-	if not pinned.is_empty():
+	# The first of the goal's places that holds where he stands: a way back
+	# (`on_body`) is pinned only from the shore it leaves, and a goal that starts
+	# from either of two shores names the other in `else`.
+	while not pinned.is_empty():
 		var at: Vector2 = placed[pinned.place].pos if placed.has(pinned.place) \
 			else StoryMap.crater_pos(game, pinned.place)
-		# A way back (`on_body`) is pinned only from the shore it leaves.
 		if at.is_finite() and (not bool(pinned.get("on_body", false)) or game.world.same_body(game.player.pos, at)):
 			out.append({"at": at, "word": String(pinned.word)})
+			break
+		pinned = pinned.get("else", {})
 	return out
 
 

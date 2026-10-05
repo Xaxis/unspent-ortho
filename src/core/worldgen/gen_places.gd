@@ -4,6 +4,10 @@ class_name GenPlaces
 ##   "moss"                    a standing tile deep inside a country, with room
 ##                             round it to set something down
 ##   "coast-pinewood"          a standing tile on that ecotone, where both mix
+##   "a|b|c"                   the first of those places this world has
+##   "village:WHO"             where an arrival is set down at a village: WHO is
+##                             its index, its name (`oyster_row`) or a landscape
+##   "square:WHO"              that village's square, the middle of its day
 ##   "tip", "wreck2", ...      the Nth landmark of a kind (1-based, default 1)
 ##   "works", "works_breaker"  the Nth depot of the plan, or one of its housings
 ##   "lighthouse", "firewatch" the Nth landmark worth the walk of that kind
@@ -28,19 +32,44 @@ class_name GenPlaces
 
 static func find(w: WorldData, name: String) -> Vector2:
 	var key := name.to_lower().strip_edges()
-	if key == "spawn":
-		return w.spawn
-	# "village:LAND": the first village, in the world's list, whose stand is on
-	# LAND's ground (where `village_stand` puts a body, which on a border can be
-	# the other landscape's): a tour asks for one by landscape, not by an index
-	# that moves when worldgen does.
-	if key.begins_with("village:"):
-		var want := StringName(key.trim_prefix("village:"))
-		for v: Dictionary in w.villages:
-			var at := w.village_stand(v)
-			if BiomeRegistry.at(w, at).id == want:
+	# Alternatives, so a tour asks for a kind of place and not one border a seed
+	# may stop holding when its worldgen is reworked: canon.tour's two cities
+	# meeting stood on seed 7's slums-machine_city border until GEN 53 moved it.
+	if key.contains("|"):
+		for alt: String in key.split("|", false):
+			var at := find(w, alt)
+			if at.x >= 0.0:
 				return at
 		return Vector2(-1, -1)
+	if key == "spawn":
+		return w.spawn
+	# "village:WHO" and "square:WHO": a village by its index, its name (`_` for a
+	# space: `oyster_row`) or a landscape (the first, in the world's list, whose
+	# stand is on LAND's ground, which on a border can be the other landscape's):
+	# a tour asks for one by name or land, not by an index that moves when
+	# worldgen does. `village:` is where an arrival is set down (`village_stand`);
+	# `square:` is the ground nearest its square, the middle of its day: on seed 1
+	# Oyster Row's stand sits 9.8 tiles off where its people gather, outside the
+	# default view.
+	if key.begins_with("village:") or key.begins_with("square:"):
+		var who := key.get_slice(":", 1)
+		var row: Dictionary = {}
+		if who.is_valid_int():
+			if who.to_int() >= 0 and who.to_int() < w.villages.size():
+				row = w.villages[who.to_int()]
+		else:
+			for v: Dictionary in w.villages:
+				if str(v.get("name", "")).to_lower().replace(" ", "_") == who:
+					row = v
+					break
+			if row.is_empty():
+				for v: Dictionary in w.villages:
+					if BiomeRegistry.at(w, w.village_stand(v)).id == StringName(who):
+						row = v
+						break
+		if row.is_empty():
+			return Vector2(-1, -1)
+		return w.village_stand(row) if key.begins_with("village:") else _on_square(w, row)
 	if key == "lit_village":
 		var sq := lit_village_square(w)
 		return _stand_near(w, sq) if sq.x >= 0.0 else Vector2(-1, -1)
@@ -612,6 +641,22 @@ static func lit_village_square(w: WorldData) -> Vector2:
 ## in ring k is at least k - 0.5 from a point in the centre tile), because the
 ## FIRST standable tile of a ring can be a corner half as near again as its side:
 ## `place works` stood 2.72 tiles off a feed housing that reaches 2.6.
+## The ground nearest village `row`'s square that a body can stand on (not water),
+## or its stand where six tiles round it are all water.
+static func _on_square(w: WorldData, row: Dictionary) -> Vector2:
+	var sq: Vector2 = row.pos
+	for r in 6:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var tx := floori(sq.x) + dx
+				var ty := floori(sq.y) + dy
+				if w.in_bounds(tx, ty) and not Ground.is_water(w.ground_at(tx, ty)):
+					return Vector2(tx + 0.5, ty + 0.5)
+	return w.village_stand(row)
+
+
 static func _stand_near(w: WorldData, p: Vector2) -> Vector2:
 	var solid := solid_mask(w)
 	var px := floori(p.x)

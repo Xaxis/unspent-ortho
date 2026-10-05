@@ -562,6 +562,28 @@ extends TestCase
 ## them is the drowned city.
 ## GEN 50 (2026-10-03, provisional) CHANGED NO DIGEST: village names past a
 ## landscape's list are numbered once each now, and no world of 256 runs a list out.
+## GEN 51 (2026-10-03, provisional) CHANGED NO DIGEST: the tread's people's
+## holding is laid round a tread, and a world of 256 holds none.
+## GEN 52 (2026-10-04) CHANGED NO DIGEST: the treads keep off fewer
+## landmarks, and a world of 256 holds no tread.
+## AT GEN 53 (2026-10-04): the glass desert lays its strike fields.
+## The six hold to the bit, and nothing is re-accepted: none of them is the
+## glass, the station rule asks the den off a larder only of a work that hands
+## its larder over (GenWorks.station_holds), which no work of the six does, and
+## a world this size lays no tread to keep off a station (GenTreads `_built`).
+## AT GEN 54 (2026-10-04): the crags lay their survey benches, and
+## every keeper's station is sited where its den keeps its ways. The six hold
+## to the bit, and nothing is re-accepted: none of them is the crags or the
+## salt flats, the coast's intake asks as it did, and its shore reads the
+## skerries off the world (WorldData.islet_at), the same bytes as before.
+## AT GEN 55 (2026-10-04): the frost sea opens its leads and lays
+## its works, and the scatter keeps off black water. Whether the six hold is
+## measured below; none of them is the frost sea.
+## RE-ACCEPTED AT GEN 56 (2026-10-04): a run of a shore landscape the
+## open sea does not reach takes the landscape round it (GenCountries._dry_shores).
+## Of the six only the coast is a shore's, and on seeds 7 and 90210 a run of it
+## was walled off: `country`, `country2`, `ground`, `blend` and `props` move
+## there, `level` holds, and seeds 1, 3 and 42 hold to the bit.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
@@ -569,9 +591,9 @@ const SIZE := 256
 const M1 := {
 	1: "054710a9 3eac3638 064bae18 100053b8 4fd7a826 cfce90f5",
 	3: "bd96c6d3 1d22db86 5948aded a4316902 7e58a668 64d16217",
-	7: "ba7a972f 55af42cc 135a5304 0f02d42c f555c41d 8e555621",
+	7: "162a6e7e d00bfbac b0d6da8c 0f02d42c ee3f2b7e ac6e70a6",
 	42: "e0ad0bb3 b7ca1370 8dac8b33 2f4b7f69 1565ed7e bc74411a",
-	90210: "2659ea1f 66925798 ad611fd1 34b30d32 275c7664 c82893ec",
+	90210: "1e3082a2 f20462b0 fad98880 34b30d32 d7176524 013086b0",
 }
 
 

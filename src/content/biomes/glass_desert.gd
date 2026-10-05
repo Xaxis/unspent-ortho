@@ -147,6 +147,12 @@ static func make() -> BiomeDef:
 	# Its keeper: the anvil, the mast the strike fields are called through
 	# (src/core/sentinel/designs/anvil.gd, docs/LANDSCAPES.md).
 	d.sentinel = &"anvil"
+	# The plan's works here: the strike fields the anvil keeps (`_works`).
+	d.props.append(PropKind.STRIKE_ROD)
+	GenWorks.register(&"glass_desert", {
+		"host": load("res://src/content/biomes/glass_desert.gd"),
+		"works": &"_works",
+	})
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
@@ -193,3 +199,100 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SALT:
 		return PropKind.DEBRIS if r < 0.010 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+# --- the plan's works ------------------------------------------------------------
+
+## THE STRIKE FIELD (docs/LANDSCAPES.md PLAN): rods ruled in a grid on the survey
+## bearing call the dry storms' strikes down into the glass, and the fused tubes
+## are dug out between them. The anvil keeps it and feeds on its rods
+## (sentinel/designs/anvil.gd), so a field that stands fewer than FIELD_LEAST
+## rods, or whose den would not keep the anvil's ways off its larder
+## (GenWorks.station_holds), is taken back whole and another site is tried.
+##
+## Recorded as the anvil's station and nothing more. A works mark would found the
+## region's depot on it (Works.sites stands a yard at its busiest mark), and the
+## yard stood on the field's middle with rods through its deck. A walker's tread
+## keeps off it as a station (GenTreads `_built`).
+const FIELD_ROWS := Vector2i(3, 3)
+const FIELD_PITCH := 3.0
+const FIELD_LEAST := 6
+## How far a rod steps along its row or file off another thing.
+const ROD_STEP := 0.8
+## Sites a region tries before it is left without a field, and of those, how
+## many may stand their rods and still find no den that keeps the anvil's ways
+## (the floods that answer that are the cost of the glass's works). One: on
+## seeds 1, 3, 7, 42 and 90210 at full size every region's first field found
+## its den, and a region whose first did not dens its anvil at its heart, with
+## STARVE standing.
+const FIELD_TRIES := 12
+const DEN_FAILS := 1
+
+
+static func _works(L: Object) -> void:
+	for n in GenWorks._n_station(L, 1.0):
+		var fails := [0]
+		for attempt in FIELD_TRIES:
+			if fails[0] >= DEN_FAILS:
+				break
+			var p := GenWorks._site(L, 6, 0, [Ground.ROCK], 30.0)
+			if p.x < 0:
+				# A region too narrow or too blended for the plates' own search
+				# (seed 42's second glass) takes any ground the field will stand on.
+				p = GenWorks._site(L, 4, 1, [], 20.0, 700, 0.5)
+			if p.x < 0:
+				break
+			if GenWorks._work(L, &"_strike_field", Vector2(p) + Vector2(0.5, 0.5), [fails]):
+				break
+
+
+## One strike field at `at` (`GenWorks._work`). Its rods stand on whatever step
+## of the glass is under each, a terrace lip included: a rod is a pole a fifth
+## of a tile across, so it stands inside its own tile (`_put`'s `berthed`), and
+## the sheet is terraced so finely that a field kept off its lips found room for
+## two rods of twelve on seed 1. Off another thing it steps along its row or its
+## file by ROD_STEP, never off the ruling.
+static func _strike_field(L: Object, at: Vector2, a: Array) -> bool:
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var c: GenContext = L.c
+	var rods := PackedVector2Array()
+	for i in FIELD_ROWS.x:
+		for j in FIELD_ROWS.y:
+			var q := at + d * (i - (FIELD_ROWS.x - 1) * 0.5) * FIELD_PITCH + nrm * (j - (FIELD_ROWS.y - 1) * 0.5) * FIELD_PITCH
+			for off: Vector2 in [Vector2.ZERO, d * ROD_STEP, -d * ROD_STEP, nrm * ROD_STEP, -nrm * ROD_STEP,
+					d * ROD_STEP * 2.0, -d * ROD_STEP * 2.0, nrm * ROD_STEP * 2.0, -nrm * ROD_STEP * 2.0]:
+				var rod := GenWorks._put(L, PropKind.STRIKE_ROD, q + off, d.angle(), -99, 0.6, true, true)
+				if rod != null:
+					rods.append(rod.pos)
+					break
+	if rods.size() < FIELD_LEAST:
+		return false
+	var half := Vector2((FIELD_ROWS.x - 1) * 0.5 * FIELD_PITCH + 1.5, (FIELD_ROWS.y - 1) * 0.5 * FIELD_PITCH + 1.5)
+	# A field of this region already laid near enough to feed the same anvil is
+	# its larder too (Sentinels.larder_robbable counts every rod in reach), so
+	# its rods are asked with these. Another region's are never read, as no work
+	# reads another region's (GenWorks._rows_near).
+	var larder := rods.duplicate()
+	var w: WorldData = L.w
+	var def := Sentinels.for_land(&"glass_desert")
+	for m: Dictionary in GenWorks._rows_near(L, &"strike_field", at, def.reach * 2.0):
+		larder.append_array(m.get("rods", PackedVector2Array()))
+	if not GenWorks.station_holds(L, at, larder, maxf(half.x, half.y)):
+		(a[0] as Array)[0] += 1
+		return false
+	# Its corners staked by the survey, as every field the plan rules.
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			GenWorks._put(L, PropKind.SURVEY, at + d * half.x * sx + nrm * half.y * sy, d.angle(), -99, 0.0, true)
+	# The harvest: fused tubes dug out of the cells between the rods.
+	for i in FIELD_ROWS.x - 1:
+		for j in FIELD_ROWS.y - 1:
+			if L.rng.randf() < 0.5:
+				var q := at + d * (i - (FIELD_ROWS.x - 2) * 0.5) * FIELD_PITCH + nrm * (j - (FIELD_ROWS.y - 2) * 0.5) * FIELD_PITCH
+				GenWorks._put(L, PropKind.FULGURITE, q, L.rng.randf() * TAU, -99, 0.3)
+	GenWorks._record(c, &"strike_field", at, d, half)
+	# Its rods on its row, so the next field near it counts them without reading
+	# the world's props.
+	w.landmarks.back()["rods"] = rods
+	return true

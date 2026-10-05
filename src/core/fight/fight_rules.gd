@@ -33,9 +33,59 @@ const DODGE_INVULN_FROM := 50
 const DODGE_INVULN_TO := 140
 ## Swing and dodge both refused until this long after a dodge.
 const DODGE_LOCK_MS := 420
+## A TELL IS READ IN TIME (readable_windup, held on every keeper blow by
+## tests/sentinel/test_readable_tells.gd): a person who sees it start at the slow
+## end of a person's reaction dodges, then walks, out of its box from the middle
+## of it before it lands. The human reader's slowest hands are this number too.
+const READ_REACT_MS := 450.0
+
+
+## How far a dodge carries: its burst integrated over DODGE_MS (about 1.11 tiles).
+static func dodge_reach() -> float:
+	return DODGE_SPEED * (1.0 + DODGE_END) * 0.5 * DODGE_MS / 1000.0
+
+
+## The shortest windup a person reads in time, for a body of radius `trad`
+## standing in the middle of `b`: out to the side of a box, out from under a
+## drop. Walking, not running: a player in a fight is often below the run floor.
+static func readable_windup(b: Blow, trad: float) -> int:
+	var clear := b.reach if b.area else b.width * 0.5 + trad
+	return ceili(READ_REACT_MS + DODGE_MS + maxf(0.0, clear - dodge_reach()) / Tuning.WALK_SPEED * 1000.0)
+
+
 ## Grip: at least this long between pulls; held this long and you are carried.
 const PULL_GAP_MS := 140
 const HOLD_LIMIT_MS := 6000
+
+## A person's pace against a grip: about five pulls a second, kept up without
+## strain. PULL_GAP_MS is the floor a masher can reach, not a pace to ask for.
+const HUMAN_PULL_GAP_MS := 200
+
+
+## Over the walk and the strike, for a person's slack: a step off line, a late start.
+const WALK_ROUND_SPARE_MS := 300
+
+
+## How long a body standing spent must stay so for a person who dodged its bite to
+## walk round to its back and strike there: the dodge's lock (counted whole, from
+## a press no later than the bite going live), then the walk from beside its front
+## (a dodge's reach round a circle of `circle` tiles) to behind it, gaining on a
+## body still turning at `turn`, then the blow's windup and live time. Walking,
+## as readable_windup: a person in a fight is often below the run floor. INF
+## where `turn` is a walk round or faster: then no stand is long enough.
+static func walk_round_ms(circle: float, turn: float, strike: Blow) -> float:
+	var gain := Tuning.WALK_SPEED / circle - turn
+	if gain <= 0.0:
+		return INF
+	var arc := PI - dodge_reach() / circle
+	return DODGE_LOCK_MS + arc / gain * 1000.0 + strike.windup + strike.active + WALK_ROUND_SPARE_MS
+
+
+## How long a crushing grip (Blow.crush) holds before it bites: what a person
+## needs to read it (READ_REACT_MS) and then pull it off at their own pace, so it
+## costs only one who answers it late or not at all.
+static func crush_ms(b: Blow) -> int:
+	return int(READ_REACT_MS) + b.grip * HUMAN_PULL_GAP_MS
 ## A press refused now is kept this long and tried again (never for pulls).
 ## The source had no buffer; a small one is the difference between a fight
 ## that feels read and one that feels dropped.

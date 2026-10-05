@@ -1,11 +1,11 @@
 extends TestCase
 ## THE ROAD UP (Guide.WAY `walker`, ROADMAP slice 3 step 7). Solis, asked about
 ## every road, names the one nobody has sold: up the lame walker (walker_told).
-## Once his word on Teague has settled, the goal is the walker, pinned on its
-## crater on the Covenant's body, until the enclave in its crown has been met, and
-## the way home waits on it. A world whose craters both fall on another leg's body
-## has no such goal: the line never sends him there, and goes home instead.
-## Whole worlds, since a small one has no crater at all.
+## Once his word on Teague has settled, the goal is the walker, pinned on the
+## crater its lame foot comes back to (`crater:the_tread`), until the enclave in
+## its crown has been met, and the way home waits on it. Where that foot comes
+## down across other water, a raft over the ditch first (`walker_crossing`,
+## StoryCrossing.to_walker). Whole worlds, since a small one has no crater at all.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 const Treads := preload("res://src/core/colossus/colossus_treads.gd")
@@ -33,19 +33,68 @@ func test_the_goal_is_the_walkers_crater_until_the_enclave() -> void:
 	Story.forget()
 
 
-## Seed 42 has two craters, on the shaft's body and the far works': neither is the
-## Covenant's.
-func test_no_crater_on_the_covenants_body_and_the_goal_goes_home() -> void:
-	var g := await _told(42)
-	var craters := 0
+## HOME_SHORE_SEED has no crater on the Covenant's body: the lame foot comes down
+## on a body that open water never joins to the Covenant's, since home's lies
+## between. The goal is the raft over the ditch first, put in from home's shore,
+## until he has stood on the walker's body; then the crater there; home once the
+## enclave is met.
+func test_no_crater_on_the_covenants_body_and_the_goal_crosses_the_ditch() -> void:
+	await _crosses_the_ditch(HOME_SHORE_SEED, false)
+
+
+## COVENANT_SHORE_SEED's lame foot comes down on another body too, but open water
+## joins it to the Covenant's own shore, where Solis has just said the road up:
+## the raft puts in there (StoryCrossing.to_walker asks the Covenant's shore
+## first), and the rest is the same.
+func test_the_ditch_is_crossed_from_the_covenants_shore_where_open_water_joins_them() -> void:
+	await _crosses_the_ditch(COVENANT_SHORE_SEED, true)
+
+
+## The raft over the ditch on `seed_value`, put in from the Covenant's shore or
+## from home's, until the enclave is met.
+func _crosses_the_ditch(seed_value: int, from_covenant: bool) -> void:
+	var g := await _told(seed_value)
 	for m: Dictionary in g.world.landmarks:
 		if StringName(m.get("kind", &"")) == &"tread":
-			craters += 1
-			check(not g.world.same_body(m.pos, _placed(g, &"the_covenant")), "a crater at %s is on another body" % [m.pos])
-	gt(float(craters), 0.0, "the walker does set feet down in this world")
+			check(not g.world.same_body(m.pos, _placed(g, &"the_covenant")), "seed %d: a crater at %s is on another body" % [seed_value, m.pos])
+	# The seed is the premise, and a world laid differently moves it: GEN 53 put
+	# seed 42's lame foot on a body the Covenant's shore reaches, and the raft put
+	# in there, as to_walker says it should, where the test still asked for home's.
+	# Asked first, so a world that has lost the premise says so instead of failing
+	# on the shore.
+	var cov := _placed(g, &"the_covenant")
+	var tread := _placed(g, &"the_tread")
+	var joined := not StoryCrossing.find(g.world, cov, tread).is_empty() \
+		or not StoryCrossing.find_within(g.world, cov, tread, StoryCrossing.WALKER_REACH).is_empty()
+	check(joined == from_covenant, "seed %d's premise: open water %s the Covenant's shore to the walker's body (pick another seed)"
+		% [seed_value, "joins" if from_covenant else "never joins"])
+	var launch := _placed(g, StoryCrossing.WALKER_LAUNCH)
+	var landing := _placed(g, StoryCrossing.WALKER_LANDING)
+	check(launch.is_finite() and landing.is_finite(), "seed %d: a raft over the ditch is placed" % seed_value)
+	if not landing.is_finite():
+		Sx.end(g)
+		Story.forget()
+		return
+	if from_covenant:
+		check(g.world.same_body(launch, cov), "seed %d: put in from the Covenant's shore" % seed_value)
+	else:
+		check(g.world.same_body(launch, _placed(g, &"the_camp")), "seed %d: put in from home's shore" % seed_value)
 	await _next_day(g)
-	_hop(g, &"camp_back", "told and settled, with no crater on this shore: home, never another leg's body")
-	check(not _pinned_crater(g).is_finite(), "and no crater is marked")
+	_hop(g, &"walker_crossing", "told and settled, with no crater on this shore: the raft over the ditch")
+	check(_marked_as(g, "the ditch", launch), "the survey marks where to put in (%s)" % [UiMapScreen.told(g)])
+	check(not _pinned_crater(g).is_finite(), "and no crater yet")
+	g.player.pos = landing
+	g.player.hero.pos = landing
+	var until := Time.get_ticks_msec() + 5000
+	while not Story.heard(StoryCrossing.WALKER_CROSSED) and Time.get_ticks_msec() < until:
+		await process_frames(1)
+	check(Story.heard(StoryCrossing.WALKER_CROSSED), "standing on the walker's shore is heard")
+	_hop(g, &"walker", "ashore on the walker's body: its crater")
+	var crater := _pinned_crater(g)
+	check(_is_cable_crater(g, crater), "the survey marks the crater the cable comes down into (%s)" % [UiMapScreen.told(g)])
+	check(g.world.same_body(crater, landing), "on the body the raft landed on")
+	Story.beat(&"enclave_met")
+	_hop(g, &"camp_back", "the enclave met: the far shore done, home")
 	Sx.end(g)
 	Story.forget()
 
@@ -74,6 +123,14 @@ func _pick(t: StoryTalk, text: String) -> bool:
 			t.pick(i)
 			return true
 	return false
+
+
+## A world whose walker's body only home's shore reaches by open water, and one
+## the Covenant's shore reaches. At GEN 56, of seeds 1-17, 41, 42 and 90210, 12
+## is the only one of the first kind (home's raft is 702 tiles of water); 7, 9,
+## 10, 11, 13, 15, 17, 41 and 42 are of the second (42's raft is 292 tiles).
+const HOME_SHORE_SEED := 12
+const COVENANT_SHORE_SEED := 42
 
 
 ## Slice 2 done, the far shore's threads behind him long ago, and Solis has just
@@ -121,6 +178,13 @@ func _pinned_crater(g: Game) -> Vector2:
 		if String(m.word) == word:
 			return m.at
 	return Vector2.INF
+
+
+func _marked_as(g: Game, word: String, at: Vector2) -> bool:
+	for m: Dictionary in UiMapScreen.told(g):
+		if String(m.word) == word and (m.at as Vector2).distance_to(at) < 0.5:
+			return true
+	return false
 
 
 ## Whether `at` is a tread's middle toe's crater (Treads.MIDDLE_TOE): the crater

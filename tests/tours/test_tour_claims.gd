@@ -98,11 +98,13 @@ func test_every_claimed_subject_is_one_the_runner_can_answer() -> void:
 						check(lands.has(StringName(id)),
 							"%s line %d: no landscape type %s" % [f, n, id])
 				if subject.begins_with("border:"):
-					var pair := subject.substr(7).split("-", false)
-					check(pair.size() == 2, "%s line %d: %s wants two ids joined by a dash" % [f, n, subject])
-					for id: String in pair:
-						check(lands.has(StringName(id)),
-							"%s line %d: no landscape type %s" % [f, n, id])
+					# `border:a-b|c-d`: any of those borders (98_tour `_on_border`).
+					for one: String in subject.substr(7).split("|", false):
+						var pair := one.split("-", false)
+						check(pair.size() == 2, "%s line %d: %s wants two ids joined by a dash" % [f, n, one])
+						for id: String in pair:
+							check(lands.has(StringName(id)),
+								"%s line %d: no landscape type %s" % [f, n, id])
 				if subject.begins_with("prop:"):
 					check(PropKind.NAMES.has(subject.substr(5).replace("_", " ")),
 						"%s line %d: no prop kind %s" % [f, n, subject])
@@ -343,11 +345,12 @@ func test_a_frame_named_after_something_says_what_it_holds() -> void:
 						# the coast/salt_flats border and says so. Requiring both spelled
 						# out made this a rule about how a frame is NAMED rather than about
 						# what it DECLARES, which is the opposite of the point.
-						var pair := s.substr(7).split("-", false)
-						var within := pair.size() == 2
-						for id: String in named:
-							within = within and pair.has(id)
-						said = said or within
+						for one: String in s.substr(7).split("|", false):
+							var pair := one.split("-", false)
+							var within := pair.size() == 2
+							for id: String in named:
+								within = within and pair.has(id)
+							said = said or within
 				check(said, "%s line %d: %s names %s and never says which ground it is on"
 					% [f, n, label, ", ".join(named)])
 			if names_it(label, "lamp"):
@@ -533,3 +536,29 @@ func test_every_latching_system_spends_its_latches() -> void:
 				has = true
 				break
 		check(has, "%s latches a tour word but never spends it: add `func tour_forget(what: StringName) -> void: _seen.erase(what)`" % f)
+
+
+## `village WHO [square]` (GenPlaces `village:WHO` / `square:WHO`): WHO by index,
+## by name with `_` for a space, or by landscape; `square` stands on the square
+## itself, where the village spends its day, and never further from it than its
+## arrival stand.
+func test_a_village_is_found_by_name_and_stood_on_its_square() -> void:
+	var w := WorldGen.generate(1, 256)
+	var q := WorldQuery.new(w)
+	gt(float(w.villages.size()), 2.0, "the world has villages to find")
+	eq(GenPlaces.find(w, "village:0"), w.village_stand(w.villages[0]), "by index")
+	var name := str(w.villages[1].get("name", "")).to_lower().replace(" ", "_")
+	eq(GenPlaces.find(w, "village:" + name), w.village_stand(w.villages[1]), "by name: %s" % name)
+	eq(GenPlaces.find(w, "village:no_such_village"), Vector2(-1, -1), "and no such village is none")
+	eq(GenPlaces.find(w, "square:no_such_village"), Vector2(-1, -1), "nor its square")
+	var nearer := 0
+	for i in w.villages.size():
+		var sq: Vector2 = w.villages[i].pos
+		var stand := GenPlaces.find(w, "village:%d" % i)
+		var on := GenPlaces.find(w, "square:%d" % i)
+		eq(stand, w.village_stand(w.villages[i]), "village %d: plain, where an arrival is set down" % i)
+		check(q.standable(floori(on.x), floori(on.y)), "village %d: its square is ground to stand on" % i)
+		check(on.distance_to(sq) <= stand.distance_to(sq) + 0.01, "village %d: on its square (%.1f off it), no further than its stand (%.1f)" % [i, on.distance_to(sq), stand.distance_to(sq)])
+		if on.distance_to(sq) < stand.distance_to(sq) - 0.5:
+			nearer += 1
+	gt(float(nearer), 0.0, "some village's square is not where its arrival stands")

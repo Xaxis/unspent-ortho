@@ -10,8 +10,9 @@ class_name TourPeople
 ##       gulls  at least two gulls down on the ground working a tip or a wreck, in view
 ##   walkto folk SECS   steer the real walk to the nearest villager out of doors
 ##                      that the camera can see (another if a roof or a wall stands
-##                      between them and the camera), stopping at arm's length to
-##                      their right on screen, where neither hides the other
+##                      between them and the camera, or if the spot beside them
+##                      can't be reached), stopping at arm's length to their right
+##                      on screen, where neither hides the other
 ##   walkto refuse SECS steer the real walk to within sight of the nearest tip or
 ##                      wreck that has its flock, stopping short of scaring it
 ##   walkto dog SECS    steer the real walk to a few steps short of the nearest
@@ -31,6 +32,11 @@ const BESIDE := Vector2(0.9285, -0.3714)
 ## Screen right, for the refuse: the heap beside the player across the wide frame.
 const SCREEN_RIGHT := Vector2(0.7071, -0.7071)
 const CROWD := 3
+## Seconds of walking with no headway toward the spot beside a villager before
+## `walkto folk` gives them up for the next: that spot can be standable ground
+## and still out of reach, across a fence they stand against (Emberlow, seed 1:
+## stopped 0.65 short for 9.5 s).
+const STALL := 1.5
 ## Props tall enough to hide a person from the camera.
 const TALL: Array[int] = [PropKind.HOUSE, PropKind.RUIN, PropKind.WRECK, PropKind.PINE, PropKind.BROADLEAF, PropKind.SNOW_PINE]
 
@@ -97,11 +103,17 @@ static func walk(tour: Node, game: Game, what: String, secs: float) -> bool:
 	var turn := 1.0
 	var chosen: Dictionary = {}
 	var reached := false
+	# The villagers whose spot beside them the walk gave up on (STALL), and its
+	# headway toward the one it is walking to now.
+	var tried: Array[Dictionary] = []
+	var toward: Dictionary = {}
+	var nearest := INF
+	var stalled := 0.0
 	while Time.get_ticks_msec() < until:
 		var target := Vector2(-1, -1)
 		var close := 0.4
 		if what == "folk":
-			chosen = _pick_villager(game, chosen)
+			chosen = _pick_villager(game, chosen, tried)
 			if chosen.is_empty():
 				break
 			target = (chosen.pos as Vector2) + BESIDE * 1.5
@@ -144,6 +156,19 @@ static func walk(tour: Node, game: Game, what: String, secs: float) -> bool:
 			break
 		var dir := d.normalized()
 		var step := tour.get_physics_process_delta_time()
+		if what == "folk":
+			if not is_same(chosen, toward) or d.length() < nearest - 0.05:
+				toward = chosen
+				nearest = d.length()
+				stalled = 0.0
+			else:
+				stalled += step
+			if stalled > STALL:
+				print("tour walkto folk: no headway to the spot beside the villager at %.1f,%.1f in %.1f s (%.2f short); the next" % [
+					(chosen.pos as Vector2).x, (chosen.pos as Vector2).y, STALL, d.length()])
+				tried.append(chosen)
+				chosen = {}
+				continue
 		# Stuck on a wall: sidestep round it the way a player does, for a moment.
 		stuck = stuck + step if game.player.speed < 0.3 and sidestep <= 0.0 else 0.0
 		if stuck > 0.25:
@@ -162,8 +187,9 @@ static func walk(tour: Node, game: Game, what: String, secs: float) -> bool:
 
 
 ## The villager to walk to: the one already chosen while the camera can still see
-## them, else the nearest out of doors that nothing hides.
-static func _pick_villager(game: Game, chosen: Dictionary) -> Dictionary:
+## them, else the nearest out of doors that nothing hides and the walk has not
+## given up on.
+static func _pick_villager(game: Game, chosen: Dictionary, tried: Array[Dictionary]) -> Dictionary:
 	var folk := system(game, "folk")
 	if folk == null:
 		return {}
@@ -172,7 +198,7 @@ static func _pick_villager(game: Game, chosen: Dictionary) -> Dictionary:
 		return chosen
 	var best: Dictionary = {}
 	for f in list:
-		if f.state != &"out" or hidden(game, f.pos):
+		if f.state != &"out" or hidden(game, f.pos) or tried.any(func(t: Dictionary) -> bool: return is_same(t, f)):
 			continue
 		if best.is_empty() or (f.pos as Vector2).distance_to(game.player.pos) < (best.pos as Vector2).distance_to(game.player.pos):
 			best = f

@@ -16,6 +16,10 @@ const STRAIGHT := 2
 const DIAGONAL := 3
 ## A cell that is not ground (deep water, off the world).
 const NOT_GROUND := -1000000
+## The eight steps out of a cell and what each costs.
+const STEP_X: PackedInt32Array = [-1, 0, 1, -1, 1, -1, 0, 1]
+const STEP_Y: PackedInt32Array = [-1, -1, -1, 0, 0, 1, 1, 1]
+const STEP_COST: PackedInt32Array = [DIAGONAL, STRAIGHT, DIAGONAL, STRAIGHT, STRAIGHT, DIAGONAL, STRAIGHT, DIAGONAL]
 
 var world: WorldData
 var query: WorldQuery
@@ -37,12 +41,25 @@ var tall := 0
 var prop_radius := 0.0
 var breaks: Array = []
 
+## Building, in order: idle (nothing in hand), the ground, the solids, Dial's.
+enum { IDLE, FILL, STAMP, DIAL }
+var _doing := IDLE
+var _p_centre := Vector2i(-100000, -100000)
+var _p_level := PackedInt32Array()
+var _p_dist := PackedInt32Array()
+var _p_cell := 0
+var _p_buckets: Array[PackedInt32Array] = []
+var _p_k := 0
+var _p_i := 0
+
 
 func _init(w: WorldData, q: WorldQuery) -> void:
 	world = w
 	query = q
 	_dist.resize(_side * _side)
 	_level.resize(_side * _side)
+	_p_dist.resize(_side * _side)
+	_p_level.resize(_side * _side)
 
 
 ## A field for the body whose roster row is `row` and whose move radius is `r`.
@@ -66,81 +83,212 @@ static func breaks_of(row: Dictionary) -> Array:
 	return out
 
 
-## Make sure the field leads to `target`. Cheap when the target has not left its tile.
+## Make sure the field leads to `target`, now. Cheap when the target has not
+## left its tile. A caller on the frame's clock asks `request` and lets
+## `advance` lay it a slice at a time instead.
 func update(target: Vector2) -> void:
+	request(target)
+	@warning_ignore("return_value_discarded")
+	advance(1 << 30)
+
+
+## A FIELD IS LAID A SLICE AT A TIME. Asked for a new tile, it starts a build
+## beside the one it has, and keeps answering from the old one (`steps`,
+## `direction`) until `advance` has laid every cell of the new one and swaps it
+## in. A whole city field at once was 4-9 ms of one frame, and the player's and
+## a pack's all came due on the frame the player crossed a tile. What a slice
+## may do is counted in cells, not time, so a fixed-step fight lays its fields
+## on the same slices every run. True when a build was started.
+func request(target: Vector2) -> bool:
 	var c := Vector2i(floori(target.x), floori(target.y))
-	if c == centre:
-		return
-	centre = c
+	if (_doing == IDLE and c == centre) or (_doing != IDLE and c == _p_centre):
+		return false
+	_p_centre = c
 	builds += 1
-	_dist.fill(FAR)
+	_doing = FILL
+	_p_cell = 0
+	return true
+
+
+## A build is in hand (`request`), not yet swapped in.
+func pending() -> bool:
+	return _doing != IDLE
+
+
+## The tile this field leads to now, or will once its build is in.
+func laid_to(tile: Vector2i) -> bool:
+	return (_doing == IDLE and centre == tile) or (_doing != IDLE and _p_centre == tile)
+
+
+## Lay up to `budget` cells of the build in hand; the cells it used. Filling a
+## cell, stamping the solids (`_side` cells' worth, about what it costs) and
+## settling a cell in Dial's are a cell each.
+func advance(budget: int) -> int:
+	var used := 0
+	while _doing != IDLE and used < budget:
+		match _doing:
+			FILL:
+				used += _fill(budget - used)
+			STAMP:
+				_stamp_solids()
+				used += _side
+				_start_dial()
+			DIAL:
+				used += _dial(budget - used)
+	return used
+
+
+## The ground of up to `n` cells, from `_p_cell` on: its level, or NOT_GROUND
+## where a body of these rules cannot be. Locals, not members: a member read is
+## a lookup each time.
+func _fill(n: int) -> int:
 	var size := world.size
-	var ox := c.x - RADIUS
-	var oy := c.y - RADIUS
-	for ly in _side:
-		var y := oy + ly
-		for lx in _side:
-			var x := ox + lx
-			var l := NOT_GROUND
-			if x >= 0 and y >= 0 and x < size and y < size:
-				var i := y * size + x
-				if world.ground[i] != Ground.DEEP_WATER:
-					l = world.level[i]
-			# A body's own limits (`for_body`). The target's tile and its neighbours
-			# are left: a player stands beside a tree, and a field is laid to them.
-			var near_target := absi(lx - RADIUS) <= 1 and absi(ly - RADIUS) <= 1
-			if l != NOT_GROUND and not near_target:
-				if tall > 0 and world.headroom_at(x, y) < tall:
-					l = NOT_GROUND
-				elif prop_radius > 0.0 and query != null and prop_stands_in(query, Vector2(x + 0.5, y + 0.5), prop_radius, breaks):
-					l = NOT_GROUND
-			_level[ly * _side + lx] = l
-	var start := RADIUS * _side + RADIUS
-	if _level[start] == NOT_GROUND:
-		return
-	# Dial's buckets: costs are small integers, so the frontier is a list per cost.
-	var buckets: Array[PackedInt32Array] = [PackedInt32Array([start])]
-	_dist[start] = 0
-	var k := 0
+	var grounds := world.ground
+	var levels := world.level
 	var side := _side
-	while k < buckets.size():
-		var i := 0
-		while i < buckets[k].size():
-			var cell := buckets[k][i]
+	var ox := _p_centre.x - RADIUS
+	var oy := _p_centre.y - RADIUS
+	var level := _p_level
+	var cell := _p_cell
+	var last := mini(side * side, cell + n)
+	var done := last - cell
+	while cell < last:
+		var lx := cell % side
+		var ly := cell / side
+		var x := ox + lx
+		var y := oy + ly
+		var l := NOT_GROUND
+		if x >= 0 and y >= 0 and x < size and y < size:
+			var i := y * size + x
+			if grounds[i] != Ground.DEEP_WATER:
+				l = levels[i]
+		# A body's own limits (`for_body`). The target's tile and its neighbours
+		# are left: a player stands beside a tree, and a field is laid to them.
+		if l != NOT_GROUND and tall > 0 and (absi(lx - RADIUS) > 1 or absi(ly - RADIUS) > 1) and world.headroom_at(x, y) < tall:
+			l = NOT_GROUND
+		level[cell] = l
+		cell += 1
+	_p_level = level
+	_p_cell = cell
+	if cell >= side * side:
+		_doing = STAMP if prop_radius > 0.0 and query != null else DIAL
+		if _doing == DIAL:
+			_start_dial()
+	return done
+
+
+func _stamp_solids() -> void:
+	var ox := _p_centre.x - RADIUS
+	var oy := _p_centre.y - RADIUS
+	var lo := Vector2(ox, oy)
+	var hi := Vector2(ox + _side, oy + _side)
+	_stamp(query.ordinary_rows_in(lo, hi, prop_radius), ox, oy)
+	_stamp(query.wide_rows_in(lo, hi, prop_radius), ox, oy)
+
+
+func _start_dial() -> void:
+	_doing = DIAL
+	_p_dist.fill(FAR)
+	var start := RADIUS * _side + RADIUS
+	_p_buckets.clear()
+	_p_k = 0
+	_p_i = 0
+	if _p_level[start] == NOT_GROUND:
+		_swap()
+		return
+	_p_dist[start] = 0
+	_p_buckets.append(PackedInt32Array([start]))
+
+
+## Dial's buckets (costs are small integers, so the frontier is a list per cost),
+## settling up to `n` cells and resuming where the last slice stopped.
+func _dial(n: int) -> int:
+	var side := _side
+	var level := _p_level
+	var dist := _p_dist
+	var buckets := _p_buckets
+	var k := _p_k
+	var i := _p_i
+	var done := 0
+	while k < buckets.size() and done < n:
+		var bucket := buckets[k]
+		while i < bucket.size() and done < n:
+			var cell := bucket[i]
 			i += 1
-			if _dist[cell] != k:
+			done += 1
+			if dist[cell] != k:
 				continue
 			var lx := cell % side
 			var ly := cell / side
-			var here := _level[cell]
-			for dy: int in [-1, 0, 1]:
-				var nly := ly + dy
-				if nly < 0 or nly >= side:
+			var here := level[cell]
+			for d in 8:
+				var nlx := lx + STEP_X[d]
+				var nly := ly + STEP_Y[d]
+				if nlx < 0 or nly < 0 or nlx >= side or nly >= side:
 					continue
-				for dx: int in [-1, 0, 1]:
-					var nlx := lx + dx
-					if (dx == 0 and dy == 0) or nlx < 0 or nlx >= side:
+				var ni := nly * side + nlx
+				var nd := k + STEP_COST[d]
+				if dist[ni] <= nd:
+					continue
+				var there := level[ni]
+				if there == NOT_GROUND or absi(there - here) > step:
+					continue
+				if STEP_COST[d] == DIAGONAL:
+					# Both corners must be ground a body can pass through on the way.
+					var a := level[ly * side + nlx]
+					var b := level[nly * side + lx]
+					if a == NOT_GROUND or b == NOT_GROUND or absi(a - here) > step or absi(a - there) > step \
+							or absi(b - here) > step or absi(b - there) > step:
 						continue
-					var ni := nly * side + nlx
-					var diagonal := dx != 0 and dy != 0
-					var nd := k + (DIAGONAL if diagonal else STRAIGHT)
-					if _dist[ni] <= nd:
-						continue
-					var there := _level[ni]
-					if there == NOT_GROUND or absi(there - here) > step:
-						continue
-					if diagonal:
-						# Both corners must be ground a body can pass through on the way.
-						var a := _level[ly * side + nlx]
-						var b := _level[nly * side + lx]
-						if a == NOT_GROUND or b == NOT_GROUND or absi(a - here) > step or absi(a - there) > step \
-								or absi(b - here) > step or absi(b - there) > step:
-							continue
-					_dist[ni] = nd
-					while buckets.size() <= nd:
-						buckets.append(PackedInt32Array())
-					buckets[nd].append(ni)
-		k += 1
+				dist[ni] = nd
+				while buckets.size() <= nd:
+					buckets.append(PackedInt32Array())
+				buckets[nd].append(ni)
+		if i >= bucket.size():
+			k += 1
+			i = 0
+	_p_dist = dist
+	_p_k = k
+	_p_i = i
+	if k >= buckets.size():
+		_swap()
+	return done
+
+
+## The build in hand becomes the field; the old arrays take the next build.
+func _swap() -> void:
+	var level := _level
+	var dist := _dist
+	_level = _p_level
+	_dist = _p_dist
+	_p_level = level
+	_p_dist = dist
+	centre = _p_centre
+	_doing = IDLE
+
+
+## THE SOLIDS A BODY CANNOT STAND IN, STAMPED ONCE PER REBUILD by their own
+## footprint: each shuts every cell whose centre lies within its solid plus the
+## body's radius, the answer `prop_stands_in` gives cell by cell. Asked cell by
+## cell, 2,401 searches of the tiles round each, a city field took 17-21 ms of
+## the main thread whenever a routing machine's target crossed a tile (the p99
+## of a 20-machine chase); one search of the field's square per tier is the
+## same answer. The target's tile and its neighbours stay open, as `update`
+## leaves them.
+func _stamp(rows: PackedInt32Array, ox: int, oy: int) -> void:
+	var t := world.table
+	for row in rows:
+		var solid := t.solid[row]
+		if solid <= 0.0 or world.depleted.has(t.id[row]) or breaks.has(t.kind[row]):
+			continue
+		var at: Vector2 = t.pos[row]
+		var rr := solid + prop_radius
+		for ly in range(maxi(0, floori(at.y - rr - 0.5) - oy), mini(_side - 1, ceili(at.y + rr - 0.5) - oy) + 1):
+			for lx in range(maxi(0, floori(at.x - rr - 0.5) - ox), mini(_side - 1, ceili(at.x + rr - 0.5) - ox) + 1):
+				if absi(lx - RADIUS) <= 1 and absi(ly - RADIUS) <= 1:
+					continue
+				if Vector2(ox + lx + 0.5, oy + ly + 0.5).distance_squared_to(at) < rr * rr:
+					_p_level[ly * _side + lx] = NOT_GROUND
 
 
 ## Cost from this tile to the player's; FAR when there is no way within the radius.
@@ -221,7 +369,7 @@ func direction(p: Vector2) -> Vector2:
 ## move's test, WorldQuery._fits), leaving the kinds in `through`.
 static func prop_stands_in(q: WorldQuery, p: Vector2, radius: float, through: Array = []) -> bool:
 	var t := q.world.table
-	for row in q.rows_near(p, 2.0 + radius):
+	for row in q.solid_rows_near(p, radius):
 		var solid := t.solid[row]
 		if solid <= 0.0 or q.world.depleted.has(t.id[row]) or through.has(t.kind[row]):
 			continue

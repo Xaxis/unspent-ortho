@@ -336,10 +336,23 @@ wait 0.4
 hour 20
 village 36
 wait 1.0
-# Sleep is asked for: the first press asks, the second sleeps.
-try 3
+# A hungry body eats what it carries before it lies down (Survival._fallback):
+# fed first, a press a mouthful. On seed 7 the presses meant for sleep ate
+# berries ("berries - eat" under the hand) and he never lay down. Each press
+# waits for the row to name it: seed 7's village 36 is a shift town whose
+# street puts somebody in front of him most seconds, and the press is theirs.
+try 8
+  until hint:eat 4
   press use 0.1
   wait 0.4
+  await fed 1
+end
+# Sleep is asked for: the first press asks, the second sleeps.
+try 3
+  until hint:sleep 4
+  press use 0.1
+  wait 0.4
+  until hint:sleep 4
   press use 0.1
   await slept 6
 end
@@ -355,7 +368,10 @@ wait 0.4
 
 # 6 WHO SAW HIM (48_raids, SnatchNight): while he was away at the Reaper and at
 # Low Scar, the plan came in the small hours for somebody out of Oyster Row, and
-# holds them at the Reaper's region's yard.
+# holds them at the Reaper's region's yard. Staged by name: the small hours it
+# comes in are a seed's (SnatchNight.due), the night he slept at Low Scar on seed
+# 1 and the night after on seed 7.
+hour snatch
 await taken 5
 # At one of its housings, the yard in frame round him (its middle is its mast).
 at rescue:yard_breaker
@@ -363,29 +379,45 @@ wait 1.0
 await held_here 6
 shot 17-the-yard-holding-somebody-from-oyster-row with works,works_lit,works_yard
 
+# Fed before the fight, off the bushes and the carry page, two at a time, until
+# he is no worse than hungry: on seed 7 `hour snatch` passed a day while he was
+# at Low Scar, and a starving body walks at half pace (Condition.move_factor).
+try 12
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 1.0
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 0.5
+  await hunger:2 1
+end
+
 # 7 ITS FALL, BY THE TIDE (44_sentinels, the FOUNDER way): it keeps the tide line
 # and is far too heavy for the mud and water it works beside. Roused, it follows
-# him off its own shore onto the mud beside its den, founders there
-# (held 1.4 s), and the land takes it. Staged by the ground's name, and walked
-# as a lure is: at it until it starts a bite at him, then a run for the flats
-# with it behind him. Jumped onto the flats, he was gone from it behind the rise
-# 9 tiles off, and it lost him and never came.
-# Every try starts at its den: a try that ends with him downed and carried off
-# would take the next one's walk from wherever he came round. He goes in from
-# its flats and runs back the way he came (`near keeper_flats`, the nearest
-# patch of them its move reaches from its den): stood off its den on the side
-# he arrived from, terraces and the intake's fence stood between him and the
-# water. The shallows run four tiles off its den (336 tiles of mud, wash and
-# river inside its reach, seed 1; Sentinels.ways_closed holds every den to them).
-try 6
-  near keeper
-  await sentinel 12
-  near keeper_flats
-  wait 1.0
-  walkto mob 4 till:tell
-  walkto ground:mud,water,river 6 run
-  await sentinel_fallen 20
-end
+# him off its own shore onto the ground beside its den it founders in, and the
+# land takes it. Played by the reader's lure (98_tour `drive ... lure`), which
+# draws the nearest standing keeper out onto its own founder ground: asked of the
+# keeper, so it holds wherever a seed puts the Reaper (a walk staged near HIM
+# went 400 tiles the wrong way on seed 7). A down it comes to walks back.
+# Stood on the ground it founders in (`keeper_flats`), not beside it: the
+# flats lie past its den from the side `near keeper` stands him, and the walk
+# out crossed its reach; downed there he came to and walked back the same way,
+# 4-5 downs a run at any hour (seed 1), against none from the flats.
+near keeper_flats
+await sentinel 12
+drive res://tests/fight/plate_reader.gd 240 sentinel_fallen:tide_reaper lure
 wait 1.0
 shot 18-the-tide-takes-the-reaper with sentinel_fallen
 

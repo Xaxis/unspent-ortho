@@ -876,7 +876,7 @@ static func _free(c: GenContext, occ: PackedByteArray, p: Vector2, r: float) -> 
 			if x < 1 or y < 1 or x >= c.size - 1 or y >= c.size - 1:
 				return false
 			var i := y * c.size + x
-			if occ[i] != 0 or c.road[i] != 0 or c.land[i] == 0 or c.water[i] != 0:
+			if occ[i] != 0 or c.road[i] != 0 or c.land[i] == 0 or c.water[i] != 0 or Ground.is_water(c.w.ground[i]):
 				return false
 	return true
 

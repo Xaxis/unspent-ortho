@@ -13,6 +13,9 @@
 #   tools/canon.sh --web                       (desktop frames -> shots/degrade/desktop/)
 #   TOUR_FIXED_FPS=60 tools/tour.sh tours/degrade_grey.tour --seed=7 && cp -R shots/tour/degrade_grey shots/degrade/desktop-grey
 #   godot --path . --fixed-fps 60 --rendering-method gl_compatibility -- --tour=tours/degrade_fit.tour --seed=7 --quality=web
+#   sweep: skip, the Compatibility renderer never draws in tour.sh's off-screen window
+# (Run so on Linux, 2026-10-03, its boot gave up waiting on the first draw and no
+# line of the tour ran in 300 s.)
 # FIXED FPS, ALWAYS: without it the world runs on the wall clock and a place
 # measures 0.1-0.4 apart between two runs of one row, which is a hundred times
 # the 0.007 two measurements agree to WITHIN a run.
@@ -52,9 +55,9 @@ wait 0.8
 perf match shots/degrade/desktop/07-burning.png
 # Follows the canon: the borders seed 7 holds once a landscape stands on one
 # continent. See tours/canon.tour.
-place slums-machine_city
+place slums-machine_city|slums-ruined_metropolis|drowned_city-machine_city|machine_city-ruined_metropolis
 wait 0.8
-perf match shots/degrade/desktop/08-eco-slums-machine_city.png
+perf match shots/degrade/desktop/08-eco-two-cities.png
 place moss-pinewood
 wait 0.8
 perf match shots/degrade/desktop/09-eco-moss-pinewood.png

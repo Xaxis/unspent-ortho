@@ -333,11 +333,11 @@ func test_every_shipped_world_carries_a_footprint() -> void:
 
 
 ## THE LAME LEG COMES DOWN ON THE COVENANT'S BODY (GenTreads LEG1_FIRST), where
-## the story sends him to climb (StoryMap `crater:the_covenant`): home-first, it
+## the story sends him to climb without a second raft (StoryMap `crater:the_tread`): home-first, it
 ## stood there on two seeds of five. Where the foot fits nowhere on that body
 ## (seed 7: water under the strata; seed 42: no room between its coast, roads,
 ## villages, yards and keeper) it is sited home-first as before, and the walker
-## lead goes home (test_walker_lead). On every seed where he comes ashore stays
+## lead takes a second raft to it (test_walker_reach). On every seed where he comes ashore stays
 ## clear of every pad, and no landmark the story is cast to is trodden.
 func test_the_lame_leg_comes_down_on_the_covenants_body() -> void:
 	const Worlds := preload("res://tests/core/test_world_gen.gd")
@@ -510,3 +510,50 @@ func test_the_near_foot_never_leaves_its_build_unclaimed() -> void:
 	eq(int(again.get(&"_task")), -1, "a build nobody came near is claimed when it is done")
 	cam.free()
 	again.free()
+
+
+## A TREAD THAT FITS IS NEVER LOST TO THE SEARCH'S ORDER. GenTreads asks `_fits`
+## of its best-scored places in turn (FITS_ASKED_MOST); asking only the best sixty
+## lost seed 41's second tread, whose place ranked 61st behind sixty that the
+## strata's water or a pad's floor refused. At 1840 seed 41 carries both its
+## walkers' treads.
+func test_a_tread_that_fits_is_never_lost_to_the_search_order() -> void:
+	var w := _grown_41()
+	var at: Array[String] = []
+	for m: Dictionary in _treads(w):
+		at.append("%s leg %d at %s" % [m.walker, int(m.leg), m.pos])
+	eq(at.size(), 2, "seed 41 carries both walkers' treads %s" % [at])
+
+
+## THE SEARCH KEEPS ITS HEADROOM. Every tread row says how far down its list its
+## place was found (`rank`); on the worlds the tests grow, the deepest is held
+## under half of GenTreads.FITS_ASKED_MOST, so a world drifting toward the bound
+## is seen before a tread is lost to it. Over twelve worlds at 1840 the deepest
+## was seed 41's second, at 60.
+func test_the_tread_search_keeps_its_headroom() -> void:
+	const Worlds := preload("res://tests/core/test_world_gen.gd")
+	var deepest := -1
+	var where := ""
+	var seeds: Array[int] = []
+	seeds.assign(Worlds.WORLD_SEEDS)
+	seeds.append(41)
+	for s: int in seeds:
+		var w: WorldData = Worlds.world(s) if Worlds.WORLD_SEEDS.has(s) else _grown_41()
+		for m: Dictionary in _treads(w):
+			var rank := int(m.get("rank", -1))
+			check(rank >= 0, "seed %d: the %s tread says where it ranked" % [s, m.walker])
+			if rank > deepest:
+				deepest = rank
+				where = "seed %d %s leg %d" % [s, m.walker, int(m.leg)]
+	print("       the deepest first fit: %d (%s), of at most %d asked" % [deepest, where, GenTreads.FITS_ASKED_MOST])
+	lt(float(deepest), GenTreads.FITS_ASKED_MOST * 0.5, "the tread search keeps half its bound in hand")
+
+
+## Seed 41 at 1840, grown once for the two tests that ask it.
+static var _w41: WorldData = null
+
+
+static func _grown_41() -> WorldData:
+	if _w41 == null:
+		_w41 = WorldGen.generate(41)
+	return _w41

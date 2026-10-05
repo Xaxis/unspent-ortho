@@ -118,7 +118,7 @@ const BEATS := {
 	&"long_quiet": {"short": "the quiet after", "arc": &"the_war", "says": "After the war came the quiet. It has lasted sixty years."},
 	&"war_relay": {"short": "one relay", "arc": &"the_war", "says": "Every forged order passed through one relay, under the ground where the first machine was built. A shaft goes down to it."},
 	&"the_climb": {"short": "the empty cars", "arc": &"the_colonies", "says": "The Tether's cars go up empty every dawn and come down empty at dusk. Nobody has ever asked to ride one."},
-	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. It is kept across the water, at the Covenant's seat."},
+	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. The Covenant keeps it."},
 	&"counted": {"short": "counted, but not you", "arc": &"the_machines", "says": "The machines count everything on the land. They do not count people."},
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
 	&"not_home": {"short": "not home", "arc": &"the_machines", "says": "Somebody you walked out of a yard did not get home."},
@@ -473,6 +473,24 @@ const FRAGMENTS := {
 			"has been.",
 		],
 		"beats": [&"covenant_fed"],
+	},
+	# The drowned city's port stair, where every raft comes in (StoryCrossing rule 1,
+	# 49_cast `the_port`): read on `use` only. It files boats, not people, which is
+	# why a raft passes the lockkeeper; it names nobody and nothing that drowned it.
+	&"port_arrivals": {
+		"kind": &"sign", "title": "a sign at the stair", "lands": [],
+		"lines": [
+			"An enamel sign at the head of the stair:",
+			"  ARRIVALS. PASSENGERS ARE TO REMAIN",
+			"  ABOARD UNTIL THE VESSEL IS SECURED.",
+			"",
+			"Stencilled across it, newer:",
+			"  PASSENGERS: NOT APPLICABLE.",
+			"",
+			"Under that, a clock face in chalk, its",
+			"hands at a quarter past.",
+		],
+		"beats": [&"counted"],
 	},
 	&"broadcast": {
 		"kind": &"terminal", "title": "a radio, still on", "lands": [],
@@ -3577,6 +3595,9 @@ const PLACED := {
 	# The Covenant's own notice, at its seat (slice 3 step 2): read where it is
 	# posted, not on any sign in any landscape.
 	&"the_covenant": [&"covenant_notice"],
+	# The drowned city's port, where the raft comes in, only on a world whose
+	# crossing lands on its stair (49_cast `the_port`).
+	&"the_port": [&"port_arrivals"],
 	# At the channel, when the orbital realm is grown: until then it stands nowhere.
 	&"the_channel": [&"channel_console"],
 	# Ring Four, when the orbital realm is grown: the case Calloway sent up.
@@ -3591,6 +3612,7 @@ const STOOD := {
 	&"the_yard": PropKind.CONSOLE,
 	&"the_camp": PropKind.DOC_BOX,
 	&"the_covenant": PropKind.SIGN,
+	&"the_port": PropKind.SIGN,
 }
 
 # --- words that belong to a kind of room ---------------------------------------
@@ -4609,7 +4631,7 @@ const TALKS := {
 				],
 			},
 			&"up": {
-				"says": ["Every road but up.", "The lame walker puts a foot down in the same crater every third day.", "Nobody's ever climbed it, so nobody's sold it."],
+				"says": ["Every road but up.", "The lame walker puts a foot down in the same crater every third day.", "The sea's a ditch to it.", "Nobody's ever climbed it, so nobody's sold it."],
 				"beats": [&"walker_told"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
@@ -5220,8 +5242,15 @@ const TALKS := {
 				"replies": [
 					{"text": "Who set the timetable?", "pick": &"asked_table", "to": &"table"},
 					{"text": "Where do they go?", "pick": &"asked_where", "to": &"where"},
+					{"text": "Who lives in the hulls?", "pick": &"asked_hulls", "to": &"hulls"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			# The barge families, from her side of the water: no beat, no `when`. Her
+			# "either" answers her own "Nobody drives them".
+			&"hulls": {
+				"says": ["Families. Their grans came in the war, on the barges.", "Nobody was steering those either, to hear them tell it."],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"table": {
 				"says": ["That's the thing. It's ours. The city's own, from before the water.", "Same stops, same hours. The stops are twenty feet under now.", "They're still running a service for a city that isn't there."],
@@ -5756,7 +5785,7 @@ const LEAD := {
 	# The crossing (slice 3): a raft, then the narrows, then the archive.
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
-	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	&"archive": "The war's archive, for how it started: the survey marks where it is kept.",
 	# The archive (slice 3 step 4) and back at the camp (step 8).
 	&"orders": "The war's orders, for who sent them: ask the archivist to show you one.",
 	&"camp_back": "The old soldier, with what the archive showed you: at the crew's camp.",
@@ -5772,6 +5801,9 @@ const LEAD := {
 	# The half-broken walker, once Solis has said the road up (walker_told), until
 	# the enclave in its crown has been met: the far shore's last thread.
 	&"walker": "The lame walker, for the one road nobody has sold: its foot comes back to the same crater.",
+	# Where its lame foot comes down across another water (StoryCrossing.to_walker),
+	# the raft over to it first, until he has stood on that shore.
+	&"walker_crossing": "Across the ditch, for the lame walker's crater: put the raft in there.",
 	# The second keeper, keyed by its design (Guide.keeper_goal, Sentinels.next_keeper):
 	# once Teague has named it (`anvil_named`) until it falls. Never gating the way
 	# on: no key memory.
@@ -5779,7 +5811,7 @@ const LEAD := {
 	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
 	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
 	# The slice's last hop, held into slice 4: said only while no keeper has a lead.
-	&"relay": "The relay below, for what is down there: its shaft is across the water.",
+	&"relay": "The relay below, for what is down there: the survey marks its shaft.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
 	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,
@@ -5829,14 +5861,20 @@ const TOLD_WHILE := {
 	&"june": {"place": &"the_covenant", "word": "her house"},
 	&"june_voice": {"place": &"the_covenant", "word": "her house"},
 	&"warden": {"place": &"the_covenant", "word": "the covenant"},
-	# The walker's crater on the Covenant's body, nearest it (`crater:SLOT`,
-	# StoryMap.crater_pos): a place of the world, not of the cast.
-	&"walker": {"place": &"crater:the_covenant", "word": "the crater"},
+	# The walker's crater, the one its lame foot comes back to, wherever that is
+	# (`crater:SLOT`, StoryMap.crater_pos, of the_tread): a place of the world.
+	&"walker": {"place": &"crater:the_tread", "word": "the crater"},
+	# Where to put the raft in for the walker's own water (StoryCrossing.to_walker).
+	&"walker_crossing": {"place": StoryCrossing.WALKER_LAUNCH, "word": "the ditch"},
 	# Back at the camp (slice 3 step 8): the way back is where he landed, and the
 	# landing keeps the crossing's name: one water, one name. Home again, the
 	# crew's own mark (TOLD marens_lead) is the way.
-	&"camp_back": {"place": &"the_landing", "word": "the narrows", "on_body": true},
-	&"rook_teague": {"place": &"the_landing", "word": "the narrows", "on_body": true},
+	# Where he stands on the walker's own body, across the ditch, the way back
+	# begins there (`else`, the first of the two whose body he stands on).
+	&"camp_back": {"place": &"the_landing", "word": "the narrows", "on_body": true,
+		"else": {"place": StoryCrossing.WALKER_LANDING, "word": "the ditch", "on_body": true}},
+	&"rook_teague": {"place": &"the_landing", "word": "the narrows", "on_body": true,
+		"else": {"place": StoryCrossing.WALKER_LANDING, "word": "the ditch", "on_body": true}},
 }
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has
@@ -6057,6 +6095,33 @@ const REPRISAL := {
 	# He comes to the roofs a broken yard's hunters burned (holdfast_price).
 	"seen": "The houses are black to the ground. Somebody left a pot on the fire.",
 }
+## The same lines for a march sent for his own fire and not a village's roofs:
+## his camp, where nobody else lives, or the holding his people live in (48_raids
+## `_his_to_burn` says what the hunters do at each). No `seen`: that is a
+## village's, and only a village's burning lands holdfast_price.
+const REPRISAL_AT := {
+	&"camp": {
+		"sent": "The yard's hunters take the road to your fire, the last on this ground.",
+		"called_back": "Out on the road to your fire, the hunters stop where they stand.",
+		"met": "The hunters lie on the road. Nothing reaches your fire.",
+		"burned": "Your fire is out, and what you built by it is down. The road is empty again.",
+	},
+	&"holding": {
+		"sent": "The yard's hunters take the road to the holding, the last roofs on this ground.",
+		"called_back": "Out on the road to the holding, the hunters stop where they stand.",
+		# True because a march never warns the holding: 48_raids `_warn` answers
+		# only its own attention, and the reprisal touches none of it.
+		"met": "The hunters lie on the road. Nobody at the holding knows they were sent.",
+		"burned": "Smoke stands over the holding. Its people watch their beds burn.",
+	},
+}
+
+
+## The glass line for `event` of a march sent for `kind` (Reprisal.ROOF, CAMP or
+## HOLDING): what the hunters were sent for is what the line names.
+static func reprisal_says(event: StringName, kind: StringName) -> String:
+	var lines: Dictionary = REPRISAL if kind == Reprisal.ROOF else REPRISAL_AT.get(kind, {})
+	return String(lines.get(event, ""))
 
 # DEFEND THE HOLDING (slice 2 step 4; 48_raids, Settlement.inside/barred): the
 # glass lines for the warning sending his people in behind the shutters and for
@@ -6168,7 +6233,6 @@ const KEEPER_FELL := {
 	&"anvil": {
 		&"force": "The mast comes apart, and its crown rings down onto the glass.",
 		&"founder": "The mast skates into the drift and stops. The sand closes over its core.",
-		# Kept though the way waits on a strike field no world lays yet.
 		&"starve": "The crown calls and nothing answers. The mast stands on its skates, and goes quiet.",
 	},
 }

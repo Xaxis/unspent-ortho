@@ -111,3 +111,21 @@ func test_a_crossing_rebuilds_the_index_instead_of_piling_a_second_world_on_it()
 	check(filed == now, "every source filed in exactly one cell: %d sources, %d filed" % [now, filed])
 	g.queue_free()
 	await frames(1)
+
+
+## THE INDEX BUILDS NO HOUSE. A house's lit front is its own light, and it was
+## read from glow points that carried the stolen tube too, which is read off the
+## built model: the index, which asks it of every house on the island on the
+## raise's worker, built every house variant there was (1.6 s of its 1.8 s on
+## seed 7 at 1840). Only the houses near the camera read their tube (`_tube_of`).
+func test_the_index_builds_no_house() -> void:
+	var w := WorldGen.generate(1, 512)
+	PropModels._templates.clear()
+	PropModels._neon.clear()
+	Lights.index_of(w, 0, [] as Array[Dictionary], {}, {})
+	var per_kind := PropModels.MAX_VARIANTS * BiomeRegistry.SLOTS * Broken.BUCKETS
+	var houses := 0
+	for key: int in PropModels._templates:
+		if key / per_kind == PropKind.HOUSE:
+			houses += 1
+	eq(houses, 0, "the index built %d house models" % houses)

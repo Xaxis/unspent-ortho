@@ -95,3 +95,33 @@ func test_the_crowd_reader_wins_what_the_single_reader_loses() -> void:
 	print("  info two cutters at a gate, knife: the single reader wins %d of %d, the crowd reader %d (mean %.1f s)" % [single, BOUTS, crowd, times / maxf(crowd, 1)])
 	gt(crowd, single + 3, "a player who keeps the crowd on one side wins more of it")
 	gt(crowd, BOUTS * 2 / 3 - 1, "and wins most of it")
+
+
+func test_a_walk_round_that_gains_nothing_is_given_up_and_the_keeper_let_come() -> void:
+	# The stooped Reaper turns faster than a person goes round it, and does not
+	# sweep a flank. A player who kept running for its back was never square to
+	# strike and never bitten, for minutes. Seeing its face stay on them, they let
+	# it come: its grip is dodged, and the stand after is the way to its back.
+	MobState._next_id = 1000
+	var def := Sentinels.for_land(&"coast")
+	var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
+	sim.hero.inventory.add(&"axe_felling")
+	sim.hero.inventory.set_held(&"axe_felling")
+	sim.hero.kit = FightKit.of([])
+	var m := sim.add_mob(def.kind, sim.hero.pos + Vector2(0.0, -1.8))
+	Sentinels.own_row(m)
+	Sentinels.wear_phase(m, def, def.phases.size() - 1)
+	# Facing away: the player starts a quarter off its stern, where the walk round began.
+	m.facing = -PI * 0.5 - 0.75
+	m.aim = m.facing
+	m.disturbed = true
+	m.set_mood(MobState.ATTACKING, sim.now)
+	var r := ShoulderReader.new(sim)
+	r.human = 11
+	var before := m.health
+	var t := 0.0
+	while t < 30000.0 and m.health == before:
+		r.act()
+		sim.slices(2)
+		t += 16.0
+	lt(float(m.health), float(before), "the keeper was struck within 30 s (%.1f s)" % (t / 1000.0))

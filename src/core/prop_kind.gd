@@ -286,7 +286,8 @@ const SOLID: PackedFloat32Array = [
 	0.5,
 	# A box on two blocks, knee-high: walked round.
 	0.45,
-	# A burnt house stands on the walls it had: a house's circle.
+	# A burnt house stands on the walls it had: its form's reach, set where it
+	# is added (WorldData.add_prop), which overrides this.
 	1.6,
 	# A drowned block is two and a half deep and three along its canal: the
 	# circle that fits inside it. A roof in the shallows is the same block, and a

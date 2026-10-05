@@ -31,7 +31,10 @@ static func make() -> SentinelDef:
 	d.note = "An arch on two tracks: the one silhouette on the coast with daylight through it."
 	d.kind = &"sentinel.coast"
 	d.reach = 26.0
-	d.stations = [&"intake", &"sea_wall", &"hulk", &"turf_rows"]
+	# The intake alone. A hulk, a sea wall or a row of turf has none of its
+	# larder by it, and a den there kept its ways at 3 of 30 on four worlds;
+	# every region big enough to keep it gets an intake (GenWorks._n_station).
+	d.stations = [&"intake"]
 	d.feeds = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.RELAY]
 	d.come_round = "The gantry slews on its tracks and the reaper's arm sweeps the side you keep to."
 	d.drops = &"sentinel_tide_reaper"
@@ -56,7 +59,7 @@ static func make() -> SentinelDef:
 	# drive in its left leg is open — the side to be on has MOVED, which is the
 	# lesson a sentinel teaches that no ordinary machine does.
 	var raised := SentinelPhase.make(&"raised", 0.6, &"left",
-		{"swing": [620, 160, 640, 760], "reach": 2.0, "width": 2.2, "dmg": 4, "knock": 10.0, "knock_ms": 340})
+		{"swing": [700, 160, 640, 760], "reach": 2.0, "width": 2.2, "dmg": 4, "knock": 10.0, "knock_ms": 340})
 	raised.pace = 5.0
 	raised.dash = 10.0
 	raised.quick = 340
@@ -65,16 +68,32 @@ static func make() -> SentinelDef:
 
 	# Phase three: stooped on one track, hauling. Its bite takes hold instead of
 	# hurting: it means to put the player under the arch, and the chute's gear at
-	# its back is the last thing left open. Pulled loose, the wrench slews the
-	# gantry half round on its tracks and jams it for `torn`, the chute gear
-	# toward the player: it otherwise turns on the spot as fast as they can
-	# circle it, and its lair is fenced either side.
+	# its back is the last thing left open. Two ways reach it, the grammar of the
+	# reaping phase: a grip dodged closes on nothing and leaves it spent, hauling
+	# round on one track (`spent_turn`) for a walk to its back; a grip that held,
+	# pulled loose, slews the gantry half round on its tracks and jams it for
+	# `torn`, the chute gear toward the player. Not pulled loose in time
+	# (FightRules.crush_ms), the drum comes down on what it holds (`crush`): the
+	# grip is its own tell, and the wrench is what the first keeper teaches.
+	# The stand after a miss (recovery + cooldown, 3760 ms) is a person's walk
+	# round it at spent_turn with the longest reach they hold (the beam lance,
+	# FightRules.walk_round_ms 3676 ms): a good read is never left without a way in.
 	var stooped := SentinelPhase.make(&"stooped", 0.28, &"back",
-		{"swing": [520, 170, 560, 900], "reach": 1.8, "width": 2.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4, "torn": 2200})
+		{"swing": [671, 170, 560, 3200], "reach": 1.8, "width": 2.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4, "torn": 2200, "crush": 3})
 	stooped.pace = 3.4
 	stooped.dash = 7.0
 	stooped.quick = 260
-	stooped.turn = 1.2
+	# Faster than a person running round it at the shortest reach a player brings
+	# (RUN_SPEED / circle with the knife, 2.60 rad/s): the chute gear is reached
+	# by its two declared ways round (test_phases), the stand and the slew. A body
+	# pressed to it slides round faster still, but whoever stops to swing is
+	# turned onto plate before the blow lands (1.0 rad over a felling axe's
+	# 380 ms). It turns to bite what keeps to its back, and does not sweep.
+	stooped.turn = 2.7
+	# Spent, the drum's weight drags it round on one track: seen to turn, and a
+	# sixth of a walk round it at the longest reach (1.20 rad/s).
+	stooped.spent_turn = 0.2
+	stooped.comes_round = false
 	stooped.note = "It stops killing and starts carrying: pull free, then take the chute gear."
 	d.phases = [reaping, raised, stooped]
 

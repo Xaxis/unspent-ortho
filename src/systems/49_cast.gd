@@ -104,6 +104,7 @@ func _process(delta: float) -> void:
 	_since = 0.0
 	_stand_things(from)
 	_heard_the_far_shore(from)
+	_heard_the_walker_shore(from)
 	for row: Dictionary in people:
 		var c := StoryCast.get_def(row.character)
 		var here: bool = (row.pos as Vector2).distance_to(from) <= STREAM and (c == null or c.present())
@@ -154,6 +155,19 @@ func _heard_the_far_shore(from: Vector2) -> void:
 		Story.hear(StoryCrossing.CROSSED)
 
 
+## The first time he stands on the body the lame walker's foot comes down on,
+## where that is across the water from the Covenant's (StoryCrossing.to_walker),
+## it is heard (WALKER_CROSSED): the walker's crossing is behind him.
+func _heard_the_walker_shore(from: Vector2) -> void:
+	if Story.heard(StoryCrossing.WALKER_CROSSED) or game.world.realm != Realm.SURFACE \
+			or not placed.has(StoryCrossing.WALKER_LANDING) or not placed.has(&"the_tread"):
+		return
+	var t := Vector2i(from.floor())
+	if not Ground.is_water(game.world.ground_at(t.x, t.y)) and game.world.same_body(from, placed[&"the_tread"].pos):
+		@warning_ignore("return_value_discarded")
+		Story.hear(StoryCrossing.WALKER_CROSSED)
+
+
 ## Where a raft puts in from the home body and lands on the next leg's
 ## (StoryCrossing): ashore at the world's landfall (the_landfall), else across the
 ## narrows. Two more places: the survey marks the one while the
@@ -166,6 +180,17 @@ func _place_crossing() -> void:
 		return
 	placed[StoryCrossing.LAUNCH] = {"pos": c.launch}
 	placed[StoryCrossing.LANDING] = {"pos": c.land}
+	# Only a raft that comes in on the port's stair has a port to read at; a
+	# landing on a bare shore stands no sign.
+	var port := Landmarks.port_of(game.world)
+	if port.is_finite() and (c.land as Vector2).distance_to(port) < 0.01:
+		placed[StoryCrossing.PORT] = {"pos": port}
+	# And where the lame walker's foot comes down across another water, the raft
+	# from the Covenant's shore to it.
+	var walker := StoryCrossing.to_walker(game.world, placed)
+	if not walker.is_empty():
+		placed[StoryCrossing.WALKER_LAUNCH] = {"pos": walker.launch}
+		placed[StoryCrossing.WALKER_LANDING] = {"pos": walker.land}
 
 
 ## THE STORY'S OWN READABLE THINGS (StoryContent.STOOD): where nothing the world
@@ -211,7 +236,7 @@ const GATE_CLEAR := 4.0
 ## (its lair out to its reach, standing or fallen), where reading it would be
 ## walking into the fight; clear of every era gate (GATE_CLEAR) and of every cast
 ## person; and out of reach of any other thing with words or that the hand takes
-## from, else the clearest.
+## from, and of every door (`_near_words`), else the clearest.
 ## Vector2.INF where there is none within STOOD_REACH.
 func _thing_spot(at: Vector2, salt: int) -> Vector2:
 	var w := game.world
@@ -300,36 +325,19 @@ func _clear() -> void:
 	people.clear()
 
 
-## THE TREAD'S PEOPLE STAND ON THE ARCH-SIDE LIP OF THE CRATER THE WALKER LEAD
-## PINS (`the_tread`, its middle toe's): still between the bowls, but where the
-## line comes down and a player comes to climb. Turned TREAD_TURN round the rim
-## from the arch, away from the side the cable hangs on (WalkerClimb.FOOT_TURN),
-## so they stand clear of everywhere the climb seeks its lip and of the walk down
-## from it to the cable (43_climb `climb:lip`). `slot` is the tread's cast row
-## (StoryCasting: pos, ankle, pads, yaw).
+## THE TREAD'S PEOPLE STAND ON THE LIP THEIR HOLDING IS LAID ROUND
+## (Treads.folk_lip): of the crater the walker lead pins (`the_tread`, its middle
+## toe's). `slot` is the tread's cast row (StoryCasting: pos, ankle, pads, yaw).
 func _tread_lip(slot: Dictionary) -> Vector2:
-	var ankle: Vector2 = slot.ankle
-	var pad: Vector3 = (slot.pads as Array)[Treads.MIDDLE_TOE]
-	var centre := Vector2(pad.x, pad.y)
-	var arch := (ankle - centre).normalized()
-	var hang := ankle + Vector2.from_angle(float(slot.yaw) + deg_to_rad(WalkerClimb.FOOT_TURN)) * WalkerClimb.HANG_FOOT_R
-	var away := -signf(arch.cross(hang - centre))
-	return centre + arch.rotated(away * TREAD_TURN) * (Treads.rim_r(pad) - TREAD_LIP_IN)
-
-
-## How far round the rim from the arch the tread's people stand (radians), and
-## how far in from the rim (Treads.rim_r). The climb seeks its lip no nearer the
-## arch than 0.065 rad short of it, on the cable's side; 0.15 is 6.8 m round a
-## 47 m rim the other way, more than `_stand_near`'s first steps off the spot.
-const TREAD_TURN := 0.15
-const TREAD_LIP_IN := 2.0
+	return Treads.folk_lip(slot.ankle, slot.pads, float(slot.yaw))
 
 
 ## A standable tile a few paces off the slot, at a bearing of their own, and
 ## never within APART of somebody already cast, so two people cast at one place
-## do not stand in each other — and out of reach of anything with words on it,
-## or the one `use` key reads the post beside them instead of speaking to them (a
-## works yard is full of the plan's terminals). THE FALLBACK HONOURS APART TOO:
+## do not stand in each other — and out of reach of anything with words on it
+## or any door (`_near_words`), or the one `use` key reads the post beside them,
+## or opens the door, instead of speaking to them (a works yard is full of the
+## plan's terminals). THE FALLBACK HONOURS APART TOO:
 ## at the Holdfast's camp every spot is near a terminal, the fallback was the
 ## first standable tile off the slot, and Vera, Sabine and Teague all stood on
 ## the same one, so `use` at Vera opened whoever the list met first.
@@ -358,10 +366,10 @@ func _stand_near(at: Vector2, id: StringName) -> Vector2:
 	return fallback if fallback != Vector2.INF else at
 
 
-## How far the nearest thing with words, or that the hand takes from, is from
-## `p` (edge to edge).
+## How far the nearest thing with words, or that the hand takes from, or door,
+## is from `p` (edge to edge).
 func _clearance(p: Vector2) -> float:
-	var best := INF
+	var best := _door_gap(p)
 	for q: WorldProp in game.query.props_near(p, StoryProps.REACH + 2.0):
 		if (StoryProps.readable(q.kind) or Takes.workable(q.kind)) and not game.world.depleted.has(q.id):
 			best = minf(best, q.pos.distance_to(p) - q.solid)
@@ -380,11 +388,13 @@ func _taken(spot: Vector2) -> bool:
 	return false
 
 
-## Whether a thing somebody could read stands within the key's reach of `p`, or
-## a thing the hand takes from stands within the hand's (Survival.REACH): either
-## would answer `use` before the person standing there (49_story
-## `_open_what_is_in_front`). Sefa, cast in a stand of scrap trees at the
-## Tether's foot, could only ever be asked for a turn of the tree beside her.
+## Whether a thing somebody could read stands within the key's reach of `p`, a
+## thing the hand takes from within the hand's (Survival.REACH), or a door within
+## DOOR_ROOM: any would answer `use` before the person or the thing standing
+## there (49_story `_open_what_is_in_front`, 21_doors `_door_wins`). Sefa, cast
+## in a stand of scrap trees at the Tether's foot, could only ever be asked for a
+## turn of the tree beside her; Dace, cast on the frost sea's frozen hull's
+## hatch, only ever opened its hold.
 func _near_words(p: Vector2) -> bool:
 	for q: WorldProp in game.query.props_near(p, StoryProps.REACH + 2.0):
 		var edge := q.pos.distance_to(p) - q.solid
@@ -392,7 +402,47 @@ func _near_words(p: Vector2) -> bool:
 			return true
 		if Takes.workable(q.kind) and not game.world.depleted.has(q.id) and edge <= Survival.REACH + 0.6:
 			return true
-	return false
+	return _door_gap(p) <= DOOR_ROOM
+
+
+## How far every door keeps from a person or a stood thing: the key's reach, as
+## words do. A door he faces within its own REACH of him takes the key outright
+## (21_doors `_door_wins`), and he speaks to someone from anywhere in the key's
+## reach: measured on seed 1 at 256, people 1.4 to 2.5 off a door lost the key
+## from one or two of the stands round them, and the Covenant's sign at 1.2.
+const DOOR_ROOM := StoryProps.REACH
+## The doors' square for `_door_gap`, wider than DOOR_ROOM so the nine round a
+## spot hold every door near enough to matter.
+const DOOR_CELL := 8.0
+
+## 21_doors' doors by DOOR_CELL square, and the list they were filed from: a
+## new list (a load, another realm) is filed again.
+var _door_cells: Dictionary = {}
+var _doors_filed: Array = []
+
+
+## How far the nearest door of the world outside is from `p`, out to DOOR_CELL;
+## INF past that.
+func _door_gap(p: Vector2) -> float:
+	var sys := game.get_node_or_null("21_doors")
+	if sys == null:
+		return INF
+	var doors: Array = sys.get("doors")
+	if not is_same(doors, _doors_filed):
+		_doors_filed = doors
+		_door_cells.clear()
+		for t: Threshold in doors:
+			var k := Vector2i((t.door / DOOR_CELL).floor())
+			if not _door_cells.has(k):
+				_door_cells[k] = []
+			(_door_cells[k] as Array).append(t.door)
+	var at := Vector2i((p / DOOR_CELL).floor())
+	var best := INF
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			for d: Vector2 in _door_cells.get(at + Vector2i(dx, dy), []):
+				best = minf(best, d.distance_to(p))
+	return best
 
 
 func _dress(row: Dictionary, c: StoryCharacter) -> void:

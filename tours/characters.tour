@@ -24,19 +24,26 @@ zoom 8
 await dog 10
 wait 0.8
 shot 04-the-village-dog with dog
-# Gulls over the refuse: the nearest tip or wreck, whatever village is near.
+# Gulls over the refuse: stood by the nearest tip or wreck by name (a walk from
+# Oyster Row found no flocked heap in reach on GEN 47's world), then off it far
+# enough not to put the flock up.
+near tip,wreck
+wait 1.0
 zoom 15
-walkto refuse 60
+walkto refuse 20
 zoom 9
 await gulls 40
 wait 0.5
 shot 05-gulls-on-the-refuse with gulls
-# Oyster Row in the afternoon, several out at once.
-village 0
+# Oyster Row in the afternoon, several out at once: on its square, where its
+# people spend the day (its arrival stand sits off them, outside the view).
+village oyster_row square
 hour 15.5
 zoom 15
+# Shot the moment the crowd is there, with no settle between: from the square it
+# is three of the village's people at a time, and half a second of their walking
+# took one out of the count (a house between her and the camera hides her).
 await crowd 20
-wait 0.5
 shot 06-oyster-row-afternoon with crowd
 hour 19.6
 wait 2.5
@@ -57,24 +64,24 @@ shot 10-dawn
 # The other lands: teleports, then the same wait and walk to someone.
 hour 11
 zoom 12
-# Villages are numbered by worldgen and the numbers move: 10 is Pennock on the
-# coast now, and this frame has been a picture of green grass and a sandy shore
-# called "snowfield" ever since. The `land:` claim is what keeps it honest.
-village 12
+# Each village by its name, never by worldgen's number, which moves: 12 became
+# the scrapwood's Rivetgate and this frame stopped being a snowfield's. The
+# `land:` claim is what keeps it honest.
+village hush_fold
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
 shot 11-snowfield-hush-fold with folk,land:snowfield
 zoom 12
-village 8
+village emberlow
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
 shot 12-burning-emberlow with folk,land:burning
 zoom 12
-village 1
+village fennick
 await folk 8
 walkto folk 12
 zoom 7
