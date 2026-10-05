@@ -436,10 +436,10 @@
       "tests": []
     },
     {
-      "id": "system:23_ruins",
+      "id": "system:23_walls",
       "kind": "system",
-      "entry": "src/systems/23_ruins.gd",
-      "reach": "tools/test.sh test_ruin_walls",
+      "entry": "src/systems/23_walls.gd",
+      "reach": "tools/test.sh test_prop_walls,test_walls_by_cell,test_prop_footprint",
       "area": "world-places",
       "tests": []
     },

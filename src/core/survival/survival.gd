@@ -968,6 +968,11 @@ static func _heap_spot_at(game: Game, p: Vector2, facing: float, scale: float) -
 			if q.pos.distance_to(at) < q.solid + radius + 0.05:
 				clear = false
 				break
+		# A wall stops a heap as it stops a body (a ruin's, a fallen tower's).
+		for c: Vector3 in game.query.blocks_at(at):
+			if Vector2(c.x, c.y).distance_to(at) < c.z + radius + 0.05:
+				clear = false
+				break
 		if clear:
 			return at
 	return Vector2(-INF, -INF)
