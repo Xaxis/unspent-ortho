@@ -689,14 +689,14 @@ func test_no_hazard_cue_draws_over_the_body_at_eye_level() -> void:
 	var air: Array = []
 	eq(_breaths(g, air), 1, "a cough under the close eye is one puff of air")
 	check(air.has(true), "and it is the depth-tested air, not a mark")
-	# A tell's ring on the ground is hidden by what stands in front of it, as
+	# A tell's mark on the ground is hidden by what stands in front of it, as
 	# every ground mark is under the close eye -- unless it is heard, with the
 	# listener's ear (FightKit.listen): then it is drawn through.
 	var at := g.player.position + Vector3(3.0, 0.0, 0.0)
-	MobFx.tell_ring(g, at, Color.WHITE, 1.0, 0.5)
-	eq(_over_all(g), Vector2i(1, 0), "a tell ring seen is depth-tested")
-	MobFx.tell_ring(g, at, Color.WHITE, 1.0, 0.5, true)
-	eq(_over_all(g), Vector2i(1, 1), "a tell ring heard is drawn through")
+	MobFx.tell_box(g, at, 0.0, 1.0, 0.8, 0.28, Color.WHITE, 0.5)
+	eq(_over_all(g), Vector2i(1, 0), "a tell mark seen is depth-tested")
+	MobFx.tell_box(g, at, 0.0, 1.0, 0.8, 0.28, Color.WHITE, 0.5, true)
+	eq(_over_all(g), Vector2i(1, 1), "a tell mark heard is drawn through")
 	_done()
 
 

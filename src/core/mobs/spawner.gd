@@ -36,8 +36,10 @@ const CALM_WIND := 0.35
 ## breaking it, which this repository has three recorded cases of. It is spelled
 ## rather than imported because this is `src/core`: a pure rules file may not
 ## reach into `src/render` for a constant, so `tests/render/test_read_reach.gd`
-## holds the two equal instead, and will fail here if the rig ever moves.
-var yaw_deg := 45.0
+## holds the two equal instead, and will fail here if the rig ever moves. The
+## yaw is the one the rig itself reads (PlayView), so it cannot.
+const PlayView := preload("res://src/core/view/play_view.gd")
+var yaw_deg := PlayView.YAW_DEG
 var pitch_deg := 57.0
 var view_height := 15.0
 var aspect := 16.0 / 9.0

@@ -578,6 +578,13 @@ var hazards: Dictionary = {}
 var roster: Dictionary = {}
 ## Sentinel design id for this type (empty until designed).
 var sentinel: StringName = &""
+## WHAT THE PLAN'S DEPOT IS DRAWN AS HERE (WorksDepot.FORMS): `deck`, the raised
+## plate deck under its lit mast; `winch`, a squat old plate house on a shelf's
+## lip with its cable down to the terrace below, no mast and no light of its own
+## (a landscape that holds no flat yard and no machine light: the crags). Only the
+## drawing and its mass change: the yard's frame, its three parts and their reach
+## are every depot's (Works). A `winch` yard stands only by a lip (Works.lip_foot).
+var depot_form: StringName = &"deck"
 ## Landmark kinds this type holds (`Landmarks`), three or more: the places worth
 ## the walk in it. Empty takes every kind that names this landscape itself, so a
 ## landscape only writes this line when it wants something other than that.

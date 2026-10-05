@@ -132,12 +132,13 @@ func sync_view(delta: float, frozen: bool = false) -> void:
 
 
 ## The swing's stroke, from the hero's blow at simulation time `now_ms`: it
-## sweeps across the blow box through the live window, then its tail catches up
-## with its head and it is gone.
+## sweeps across the blow box (MobFx.swing_mesh) through the live window, the
+## head crossing it from the first live slice to the last, then its tail catches
+## up with its head and it is gone.
 func draw_swing(now_ms: float) -> void:
 	var b := hero.blow if hero != null else null
 	var e := now_ms - hero.blow_at if b != null else -1.0
-	var from := (b.windup - 20.0) if b != null else 0.0
+	var from := float(b.windup) if b != null else 0.0
 	var gone := (b.windup + b.active + 100.0) if b != null else 0.0
 	if b == null or e < from or e > gone:
 		if _arc != null:
@@ -152,14 +153,20 @@ func draw_swing(now_ms: float) -> void:
 		add_child(_arc)
 	if _arc_blow != b:
 		_arc_blow = b
-		_arc.mesh = MobFx.swing_mesh(hero.radius + b.reach, b.width)
+		_arc.mesh = MobFx.swing_mesh(hero.radius, hero.radius + b.reach, b.width, _lands_from_here, b.sweep)
 	_arc.visible = true
-	var head := clampf((e - from) / (b.active + 40.0), 0.0, 1.0)
+	var head := clampf((e - from) / maxf(float(b.active), 1.0), 0.0, 1.0)
 	var tail := 0.8 * (1.0 - clampf((e - b.windup - b.active - 20.0) / 80.0, 0.0, 1.0))
 	_arc_mat.set_shader_parameter(&"head", head)
 	_arc_mat.set_shader_parameter(&"tail", minf(tail, head + 0.001))
 	_arc.position = Vector3(0, 0.5, 0)
 	_arc.rotation = Vector3(0, -hero.facing, 0)
+
+
+## Whether a blow from where the hero stands lands on ground at `local` (along
+## its facing, then across): not a ledge away (FightSim.meets_hero).
+func _lands_from_here(local: Vector2) -> bool:
+	return sim == null or sim.meets_hero(hero.pos + local.rotated(hero.facing))
 
 
 ## A hit landed on this body: a short bright flash.
