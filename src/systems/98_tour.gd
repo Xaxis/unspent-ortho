@@ -517,18 +517,10 @@ func _run() -> void:
 				else:
 					_teleport(pp)
 			"village":
-				if parts[1].is_valid_int():
-					var vi := parts[1].to_int()
-					if vi < game.world.villages.size():
-						_teleport(game.world.village_stand(game.world.villages[vi]))
-					else:
-						ok = false
-				else:
-					var at := GenPlaces.find(game.world, "village:" + parts[1])
-					if at.x >= 0.0:
-						_teleport(at)
-					else:
-						ok = false
+				var at := village_spot(game.world, game.query, parts[1], parts.size() > 2 and parts[2] == "square")
+				ok = at.is_finite()
+				if ok:
+					_teleport(at)
 			"hour":
 				# `hour H +D`: D days on, at H (a night the plan comes, a day later).
 				# `hour treadN[+M]`: on to when the walker's foot next comes down
@@ -773,6 +765,47 @@ func _listen() -> void:
 		_seen["skipped"] = true
 		if reason == &"sleep":
 			_seen["slept"] = true)
+
+
+## `village WHO [square]`: WHO is an index, a village's name (`_` for a space:
+## `oyster_row`) or a landscape (the first village standing on its ground). Where
+## an arrival is set down (`village_stand`), or with `square` on the square
+## itself, the middle of the village's day: on seed 1 Oyster Row's stand sits
+## 9.8 tiles off where its people gather, outside the default view. INF when the
+## world has no such village.
+static func village_spot(world: WorldData, query: WorldQuery, who: String, square: bool) -> Vector2:
+	var v := village_index(world, who)
+	if v < 0:
+		return Vector2.INF
+	var row: Dictionary = world.villages[v]
+	if not square:
+		return world.village_stand(row)
+	var sq: Vector2 = row.pos
+	for r in 6:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var tx := floori(sq.x) + dx
+				var ty := floori(sq.y) + dy
+				if world.in_bounds(tx, ty) and query.standable(tx, ty) and not Ground.is_water(world.ground_at(tx, ty)):
+					return Vector2(tx + 0.5, ty + 0.5)
+	return world.village_stand(row)
+
+
+## The village WHO names (see `village_spot`), or -1.
+static func village_index(world: WorldData, who: String) -> int:
+	if who.is_valid_int():
+		var i := who.to_int()
+		return i if i >= 0 and i < world.villages.size() else -1
+	var key := who.to_lower()
+	for i in world.villages.size():
+		if str(world.villages[i].get("name", "")).to_lower().replace(" ", "_") == key:
+			return i
+	for i in world.villages.size():
+		if BiomeRegistry.at(world, world.village_stand(world.villages[i])).id == StringName(key):
+			return i
+	return -1
 
 
 ## How much slower this machine is than an idle one, 1.0 to 8.0.

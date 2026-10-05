@@ -531,3 +531,27 @@ func test_every_latching_system_spends_its_latches() -> void:
 				has = true
 				break
 		check(has, "%s latches a tour word but never spends it: add `func tour_forget(what: StringName) -> void: _seen.erase(what)`" % f)
+
+
+## `village WHO [square]` (98_tour `village_spot`): WHO by index, by name with `_`
+## for a space, or by landscape; `square` stands on the square itself, where the
+## village spends its day, and never further from it than its arrival stand.
+func test_a_village_is_found_by_name_and_stood_on_its_square() -> void:
+	var w := WorldGen.generate(1, 256)
+	var q := WorldQuery.new(w)
+	gt(float(w.villages.size()), 2.0, "the world has villages to find")
+	eq(TOUR.village_index(w, "0"), 0, "by index")
+	var name := str(w.villages[1].get("name", "")).to_lower().replace(" ", "_")
+	eq(TOUR.village_index(w, name), 1, "by name: %s" % name)
+	eq(TOUR.village_index(w, "no_such_village"), -1, "and no such village is none")
+	var nearer := 0
+	for i in w.villages.size():
+		var sq: Vector2 = w.villages[i].pos
+		var stand := TOUR.village_spot(w, q, str(i), false)
+		var on := TOUR.village_spot(w, q, str(i), true)
+		eq(stand, w.village_stand(w.villages[i]), "village %d: plain, where an arrival is set down" % i)
+		check(q.standable(floori(on.x), floori(on.y)), "village %d: its square is ground to stand on" % i)
+		check(on.distance_to(sq) <= stand.distance_to(sq) + 0.01, "village %d: on its square (%.1f off it), no further than its stand (%.1f)" % [i, on.distance_to(sq), stand.distance_to(sq)])
+		if on.distance_to(sq) < stand.distance_to(sq) - 0.5:
+			nearer += 1
+	gt(float(nearer), 0.0, "some village's square is not where its arrival stands")

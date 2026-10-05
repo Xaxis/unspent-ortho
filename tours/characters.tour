@@ -35,8 +35,9 @@ zoom 9
 await gulls 40
 wait 0.5
 shot 05-gulls-on-the-refuse with gulls
-# Oyster Row in the afternoon, several out at once.
-village 0
+# Oyster Row in the afternoon, several out at once: on its square, where its
+# people spend the day (its arrival stand sits off them, outside the view).
+village oyster_row square
 hour 15.5
 zoom 15
 await crowd 20
