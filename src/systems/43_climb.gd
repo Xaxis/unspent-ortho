@@ -104,10 +104,6 @@ const RIDE_FRAME_LEAST := 0.25
 const RIDE_LEG_POINTS := 16
 ## The longest lens it takes (a camera refuses one under a degree).
 const RIDE_FOV_LEAST := 2.0
-## Where the body hangs from a hold: his feet this far down the pitch from the
-## rung his hands are on, and his middle this far out from the plate.
-const BODY_DROP := 1.35
-const BODY_OUT := 0.45
 ## How near the foot of a planted foot's cable he may stand and take it, tiles:
 ## the crater's floor ring and the step above it, where the pad leaves room.
 const START_REACH := 6.0
@@ -573,7 +569,7 @@ func _hang(f: Transform3D) -> void:
 	model.visible = true
 	var b := f.basis.orthonormalized()
 	# PersonModel faces +X: into the plate, with his head up the pitch.
-	model.global_transform = Transform3D(Basis(-b.z, b.y, b.x), f.origin - b.y * BODY_DROP + b.z * BODY_OUT)
+	model.global_transform = Transform3D(Basis(-b.z, b.y, b.x), f.origin - b.y * WalkerClimb.BODY_DROP + b.z * WalkerClimb.BODY_OUT)
 	var moving := climb.busy > 0.0 and climb.state == WalkerClimb.CLIMB
 	if moving and not _moving:
 		model.play_action(&"climb", WalkerClimb.move_secs(climb.pitch))

@@ -101,6 +101,12 @@ const LANTERN_POWER := 0.8
 ## right): above and ahead of the hand that carries it, outside the body, so
 ## the figure's own faces turn toward it instead of all away.
 const LANTERN_LIGHT := Vector3(0.42, 1.05, 0.44)
+## Where the lantern itself hangs in the figure's own frame (+X ahead, +Z to the
+## right): at the hand that carries it.
+const LANTERN_HAND := Vector3(0.12, 0.52, 0.34)
+## Up a walker's leg ahead is into the plate he faces: the light goes out behind
+## him instead, and the plate is the wall it is held against (`held_level`).
+const LANTERN_LIGHT_ALOFT := Vector3(-0.42, 1.05, 0.44)
 
 ## Per source kind: [omni range in tiles, power, height of the light above the
 ## prop's foot]. The clean core of the pool on the ground is where attenuation
@@ -460,6 +466,16 @@ func _cast_shadows(focus: Vector3) -> void:
 		return a.global_position.distance_squared_to(focus) < b.global_position.distance_squared_to(focus))
 	for i in live.size():
 		live[i].shadow_enabled = i < allow
+
+
+## Up a walker's leg, once the climb has hung the figure this frame: the
+## lantern at his side and its light out behind him.
+func _follow_figure() -> void:
+	var p := game.player if game != null else null
+	if p == null or not p.hanging or p.model == null or not game.body.lamp_lit:
+		return
+	lantern.position = p.model.global_transform * LANTERN_HAND
+	lantern_light.position = p.model.global_transform * LANTERN_LIGHT_ALOFT
 
 
 func toggle_lantern() -> void:
@@ -1073,15 +1089,21 @@ func _update(delta: float, snap: bool) -> void:
 	lantern.visible = lit
 	if lit:
 		var p := game.player
-		var hand := Basis(Vector3.UP, -p.facing) * Vector3(0.12, 0.52, 0.34)
-		lantern.position = p.position + hand
+		# At his side as the figure is drawn: up a walker's leg the figure is
+		# turned onto the plate (Player.hanging), and an offset off the land's
+		# facing left the lantern in the air beside him.
+		var frame := Transform3D(Basis(Vector3.UP, -p.facing), p.position)
+		var hung := p.hanging and p.model != null
+		if hung:
+			frame = p.model.global_transform
+		lantern.position = frame * LANTERN_HAND
 		lantern.rotation.y = -p.facing
 		lantern.position.y += sin(_time * 5.0) * 0.03 * clampf(p.speed / 3.0, 0.0, 1.0)
 		# The lantern's floor: in any gloom it lifts the ground a little (source
 		# 0.45), and in daylight it lifts nothing at all — a lamp lit at noon must
 		# not lay a disc on a bright land.
 		var night := maxf(dark, 0.45 * maxf(gloom(hour, tint, sun), game.sky.closed))
-		var at := p.position + Basis(Vector3.UP, -p.facing) * LANTERN_LIGHT
+		var at := frame * (LANTERN_LIGHT_ALOFT if hung else LANTERN_LIGHT)
 		# Where a lamp already lights the ground the lantern hardly adds, and its
 		# pool draws in under the lamp's: two pools stacked read as two ruled
 		# discs. Both ease with distance, so walking out of a lamp's light the
@@ -1094,12 +1116,17 @@ func _update(delta: float, snap: bool) -> void:
 		var reach := LANTERN_RANGE * (1.0 - 0.6 * under)
 		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5})) \
 			* gutter(PropKind.LAMP, true, _wet_kind, _wet_strength, _time, 0.5)
-		rgb *= _held_off(Vector2(at.x, at.z))
+		rgb *= held_level(WalkerClimb.BODY_OUT - LANTERN_LIGHT_ALOFT.x) if hung else _held_off(Vector2(at.x, at.z))
 		lantern_light.light_volumetric_fog_energy = FOG_WARM
 		if _set_light(lantern_light, at, reach, rgb):
 			# The player's own pool comes first: it is the one that matters.
 			pools.push_front(Vector4(at.x, at.y, at.z, reach))
 			pool_rgb.push_front(Vector4(LANTERN_WARM.x, LANTERN_WARM.y, LANTERN_WARM.z, 0.0) * night)
+		if hung:
+			# The climb hangs the figure after this system has run (43 after 15):
+			# placed again at the frame's end, or up a moving leg the lantern
+			# trails his hand by a frame.
+			_follow_figure.call_deferred()
 	else:
 		lantern_light.visible = false
 	pools.resize(mini(pools.size(), SkyLight.MAX_LAMPS))
@@ -1133,8 +1160,13 @@ func _held_off(at: Vector2) -> float:
 	# to decide.
 	for c: Vector3 in game.query.blocks_at(at):
 		near = minf(near, Vector2(c.x, c.y).distance_to(at) - c.z)
-	# Squared, because the light a surface takes goes as the square of how near
-	# it is: a wall a metre off wants far less than half its level.
+	return held_level(near)
+
+
+## The lantern's level with the nearest wall `near` metres off. Squared, because
+## the light a surface takes goes as the square of how near it is: a wall a
+## metre off wants far less than half its level.
+static func held_level(near: float) -> float:
 	var s := smoothstep(0.05, HELD_NEAR, maxf(near, 0.0))
 	return lerpf(HELD_LEAST, 1.0, s * s)
 

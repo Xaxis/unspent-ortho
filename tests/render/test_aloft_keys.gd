@@ -97,10 +97,11 @@ func test_hung_high_his_lamp_burns_and_is_heard_where_he_hangs() -> void:
 	var g := _game(22)
 	await _hang(g, KNEE, 1)
 	var lights := _system(g, "15_lights")
-	var heard: Array[Vector3] = []
+	# Where it was heard, against where the figure hung as it was (the leg moves).
+	var heard: Array[float] = []
 	var on_sfx := func(n: StringName, at: Vector3) -> void:
 		if n == &"lamp_on":
-			heard.append(at)
+			heard.append(at.distance_to(g.player.model.global_position))
 	Events.sfx.connect(on_sfx)
 	# Lit by the lamp's own path, not its key (the first test has the key).
 	lights.call(&"toggle_lantern")
@@ -113,10 +114,13 @@ func test_hung_high_his_lamp_burns_and_is_heard_where_he_hangs() -> void:
 	var light: OmniLight3D = lights.get("lantern_light")
 	check(lantern.visible and light.visible, "and drawn, and laying its light")
 	lt(lantern.global_position.distance_to(figure), 1.5, "in his hand where he hangs, not on the land below (%.1f m off)" % lantern.global_position.distance_to(figure))
+	var hand: Vector3 = (lights.get_script() as GDScript).get_script_constant_map().LANTERN_HAND
+	var local := g.player.model.global_transform.affine_inverse() * lantern.global_position
+	lt(local.distance_to(hand), 0.1, "at his side in the figure's own frame, as he carries it on the land (%.2f m off)" % local.distance_to(hand))
 	lt(light.global_position.distance_to(figure), 2.0, "and its light with it (%.1f m off)" % light.global_position.distance_to(figure))
 	eq(heard.size(), 1, "the lamp is heard lit")
 	if not heard.is_empty():
-		lt(heard[0].distance_to(figure), 1.5, "from him up there (%.1f m off)" % heard[0].distance_to(figure))
+		lt(heard[0], 1.5, "from him up there (%.1f m off)" % heard[0])
 	lt(g.view.focus.distance_to(g.player.pos), 0.01, "and the land streams round where he left it")
 	g.queue_free()
 	await process_frames(2)
