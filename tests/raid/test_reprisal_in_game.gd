@@ -175,6 +175,110 @@ func test_a_burned_village_comes_out_one_short() -> void:
 	await frames(1)
 
 
+## WHERE THE YARD'S BODY HAS NO ROOF LEFT, THEY COME FOR HIS OWN FIRE (#67).
+## With every house on the island already a shell, a housing broken still costs
+## somebody: the place he built on that body. A CAMP, nobody's but his, is wrecked
+## whole; at a HOLDING the beds his people sleep in burn and the rest stands. It
+## is nobody else's roof, so none of it is a village burned to the story.
+## His place by the yard, a fire and a lean-to, and `people` living in it, once
+## every house on the island has gone; null when no ground for it.
+func _his_place(g: Game, site: WorksSite, people: int) -> Settlement:
+	for q in g.query.props_near(site.pos, float(g.world.size) * 1.5):
+		if q.kind == PropKind.HOUSE:
+			# Gone for good, as a burned house is (48_raids `_burn`): a minute here is
+			# when it grows back.
+			g.world.depleted[q.id] = INF
+	var yards := Works.sites(g.world)
+	var at := Vector2.INF
+	for r: float in [20.0, 24.0, 28.0, 32.0]:
+		for k in 16:
+			var p := site.pos + Vector2.from_angle(TAU * float(k) / 16.0) * r
+			if g.query.standable(floori(p.x), floori(p.y)) and g.world.same_body(site.pos, p) and Works.at(yards, p) == null:
+				at = Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
+				break
+		if at.is_finite():
+			break
+	check(at.is_finite(), "ground for his place on the yard's body")
+	if not at.is_finite():
+		return null
+	var h := g.get_node("46_settlements")
+	var home: Settlement = h.call(&"found", Realm.SURFACE, at)
+	@warning_ignore("return_value_discarded")
+	h.call(&"place_piece", home, StructureKind.HEARTH, at, 0.0)
+	@warning_ignore("return_value_discarded")
+	h.call(&"place_piece", home, StructureKind.LEAN_TO, at + Vector2(2, 0), 0.0)
+	for n in people:
+		home.people.append(home.take_person_id())
+	return home
+
+
+## Break a housing with every roof gone and `people` living at his place; the
+## place, once the march to it is done, or null.
+func _burn_his_place(g: Game, people: int, kind: StringName) -> Settlement:
+	Story.forget()
+	var site: WorksSite = g.get_node("34_works").call(&"here")
+	check(site != null, "the player stands on a depot's ground")
+	if site == null:
+		return null
+	var home := _his_place(g, site, people)
+	if home == null:
+		return null
+	var raids := _raids(g)
+	var target: Dictionary = raids.call(&"_target_for", site.pos)
+	eq(target.at, home.centre, "with no roof left on its body, the hunters go for his own place")
+	eq(target.kind, kind, "and it is his %s" % kind)
+	var said: Array[String] = []
+	var hear := func(line: String) -> void: said.append(line)
+	Events.message.connect(hear)
+	check(await _open(g, site, 0), "a housing came open")
+	var r: Reprisal = raids.get("reprisal")
+	eq(r.marching.get(site.region, {}).get("roof", Vector2.INF), home.centre, "and the yard's hunters are on the road to it")
+	eq(r.kind_of(site.region), kind, "sent for his %s" % kind)
+	g.clock.skip(Reprisal.march_minutes(site.pos, home.centre) + 1.0)
+	raids.call(&"sweep")
+	# Standing at it after: what 49_story would make of a village's shells.
+	_stand(g, home.centre + Vector2(0, 3))
+	await frames(20)
+	Events.message.disconnect(hear)
+	for event: StringName in [&"sent", &"burned"]:
+		var line := StoryContent.reprisal_says(event, kind)
+		check(line != "" and said.has(line), "the glass says the %s line for his %s" % [event, kind])
+	for event: StringName in [&"sent", &"burned"]:
+		check(not said.has(StoryContent.REPRISAL[event]), "and not the village's %s line" % event)
+	check(not Story.heard(Holding.SEEN_BURNED), "his own place burned is no village's roofs seen burned")
+	check(not Story.landed(StoryContent.WITNESS_ON[&"burned_seen"]), "and lands no holdfast_price")
+	check(not bool(raids.call(&"tour_seen", "burned")), "nor a village burned")
+	return home
+
+
+func test_with_no_roof_left_on_its_body_they_wreck_his_camp() -> void:
+	var g := _game()
+	await frames(4)
+	var home := await _burn_his_place(g, 0, Reprisal.CAMP)
+	if home != null:
+		for p in home.pieces:
+			check(p.ruined, "when the march is done, everything at his camp is wrecked: his %s" % StructureKind.display_name(p.kind))
+	Story.forget()
+	g.queue_free()
+	await frames(1)
+
+
+func test_with_no_roof_left_on_its_body_they_burn_his_holdings_beds() -> void:
+	var g := _game()
+	await frames(4)
+	var home := await _burn_his_place(g, 1, Reprisal.HOLDING)
+	if home != null:
+		for p in home.pieces:
+			if StructureKind.sleeps(p.kind) > 0:
+				check(p.ruined, "when the march is done, the beds at his holding burn: his %s" % StructureKind.display_name(p.kind))
+			else:
+				check(not p.ruined, "and the rest of it stands: his %s" % StructureKind.display_name(p.kind))
+		eq(home.people.size(), 1, "and nobody is lost")
+	Story.forget()
+	g.queue_free()
+	await frames(1)
+
+
 func test_a_yard_put_dark_in_time_burns_nothing() -> void:
 	var g := _game()
 	await frames(4)

@@ -10,6 +10,11 @@ extends RefCounted
 ##   ... --filter=sentinel_beside            both keepers beside a person and a harvester,
 ##                                           which is the only frame that answers "how big"
 ##   ... --zoom=14                           the zoom players actually have
+##
+## A strike is drawn where its first phase's bite lands (MachineModel.
+## strike_front), the landing part live, with a pale bar on the ground across
+## the bite box's front and a post a person's height at each end of it: the
+## frame shows the drawn blow against the hit.
 
 ## machine_gallery.gd has no class_name (the gallery lists inherited statics, so a
 ## base class must not carry one): it is reached by path.
@@ -35,6 +40,8 @@ static func gallery() -> Array:
 	for kid in KINDS:
 		for p in SHOWN:
 			var item: FigureModel = MG.make(kid, p, 0.3)
+			if p == &"strike":
+				_strike_at_its_box(item, kid)
 			if silhouette:
 				_blacken(item)
 			var holder := Node3D.new()
@@ -42,6 +49,42 @@ static func gallery() -> Array:
 			_label(holder, "%s %s" % [String(kid).trim_prefix("sentinel_"), p], Vector3(1.1, 0.0, 1.1))
 			out.append({"name": "%s %s" % [kid, p], "node": holder})
 	return out
+
+
+## Pose `m`'s strike onto its keeper's first-phase bite box, and lay the box's
+## front on the ground in front of it.
+static func _strike_at_its_box(m: FigureModel, kid: StringName) -> void:
+	var mm := m as MachineModel
+	if mm == null:
+		return
+	for def: SentinelDef in Sentinels.all():
+		var row := Roster.row(def.kind)
+		if row.get("model", &"") != kid:
+			continue
+		mm.strike_front = float(row.get("radius", 0.5)) + float(def.phase(0).bite.get("reach", 0.6))
+		mm.blow_live = true
+		mm.settle()
+		var bar := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.05, 0.02, 1.6) / mm.scale.x
+		bar.mesh = box
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Palette.LINEN[5]
+		bar.material_override = mat
+		bar.position = Vector3(mm.strike_reach(), 0.01, 0.0)
+		mm.add_child(bar)
+		# A post at each end, a person's height (the hit band's top, 1.8): what
+		# the strike reaches is read against them, at the height it reaches.
+		for side: float in [-0.8, 0.8]:
+			var post := MeshInstance3D.new()
+			var pm := BoxMesh.new()
+			pm.size = Vector3(0.04, 1.8, 0.04) / mm.scale.x
+			post.mesh = pm
+			post.material_override = mat
+			post.position = Vector3(mm.strike_reach(), 0.9 / mm.scale.x, side / mm.scale.x)
+			mm.add_child(post)
+		return
 
 
 ## Both keepers, a harvester and a person on one strip of ground: the only frame

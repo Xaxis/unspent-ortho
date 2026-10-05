@@ -30,7 +30,11 @@ extends MachineModel
 ##        splay, the mast comes forward over you
 ## windup the mast REARS BACK and the crown tips to the sky; the front skate
 ##        lifts off the glass — the strike is called down, not thrown
-## strike the whole mast whips forward and the hub drops through its knees
+## strike the whole mast whips forward and the hub drops through its knees, and
+##        the strike comes down: a bolt from the crown to the glass where the
+##        blow lands (the bite box's front, MachineModel.strike_front), drawn
+##        only while it is live. The body never reaches that far; the strike it
+##        calls does, so the strike is what is drawn there.
 ## hurt   the crown slews
 ## dead   the mast comes down its full length across the glass, the legs go out
 ##        from under the hub and the core comes to rest on the sand: a fallen
@@ -54,6 +58,15 @@ const FOOT_R := 1.5
 const KNEE_R := 1.12
 const KNEE_Y := 1.45
 const FOOT_Y := 0.36
+## The strike's hub, mast and crown: whipped forward, the hub through its knees.
+const STRIKE_HUB := Vector3(0.12, -0.24, 0)
+const STRIKE_MAST := Vector3(0, 0, -0.3)
+const STRIKE_CROWN := Vector3(0, 0, -0.34)
+## The bolt: segments from the crown's spike to the glass, how far each kinks
+## off the line, and the spike's top in the crown's frame.
+const BOLT := 9
+const BOLT_KINK := 0.28
+const SPIKE := Vector3(0, 0.9, 0)
 ## A rod's crease: an eight-sided member's facets meet at 45 degrees, so a
 ## weld at this angle rounds it and leaves the chamfered ends and the caps hard.
 const ROUND := 50.0
@@ -83,6 +96,7 @@ func build() -> void:
 	_legs(hub, R, D, DD)
 	_core(hub, R, D)
 	_mast(hub, R, D, DD)
+	_bolt()
 	finish_rig()
 
 
@@ -258,6 +272,59 @@ func _mast(hub: Node3D, R: Array, D: Array, DD: Array) -> void:
 	wear_mesh(cw, crown)
 
 
+## The strike it calls: a bolt of cold light in kinked segments, each on its own
+## joint so the strike pose lays it from the spike to wherever the blow lands
+## (_bolt_at), and a flash on the glass under its foot.
+func _bolt() -> void:
+	var bolt := holder("bolt", self)
+	strike_only(bolt)
+	var seg := _bolt_run() / BOLT * 1.06
+	for i in BOLT:
+		var j := joint(StringName("bolt%d" % i), bolt, Vector3.ZERO)
+		var k := FoundKit.kit()
+		FoundKit.tbar(k, Vector3.ZERO, Vector3(0, -seg, 0), 0.05, 0.035, 4, FoundKit.flat(Palette.COLD[3]))
+		_set_alpha(k, LAMP_ALPHA)
+		_queue(&"lights", k, j)
+	var flash := joint(&"bolt_flash", bolt, Vector3.ZERO)
+	var fk := FoundKit.kit()
+	FoundKit.disc(fk, Vector3(-0.1, 0.02, 0), Vector3.UP, 0.3, 0.01, 8, 0.0, FoundKit.flat(Palette.COLD[3]))
+	_set_alpha(fk, LAMP_ALPHA)
+	_queue(&"lights", fk, flash)
+
+
+## The spike's top in model space at the strike.
+func _spike() -> Vector3:
+	var hub := Transform3D(Basis(), Vector3(0, HUB_Y, 0) + STRIKE_HUB)
+	var mast := Transform3D(Basis.from_euler(STRIKE_MAST), Vector3(0, 0.22, 0))
+	var crown := Transform3D(Basis.from_euler(STRIKE_CROWN), Vector3(0, MAST_H, 0))
+	return hub * mast * crown * SPIKE
+
+
+## The bolt's kinked points from the spike to the glass at strike_front.
+func _bolt_points() -> Array[Vector3]:
+	var top := _spike()
+	var foot := Vector3(strike_reach() - 0.05, 0.0, 0.0)
+	var pts: Array[Vector3] = []
+	for i in BOLT + 1:
+		var t := float(i) / BOLT
+		var kink := Vector3.ZERO
+		if i > 0 and i < BOLT:
+			kink = Vector3((Rng.hash01(251, i) - 0.5) * BOLT_KINK, 0.0, (Rng.hash01(252, i) - 0.5) * 2.0 * BOLT_KINK)
+		pts.append(top.lerp(foot, t) + kink)
+	return pts
+
+
+## The bolt's length at a middling reach: what each segment is built to.
+func _bolt_run() -> float:
+	return _spike().distance_to(Vector3(3.4, 0.0, 0.0))
+
+
+## Segment `i`'s joint at the strike: at its point, turned to hang onto the next.
+func _bolt_at(pts: Array[Vector3], i: int) -> Array:
+	var dir := (pts[i + 1] - pts[i]).normalized()
+	return pr(pts[i], Basis(Quaternion(Vector3.DOWN, dir)).get_euler())
+
+
 ## Everything is said with the mast and the skates: a line eight units long
 ## leaning is the biggest gesture any machine in the game can make.
 func _pose_deltas(p: StringName) -> Dictionary:
@@ -288,10 +355,16 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"leg_l"] = r(Vector3(0.1, 0, 0))
 			d[&"leg_r"] = r(Vector3(-0.1, 0, 0))
 		&"strike":
-			# And the whole mast whips forward as the hub drops through its knees.
-			d[&"hub"] = pr(Vector3(0.12, -0.24, 0))
-			d[&"mast"] = r(Vector3(0, 0, -0.3))
-			d[&"crown"] = r(Vector3(0, 0, -0.34))
+			# And the whole mast whips forward as the hub drops through its knees,
+			# and the strike comes down where the blow lands.
+			d[&"hub"] = pr(STRIKE_HUB)
+			d[&"mast"] = r(STRIKE_MAST)
+			d[&"crown"] = r(STRIKE_CROWN)
+			if strike_front > 0.0:
+				var pts := _bolt_points()
+				for i in BOLT:
+					d[StringName("bolt%d" % i)] = _bolt_at(pts, i)
+				d[&"bolt_flash"] = pr(pts[BOLT])
 			d[&"core"] = pr(Vector3(0.16, -0.16, 0))
 			d[&"leg_f"] = pr(Vector3(0.2, -0.04, 0), Vector3(0, 0, -0.16))
 		&"hurt":

@@ -18,6 +18,8 @@
 //                                        1 dead of night)
 //   neon_reflect(world_pos, px)          emission for wet ground: the glint list
 //                                        mirrored as broken streaks
+//   sky_apply_up, neon_reflect_up        the same for a surface that says how
+//                                        level it is (sky_face_up, the default)
 //
 // Four functions are kept as no-ops on purpose, because half a dozen shaders
 // call them and each is converted in its turn: sky_ink (there is no hatch to
@@ -661,12 +663,19 @@ float sky_rain_rings(vec3 wp) {
 	return ring * step(sky_hash(cell + floor(beat) + vec2(17.0, 5.0)), sky_air.x * 0.8);
 }
 
+// How level the face under a fragment is (|n.y|), from screen derivatives of the
+// world position: every face here is flat. What the weather does to a surface
+// asks this unless the surface knows better (sky_apply_up).
+float sky_face_up(vec3 world_pos) {
+	return abs(normalize(cross(dFdx(world_pos), dFdy(world_pos))).y);
+}
+
 // Snow, ash and wet left on the land. Flat faces take it first, and it lies in
-// patches that join up as it deepens, with a stippled rim. Faces are found from
-// screen derivatives of the world position (every face here is flat). Water and
-// the sea floor sit below 0.36 and are left alone. FOUND shaders define
-// SKY_FOUND before the include, and nothing lies on them.
-vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
+// patches that join up as it deepens, with a stippled rim. `up` is how level the
+// surface is (sky_face_up). Water and the sea floor sit below 0.36 and are left
+// alone. FOUND shaders define SKY_FOUND before the include, and nothing lies on
+// them.
+vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px, float up) {
 	if (sky_settle.x + sky_settle.y + sky_settle.z < 0.002 || world_pos.y < 0.36) {
 		return c;
 	}
@@ -674,8 +683,6 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 	// out across an ecotone.
 	vec4 ground = sky_ground_at(world_pos);
 	vec3 settle = sky_settle.xyz * ground.rgb;
-	vec3 n = normalize(cross(dFdx(world_pos), dFdy(world_pos)));
-	float up = abs(n.y);
 	if (up < 0.45) {
 		return c;
 	}
@@ -797,12 +804,11 @@ float neon_streak(vec3 world_pos, vec2 px, vec4 lamp, float up_px) {
 // beacons and strips, stolen neon) mirrored as broken vertical streaks. By day
 // they are faint; in dusk, storm and night they carry. Call from fragment() and
 // ADD to EMISSION.
-vec3 neon_reflect(vec3 world_pos, vec2 px) {
+vec3 neon_reflect_up(vec3 world_pos, vec2 px, float up) {
 	float wet = neon_wetness(world_pos);
 	if (wet < 0.05 || neon_wet.z <= 0.0) {
 		return vec3(0.0);
 	}
-	float up = abs(normalize(cross(dFdx(world_pos), dFdy(world_pos))).y);
 	if (up < 0.9) {
 		return vec3(0.0);
 	}
@@ -815,6 +821,10 @@ vec3 neon_reflect(vec3 world_pos, vec2 px) {
 	return e * wet * neon_wet.z * 2.6 * (0.2 + 0.8 * sky_gloom());
 }
 
+vec3 neon_reflect(vec3 world_pos, vec2 px) {
+	return neon_reflect_up(world_pos, px, sky_face_up(world_pos));
+}
+
 // WAS: skyglow, emitted onto every surface so a wash in the dark still read as
 // a shape. Emission on everything is the definition of a flat picture -- it is
 // light that comes from nowhere, casts nothing and can be hidden by nothing.
@@ -825,7 +835,12 @@ vec3 neon_skyglow(vec3 graded) {
 	return vec3(0.0);
 }
 
-vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
+// sky_apply for a surface that knows how level it is better than its facet does
+// (`face_up`, |n.y|). The land's top is one surface: a bank's lip is laid in
+// triangles that tilt one by one, and asked facet by facet the wet takes every
+// level one and leaves every tilted one, a sawtooth of pale triangles down
+// every shore (the drowned city's banks at noon).
+vec3 sky_apply_up(vec3 albedo, vec3 world_pos, float time, float face_up) {
 	vec2 px = sky_px(world_pos);
 	float d = sky_dither(px);
 #ifdef SKY_FOUND
@@ -833,14 +848,13 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// read as a machine.
 	vec3 c = albedo;
 #else
-	vec3 c = sky_settled(albedo, albedo, world_pos, px);
+	vec3 c = sky_settled(albedo, albedo, world_pos, px, face_up);
 #endif
 	// The hour's own colour is NOT applied here any more. It is the colour of
 	// the sun and of the sky (SkyLight), so a face turned away from the light
 	// takes the sky's blue and a face turned to it takes the evening's warmth,
 	// which one multiply over the whole surface could never do. This function
 	// now only says what the AIR and the WEATHER have done.
-	float face_up = abs(normalize(cross(dFdx(world_pos), dFdy(world_pos))).y);
 #ifndef SKY_FOUND
 	// Rain-slicked: wet ground goes a step DARKER, which is what wet ground
 	// really does. It used to be given a pale sheen as well, to stand in for a
@@ -913,6 +927,10 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		c *= mix(vec3(1.0), COLOSSUS_SHADE, pad);
 	}
 	return c;
+}
+
+vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
+	return sky_apply_up(albedo, world_pos, time, sky_face_up(world_pos));
 }
 
 #endif

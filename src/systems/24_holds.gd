@@ -396,12 +396,13 @@ func _near() -> Hold.HoldSite:
 
 
 func _hold_wins(h: Hold.HoldSite) -> bool:
-	if Survival.words_in_front(game):
+	var d := h.pos.distance_to(sim.hero.pos)
+	if Survival.words_nearer_than(game, d):
 		return false
 	var t := Survival.use_target(game)
 	if t == null:
 		return true
-	return h.pos.distance_to(sim.hero.pos) <= t.pos.distance_to(sim.hero.pos)
+	return d <= t.pos.distance_to(sim.hero.pos)
 
 
 func _break(h: Hold.HoldSite) -> void:

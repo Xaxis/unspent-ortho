@@ -23,7 +23,11 @@ extends MachineModel
 ## alert  it has you: the deck rises, the mirror comes round and up on its mast,
 ##        the forelegs plant wide and the rake lifts clear
 ## windup one foreleg comes up and back, high, over the working side
-## strike the deck drops forward as that leg comes down
+## strike the deck drops forward as that leg comes down, and the stilt in it
+##        drives out, two nested stages, to stamp where the blow lands (the bite
+##        box's front, MachineModel.strike_front); drawn only while it is live.
+##        A leg a tile and a half long never reaches three tiles out; the stilt
+##        it carries does
 ## hurt   the mirror slews off, the tines stop
 ## dead   the legs splay out from under it and the deck comes down flat on the
 ##        crust with the mast across it: a wreck lying in its own pan
@@ -38,6 +42,18 @@ const DECK_Y := 1.34
 const HIP := 0.62
 const FOOT := 1.16
 const RAKE_BACK := 1.12
+
+## The strike's deck and stamping foreleg (the front right).
+const STRIKE_DECK := [Vector3(0.24, -0.12, 0), Vector3(0, 0, -0.14)]
+const STRIKE_LEG := [Vector3(0.3, -0.06, 0.04), Vector3(0.1, 0, 0.24)]
+const LEG_FR := Vector3(0.52, -0.1, HIP)
+## The stilt's two stages (the outer from the foot, the inner to the pad), and
+## where its pad stamps: a person's ankle, a little to the stamping side.
+const STILT_OUTER := 1.3
+const STILT_INNER := 1.5
+const STAMP_Y := 0.15
+const STAMP_Z := 0.45
+const PAD := 0.2
 
 var _step_t := 0.0
 
@@ -64,6 +80,7 @@ func build() -> void:
 	_nose(deck, R, D)
 	_mast(deck, R, D)
 	_rake(deck, R, D)
+	_stilt(deck, D, DD)
 	finish_rig()
 
 
@@ -218,6 +235,35 @@ func _rake(deck: Node3D, R: Array, D: Array) -> void:
 	set_part_anchor(deck, Vector3(-0.66, 0.2, 0.0), 0.95)
 
 
+## The stilt the stamping foreleg drives out: an outer stage from the foot and an
+## inner one to a broad pad, each on its own joint on the deck, laid by the
+## strike pose along the line from the foot to the stamp (_stilt_at).
+func _stilt(deck: Node3D, D: Array, DD: Array) -> void:
+	var stilt := holder("stilt", deck)
+	strike_only(stilt)
+	var outer := joint(&"stilt_outer", stilt, Vector3.ZERO)
+	var ok := FoundKit.kit()
+	FoundKit.tbar(ok, Vector3.ZERO, Vector3(0, -STILT_OUTER, 0), 0.08, 0.075, 6, D, 0.02)
+	body_mesh(ok, outer)
+	var inner := joint(&"stilt_inner", stilt, Vector3.ZERO)
+	var ik := FoundKit.kit()
+	FoundKit.tbar(ik, Vector3.ZERO, Vector3(0, -STILT_INNER, 0), 0.055, 0.05, 6, DD, 0.02)
+	FoundKit.lathe(ik, Vector3(0, -STILT_INNER - 0.06, 0), Vector3.UP, [Vector2(0.1, 0.0), Vector2(PAD, 0.05), Vector2(0.16, 0.1)], 6, DD, PI / 6.0)
+	body_mesh(ik, inner)
+
+
+## The two stages at the strike, in the deck's frame: the outer from the
+## foreleg's foot toward the stamp, the inner ending on it, overlapping between.
+func _stilt_at() -> Dictionary:
+	var deck := Transform3D(Basis.from_euler(STRIKE_DECK[1]), Vector3(0, DECK_Y, 0) + STRIKE_DECK[0])
+	var leg := Transform3D(Basis.from_euler(STRIKE_LEG[1]), LEG_FR + STRIKE_LEG[0])
+	var foot := leg * Vector3(LEG_FR.x * 0.34, -DECK_Y + 0.12, FOOT - HIP)
+	var stamp := deck.affine_inverse() * Vector3(strike_reach() - PAD * 0.45, STAMP_Y, STAMP_Z)
+	var dir := (stamp - foot).normalized()
+	var turn := Basis(Quaternion(Vector3.DOWN, dir)).get_euler()
+	return {&"stilt_outer": pr(foot, turn), &"stilt_inner": pr(stamp - dir * STILT_INNER, turn)}
+
+
 ## `FoundKit.ring` with the deck's own plan: a helper so the loft reads as one
 ## shape and not as four lines of numbers.
 func _ring(plan: Array[Vector2], y: float, inset: float = 0.0) -> Array:
@@ -254,9 +300,12 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"mirror"] = r(Vector3(0, 0, 0.5))
 			d[&"rake"] = r(Vector3(0, 0, 0.4))
 		&"strike":
-			# The deck drops forward as that leg comes down through where you were.
-			d[&"deck"] = pr(Vector3(0.24, -0.12, 0), Vector3(0, 0, -0.14))
-			d[&"leg_fr"] = pr(Vector3(0.3, -0.06, 0.04), Vector3(0.1, 0, 0.24))
+			# The deck drops forward as that leg comes down through where you were,
+			# and its stilt drives out to stamp where the blow lands.
+			d[&"deck"] = pr(STRIKE_DECK[0], STRIKE_DECK[1])
+			d[&"leg_fr"] = pr(STRIKE_LEG[0], STRIKE_LEG[1])
+			if strike_front > 0.0:
+				d.merge(_stilt_at())
 			d[&"mirror"] = r(Vector3(0, 0, 0.2))
 		&"hurt":
 			d[&"mirror"] = r(Vector3(0.4, 0, -0.5))
