@@ -12,6 +12,9 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 - 32_disposition `src/systems/32_disposition.gd`: `tools/tour.sh tours/disposition.tour`.
   - Relic heat (GEAR.md G9): `tools/test.sh test_relic_heat`, `tools/tour.sh tours/relic_heat.tour` (h).
 - 34_works `src/systems/34_works.gd`: `tools/tour.sh tours/works.tour`.
+  - The crags' depot, a winch house at a shelf's lip (BiomeDef.depot_form `winch`):
+    `tools/test.sh test_siting`, `tools/test.sh test_model`,
+    `tools/tour.sh tours/crags-depot.tour --seed=1 --hour=12 --weather=clear:0 --held=axe_felling` (h).
 - 36_machine_parade `src/systems/36_machine_parade.gd`: `tools/tour.sh tours/machines-day.tour`.
 - 40_fight `src/systems/40_fight.gd`: `tools/tour.sh tours/fight.tour`.
   - Height (a 2-level ledge stands bodies out of each other's blows): `tools/test.sh test_height`.

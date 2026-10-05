@@ -184,7 +184,9 @@ static func make() -> BiomeDef:
 	d.surface = _surface
 	d.scatter = _scatter
 	# The survey that never closes (docs/LANDSCAPES.md §1 PLAN): a bench in every
-	# region big enough to keep the plumb, laid by `_works` below.
+	# region big enough to keep the plumb, laid by `_works` below, and the plan's
+	# old store, the region's depot, drawn as a winch house on a shelf's lip.
+	d.depot_form = &"winch"
 	GenWorks.register(&"the_crags", {"host": load("res://src/content/biomes/the_crags.gd"), "works": &"_works"})
 	# The web's day contrast here (BiomeDef.web_contrast): inferred from the bonelands: bright rock.
 	d.web_contrast = 1.1
@@ -314,6 +316,114 @@ static func _works(L: Object) -> void:
 		for apart: float in [BENCH_APART * 0.5, BENCH_APART_LAST]:
 			if _bench_on(L, BENCH_FLOORS + BENCH_BARE, apart, BENCH_VILLAGE * 0.5):
 				break
+	_store_on(L)
+
+
+## THE PLAN'S OLD STORE: the crags' depot (#68), a yard's heart (Works.sites) and
+## drawn as a winch house on a shelf's lip (BiomeDef.depot_form). A bench is a
+## survey and no yard's heart; the plan kept its cores here, in a house it cut
+## into a shelf and a winch it hung over the drop. One to a region big enough to
+## keep a depot (Works.MIN_TILES).
+##
+## SITED WHERE A YARD STANDS WHOLE, which on the terraces is rare and not absent
+## (at the shipped size 2.4-5.8% of a crags region has a yard's room): where
+## `Works._room_at` holds, its three parts are in the region, it keeps clear of
+## villages and of home, a lip its cable can come down stands by it
+## (Works.lip_foot), and the station rule holds of its ground (`_store`).
+## Nearest a bench first, so where the ground allows, the yard and its racks are
+## in the plumb's larder and breaking it is a bite out of what the plumb eats. A
+## region with none of these keeps no depot.
+static func _store_on(L: Object) -> void:
+	if L.region < 0 or L.sizes.is_empty() or L.sizes[0] < float(Works.MIN_TILES):
+		return
+	var w: WorldData = L.w
+	var c: GenContext = L.c
+	var bearing := GenWorks.bearing(w.seed_value)
+	var benches: Array[Vector2] = []
+	for k in range(L.m_region, w.landmarks.size()):
+		var m: Dictionary = w.landmarks[k]
+		if StringName(str(m.get("kind", &""))) == &"bench":
+			benches.append(m.pos as Vector2)
+	# Every STORE_STEP-th tile of the region, as `GenWorks.flattest` walks it: the
+	# yard's room is rare enough on the terraces that a ranking by flatness alone
+	# kept the middles of the broad shelves, which stand by no lip.
+	var found: Array[Vector3] = []
+	var rect: Rect2 = L.rects[0]
+	var y := maxi(int(rect.position.y), 3)
+	while y < mini(int(rect.end.y), c.size - 3):
+		var x := maxi(int(rect.position.x), 3)
+		while x < mini(int(rect.end.x), c.size - 3):
+			var i := y * c.size + x
+			var at := Vector2(x + 0.5, y + 0.5)
+			if L.here(x, y) and L.base[i] == 0 and c.water[i] == 0 and c.road[i] == 0 and Works._room_at(w, x, y) \
+					and Works._keeps_clear(w, at) and Works._inside(w, at, bearing, L.region) \
+					and not GenWorks._crowded(L, at, STORE_APART) and Works.lip_foot(w, at).is_finite():
+				var near := INF
+				for b: Vector2 in benches:
+					near = minf(near, at.distance_to(b))
+				found.append(Vector3(at.x, at.y, near))
+			x += STORE_STEP
+		y += STORE_STEP
+	# Nearest a bench first, ties in scan order.
+	found.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.z < b.z or (a.z == b.z and (a.y < b.y or (a.y == b.y and a.x < b.x))))
+	# The cheap half of the station rule first (`station_may_hold`), so the whole
+	# of it (`_store`) floods only the few that may hold: a flood at the shipped
+	# size costs seconds.
+	var asked := 0
+	for k in mini(found.size(), STORE_LOOKS):
+		var at := Vector2(found[k].x, found[k].y)
+		if not GenWorks.station_may_hold(L, at):
+			continue
+		if GenWorks._work(L, &"_store", at):
+			return
+		asked += 1
+		if asked >= STORE_TRIES:
+			return
+
+
+## How far apart the tiles a store is looked for at are; how many of the nearest
+## a bench the cheap half of the station rule is asked of, and how many of those
+## it passes the store is composed at (the whole rule) before the region goes
+## without.
+const STORE_STEP := 3
+const STORE_LOOKS := 40
+const STORE_TRIES := 4
+## How far a store keeps from the region's bench: its yard and parts clear of the
+## bench's masts and racks.
+const STORE_APART := 14.0
+## The store's racks, in the yard's frame (along the survey bearing, across it):
+## by the house and clear of its three parts (Works.PART_OFFSETS) and of where a
+## player stands to work them. Its cores, and the plumb's larder where a bench is
+## near; at least STORE_FED of them stand, or the store is taken back.
+const STORE_RACKS: Array[Vector2] = [Vector2(-2.3, 1.7), Vector2(2.3, 1.4), Vector2(-0.8, -2.4)]
+const STORE_FED := 2
+## The house's mark on the ground (the bores it was cut among) and the ground kept
+## clear of scatter: the house, its parts, and room to work them.
+const STORE_HALF := Vector2(2.6, 2.0)
+const STORE_CLEAR := Vector2(5.8, 4.4)
+
+
+## One store at `at` (`GenWorks._work`): its racks on the steps by the house, and
+## the row the yard is found by. The house and its winch are 34_works' to draw.
+static func _store(L: Object, at: Vector2, _a: Array) -> bool:
+	# Where a den by it keeps the plumb's ways, as a bench's own ground is asked
+	# before its larder is laid. The plumb dens only at a bench (designs/plumb.gd
+	# stations), so this asks of the ground the yard is fought on, never of a den
+	# its racks would move.
+	if not GenWorks.station_holds(L, at):
+		return false
+	var along := Vector2.from_angle(GenWorks.bearing((L.w as WorldData).seed_value))
+	var across := Vector2(-along.y, along.x)
+	var larder := PackedVector2Array()
+	for off: Vector2 in STORE_RACKS:
+		var rack := GenWorks.put_on_step(L, PropKind.CORE_RACK, at + along * off.x + across * off.y, along.angle(), 0.0, 0.6)
+		if rack != null:
+			larder.append(rack.pos)
+	if larder.size() < STORE_FED:
+		return false
+	GenWorks._record(L.c, &"store", at, along, STORE_HALF, GenWorks.BORES)
+	GenWorks._clear_rect(L, at, along, STORE_CLEAR)
+	return true
 
 
 ## How far a bench keeps from the region's other places and from a village.

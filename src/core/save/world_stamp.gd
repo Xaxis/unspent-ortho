@@ -333,7 +333,10 @@ const UNKNOWN := "unknown"
 ##     round it (GenCountries._dry_shores). 90210's coast r23 (9,472 tiles, 16
 ##     from the sea) and seed 1's frost sea r22 (13,936, 54 off) go to their
 ##     neighbours.
-const GEN := 56
+## 57. The crags keep a depot: the plan's old store, a winch house on a shelf's
+##     lip, one to a region big enough, where a yard stands whole by a drop its
+##     cable comes down, nearest the bench, with its racks (the_crags `_store_on`).
+const GEN := 57
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

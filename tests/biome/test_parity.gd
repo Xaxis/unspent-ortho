@@ -584,6 +584,9 @@ extends TestCase
 ## Of the six only the coast is a shore's, and on seeds 7 and 90210 a run of it
 ## was walled off: `country`, `country2`, `ground`, `blend` and `props` move
 ## there, `level` holds, and seeds 1, 3 and 42 hold to the bit.
+## AT GEN 57 (2026-10-04, provisional): the crags keep a depot, the plan's old
+## store at a shelf's lip. The six hold to the bit, and nothing is re-accepted:
+## none of them is the crags.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

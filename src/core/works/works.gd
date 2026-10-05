@@ -424,6 +424,83 @@ static func _room_at(world: WorldData, x: int, y: int) -> bool:
 	return true
 
 
+## THE LIP A TERRACE YARD STANDS AT (BiomeDef.depot_form `winch`): the nearest
+## tile within LIP_REACH of `at` that stands LIP_DROP levels or more below it ON
+## A TERRACE (dry, its eight neighbours within a level of it), with nothing
+## between it and the yard higher than the yard, and the ground running on past
+## it, away from the yard, for LIP_OPEN tiles no higher than a level over it: the
+## shelf falls to open ground, so the winch's cable hangs over the drop to the
+## terrace below. A pit, or a gully at the foot of a higher crag, is no lip:
+## seed 1's first store hung its cable into the gully between its shelf and the
+## crag behind it, twice. INF where the shelf has no such drop by it. One rule
+## for both hands: the crags site their store only where it answers (the_crags
+## `_store_on`), and 34_works hangs the cable to it.
+const LIP_REACH := 9
+const LIP_DROP := 2
+const LIP_OPEN := 5
+
+
+static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
+	var size := world.size
+	var cx := floori(at.x)
+	var cy := floori(at.y)
+	if cx < 1 or cy < 1 or cx >= size - 1 or cy >= size - 1:
+		return Vector2.INF
+	var levels := world.level
+	var grounds := world.ground
+	var top: int = levels[cy * size + cx]
+	var best := Vector2.INF
+	var best_d := INF
+	for dy in range(-LIP_REACH, LIP_REACH + 1):
+		var y := cy + dy
+		if y < 1 or y >= size - 1:
+			continue
+		for dx in range(-LIP_REACH, LIP_REACH + 1):
+			var x := cx + dx
+			if x < 1 or x >= size - 1:
+				continue
+			var d := Vector2(dx, dy).length()
+			if d > float(LIP_REACH) or d >= best_d:
+				continue
+			var i := y * size + x
+			var low: int = levels[i]
+			if top - low < LIP_DROP or Ground.is_water(grounds[i]):
+				continue
+			var terrace := true
+			for j: int in [i - size - 1, i - size, i - size + 1, i - 1, i + 1, i + size - 1, i + size, i + size + 1]:
+				if absi(int(levels[j]) - low) > 1 or Ground.is_water(grounds[j]):
+					terrace = false
+					break
+			if not terrace:
+				continue
+			# Down off the shelf all the way: no ground between rises over it.
+			var rises := false
+			var to := Vector2(x + 0.5, y + 0.5)
+			var steps := ceili(d * 2.0)
+			for k in range(1, steps):
+				var p := at.lerp(to, float(k) / float(steps))
+				if int(levels[floori(p.y) * size + floori(p.x)]) > top:
+					rises = true
+					break
+			if rises:
+				continue
+			# And open past it: the lower terrace, not a trench under a crag.
+			var away := (to - at).normalized()
+			var shut := false
+			for k in range(1, LIP_OPEN + 1):
+				var q := to + away * float(k)
+				var qx := floori(q.x)
+				var qy := floori(q.y)
+				if qx < 0 or qy < 0 or qx >= size or qy >= size or int(levels[qy * size + qx]) > low + 1:
+					shut = true
+					break
+			if shut:
+				continue
+			best = to
+			best_d = d
+	return best
+
+
 ## The round the depot's own walk: out along the survey bearing and back, which
 ## is the line every ruled thing the machines built in this world lies on, so a
 ## patrol crossing the land is crossing it the way the plan reads. [from, to].

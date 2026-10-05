@@ -60,3 +60,64 @@ func test_a_landscape_with_no_keeper_changes_nothing() -> void:
 	var none := Works._knot(w, rows, Vector2(30, 30), Vector2.INF, 0.0)
 	var plain := Works._knot(w, rows, Vector2(30, 30))
 	eq(none.get("pos"), plain.get("pos"), "an absent keeper is no preference, not a refusal")
+
+
+# --- the crags' store, at a lip (#68) ------------------------------------------
+
+const Worlds := preload("res://tests/core/test_world_gen.gd")
+const YARD := Vector2(20.5, 20.5)
+
+
+## A shelf of rock at level 5, `lower` cut into it.
+func _shelf(lower: Callable) -> WorldData:
+	var w := WorldData.new(11, 40)
+	for i in w.size * w.size:
+		w.level[i] = 5
+		w.ground[i] = Ground.ROCK
+	lower.call(w)
+	return w
+
+
+func _cut(w: WorldData, x0: int, y0: int, x1: int, y1: int, to: int) -> void:
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			w.level[y * w.size + x] = to
+
+
+## THE LIP (Works.lip_foot) as a rule on ground laid by hand. A shelf falling to
+## open ground has one, and the cable comes down at its foot; a gully at the foot
+## of a higher crag has none (seed 1's first store hung its cable into one), nor
+## does a pit, nor a shelf with no drop by it.
+func test_a_lip_is_a_shelf_falling_to_open_ground() -> void:
+	var open := _shelf(func(w: WorldData) -> void: _cut(w, 0, 26, 40, 40, 2))
+	var foot := Works.lip_foot(open, YARD)
+	check(foot.is_finite(), "a shelf falling to open ground has a lip")
+	near(foot.y, 27.5, 0.01, "and its foot is on the open ground below, a tile clear of the face")
+	var gully := _shelf(func(w: WorldData) -> void:
+		_cut(w, 0, 26, 40, 29, 2)
+		_cut(w, 0, 29, 40, 40, 9))
+	eq(Works.lip_foot(gully, YARD), Vector2.INF, "a gully under a higher crag is no lip")
+	var pit := _shelf(func(w: WorldData) -> void: _cut(w, 24, 24, 26, 26, 2))
+	eq(Works.lip_foot(pit, YARD), Vector2.INF, "nor is a pit")
+	eq(Works.lip_foot(_shelf(func(_w: WorldData) -> void: pass), YARD), Vector2.INF, "nor a shelf with no drop")
+
+
+## THE CRAGS KEEP A DEPOT: a survey bench is no yard's heart, so the plan's old
+## store is (the_crags `_store_on`), standing where a yard stands whole, by a lip
+## its winch's cable comes down, drawn as its landscape says. On every world the
+## gate grows.
+func test_the_crags_keep_a_depot_at_a_lip() -> void:
+	eq(BiomeRegistry.get_def(&"the_crags").depot_form, WorksDepot.WINCH, "the crags draw their depot as a winch house")
+	for s: int in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var n := 0
+		for site: WorksSite in Works.sites(w):
+			if site.land != &"the_crags":
+				continue
+			n += 1
+			eq(site.trade, &"store", "seed %d: the crags' yard is the plan's store" % s)
+			check(Works._room_at(w, floori(site.pos.x), floori(site.pos.y)), "seed %d: and stands whole" % s)
+			var foot := Works.lip_foot(w, site.pos)
+			check(foot.is_finite(), "seed %d: by a lip its cable comes down" % s)
+			print("  crags store, seed %d: yard %s, its cable %.1f tiles down to %s" % [s, site.pos, site.pos.distance_to(foot), foot])
+		gt(float(n), 0.0, "seed %d keeps a crags depot" % s)
