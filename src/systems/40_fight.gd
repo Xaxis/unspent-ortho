@@ -422,7 +422,9 @@ func _curtain(e: Dictionary) -> void:
 			var secs := float(e.ms) / 1000.0
 			var crown := _at3(m.pos, float(m.row.get("height", 4.0)) * 0.95)
 			MobFx.line(fx, crown, _at3(at, 1.6), lime, secs)
-			MobFx.tell_ring(fx, _at3(at), lime, float((e.from as Vector2).distance_to(e.to)) * 0.5 + 0.3, secs)
+			# The round the curtain will hold the player out of (FightSim._held_by_curtains).
+			var hold := float(e.r) + sim.hero.radius
+			MobFx.tell_box(fx, _at3(at), 0.0, hold, hold, hold, lime, secs)
 			Events.sfx.emit(&"splash", _at3(at))
 		&"curtain_up":
 			var node := MeshInstance3D.new()
@@ -859,21 +861,19 @@ func _handle(events: Array[Dictionary]) -> void:
 					MobFx.tell(on, _part_at(m), up, m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5, MobFx.FLICK_DOWN)
 				if m.blow != null:
 					# And on the ground, where it will land: the pose is small over the
-					# shoulder and a ring reads from above and behind alike. It lasts the
-					# windup, so it is gone the instant the bite is down.
-					# A thrown blow is told by its lane: a ring that long would mark the
-					# ground either side of it, which is where a player has to go.
+					# shoulder and a mark on the ground reads from above and behind alike.
+					# It lasts the windup, so it is gone the instant the bite is down. It
+					# is the ground the blow lands on, exactly: a bite's or a throw's box
+					# grown by the player's radius (FightRules.tell_box).
 					if m.blow.area and m.drop_at.is_finite():
 						# Coming down from above: its shadow, growing where it lands.
 						var spot := FightRules.tell_drop(m.drop_at, m.radius, m.blow, sim.hero.radius)
 						MobFx.tell_drop(fx, _at3(Vector2(spot.x, spot.y)), Palette.LINEN[5], spot.z, m.blow.windup / 1000.0)
-					elif FightRules.throws(m.blow):
-						var lane := FightRules.tell_lane(m.pos, m.radius, m.blow, sim.hero.radius)
-						MobFx.tell_line(fx, _at3(Vector2(lane.x, lane.y)), m.facing, lane.z, lane.w, Palette.LINEN[5], m.blow.windup / 1000.0)
 					else:
-						var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
+						var tb := FightRules.tell_box(m.pos, m.facing, m.radius, m.blow, sim.hero.radius)
 						# Heard through a wall with the listener's ear (FightKit.listen).
-						MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0, hero.kit.listen)
+						MobFx.tell_box(fx, _at3(Vector2(tb.x, tb.y)), m.facing, tb.z, tb.w, sim.hero.radius,
+								Palette.LINEN[5], m.blow.windup / 1000.0, hero.kit.listen)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))

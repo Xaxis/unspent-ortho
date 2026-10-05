@@ -33,9 +33,9 @@
 ##
 ## The calling phase's strike is a real bite, landed by FightSim off the phase's
 ## own row like any other: a long telegraph, then a ring two tiles across in
-## front of it. The pale ring on the sand is every bite's ground tell
-## (FightRules.tell_ring, drawn by 40_fight) over where that bite's box will be
-## tested, so the sand and the rule agree by construction.
+## front of it. The pale mark on the sand is every bite's ground tell
+## (FightRules.tell_box, drawn by 40_fight): the ground that bite's box will hit,
+## so the sand and the rule agree by construction.
 
 
 

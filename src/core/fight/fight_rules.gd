@@ -304,22 +304,13 @@ static func blow_outline(o: Vector2, facing: float, orad: float, b: Blow) -> Pac
 
 
 ## A blow reaching further than this is THROWN, not bitten (Brains `throw`): its
-## box is a lane out along the thrower's facing, and its tell on the ground is
-## that lane (`tell_lane`) rather than a ring, which at this length would cover
-## the ground either side of the lane and send a player the wrong way out of it.
+## box is a lane out along the thrower's facing, told on the ground as that lane
+## (`tell_box`).
 const THROW_REACH := 3.0
 
 
 static func throws(b: Blow) -> bool:
 	return b != null and b.reach > THROW_REACH
-
-
-## The lane a thrown blow lands along, as (x, y) where it starts, then its
-## length and full width, in tiles: the box `box_hits` tests, widened by the
-## radius of the body it can hit, so the ground marked is exactly the ground a
-## player standing on it is hit on.
-static func tell_lane(o: Vector2, orad: float, b: Blow, trad: float) -> Vector4:
-	return Vector4(o.x, o.y, orad + b.reach + trad, b.width + 2.0 * trad)
 
 
 ## A body that drops (Brains `drop`) leaps for the last this-many ms of its
@@ -342,14 +333,26 @@ static func tell_drop(at: Vector2, orad: float, b: Blow, trad: float) -> Vector3
 	return Vector3(at.x, at.y, orad + b.reach + trad)
 
 
-## Where a bite's ground ring stands, as (x, y, radius) in tiles: over the middle
-## of the box `box_hits` will test for it, wide enough to take in the box's
-## longer side. Every bite's tell (40_fight draws it as the windup begins, for
-## the windup), so the ring on the ground and the rule that hurts agree.
-static func tell_ring(o: Vector2, facing: float, orad: float, b: Blow) -> Vector3:
+## Where a blow's tell lies on the ground: the box `box_hits` tests, grown all
+## round by the radius `trad` of the body it hurts, so the mark is exactly the
+## ground a body standing on it is hit on, no more and no less. As (x, y) of its
+## middle and its half length along `facing` and half width across; its corners
+## are rounded by `trad`. Every bite's and throw's tell (40_fight draws it as the
+## windup begins, for the windup). A ring over the box hurt players up to a tile
+## outside it, and drawn wider it marked ground no blow reached.
+static func tell_box(o: Vector2, facing: float, orad: float, b: Blow, trad: float) -> Vector4:
 	var length := orad + b.reach
 	var at := o + Vector2.from_angle(facing) * length * 0.5
-	return Vector3(at.x, at.y, 0.5 * maxf(b.width, length))
+	return Vector4(at.x, at.y, length * 0.5 + trad, b.width * 0.5 + trad)
+
+
+## Is `p` on the ground `tell_box` marks (`tb`, turned to `facing`, its corners
+## rounded by `trad`)? The same region as `box_hits` for a body of radius `trad`.
+static func in_tell_box(tb: Vector4, facing: float, trad: float, p: Vector2) -> bool:
+	var local := (p - Vector2(tb.x, tb.y)).rotated(-facing)
+	var core := Vector2(tb.z - trad, tb.w - trad)
+	var q := Vector2(absf(local.x), absf(local.y)) - core
+	return Vector2(maxf(q.x, 0.0), maxf(q.y, 0.0)).length() <= trad
 
 
 ## Nightfall 0..1, and it is the SAME CURVE THE SKY FALLS ON (`Weather.night_fall`,

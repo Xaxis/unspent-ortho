@@ -23,6 +23,9 @@ uniform vec3 col_b = vec3(0.71, 0.86, 0.93);
 uniform vec3 ink_col = vec3(0.031, 0.027, 0.059);
 uniform vec3 paper_col = vec3(0.91, 0.86, 0.75);
 uniform vec2 dir = vec2(1.0, 0.0);
+// A tell's footprint (TELL_BOX): half length, half width and corner radius, in
+// quad units.
+uniform vec3 box = vec3(0.5, 0.5, 0.0);
 // Pixels of paper laid round a mark's strokes. One is enough on the land; a mark
 // that hangs on a machine needs more, because a FOUND body is darker than the
 // ground and an ink stroke on it is invisible.
@@ -168,37 +171,23 @@ vec4 ring(vec2 p, float pr) {
 	return inked(abs(r - R) / pw - 1.0, MARK_HALO);
 }
 
-// A bite coming, on the ground where it lands: a dashed ring held still at the
-// size of what it will strike, and a whole ring inside it closing on the middle,
-// which reaches it as the bite goes live. The outer ring says WHERE, the closing
-// one says WHEN; neither spreads or fades, because a tell that thins as it runs
-// is weakest at the moment it matters.
-vec4 tell_ring(vec2 p, float pr) {
-	float r = length(p);
-	float pw = max(fwidth(r), 1e-4) * PEN;
-	float R = 1.0 - pw * 3.0;
-	float seg = floor((atan(p.y, p.x) / TAU + 0.5) * 20.0);
-	float outer = mod(seg, 2.0) > 0.5 ? 1e3 : abs(r - R) / pw - 1.0;
-	float inner = abs(r - R * (1.0 - pr)) / pw - 1.0;
-	return inked(min(outer, inner), MARK_HALO);
-}
-
-// A throw's tell (MobFx.tell_line): the lane it lands along, on a quad
-// stretched to the lane, x along it from the thrower (-1) to its far end (1).
-// Both long edges dashed and the far end ruled across, and a bar across the lane
-// that travels out from the thrower and reaches the far end as the throw goes
-// live. Pens are measured per axis, since the quad is far longer than wide.
-vec4 tell_line(vec2 p, float pr) {
-	vec2 pw = max(fwidth(p), vec2(1e-4)) * PEN;
-	vec2 q = p / pw;
-	vec2 R = 1.0 / pw - 2.0;
-	bool in_len = abs(q.x) <= R.x;
-	bool in_wid = abs(q.y) <= R.y;
-	float dash = mod(floor((p.x * 0.5 + 0.5) * R.x / 3.0), 2.0);
-	float sides = (in_len && dash < 0.5) ? abs(abs(q.y) - R.y) - 1.0 : 1e3;
-	float far_end = in_wid ? abs(q.x - R.x) - 1.0 : 1e3;
-	float bar = in_wid ? abs(q.x - mix(-R.x, R.x, pr)) - 1.0 : 1e3;
-	return inked(min(min(sides, far_end), bar), MARK_HALO);
+// A blow coming, on the ground where it lands (MobFx.tell_box): the blow's box
+// grown by a body's radius, its corners rounded by it, so the outline is exactly
+// the ground a body standing on it is hit on. The outline dashed and held still
+// says WHERE; a bar across it travels out from the body that strikes and reaches
+// the far end as the blow goes live, says WHEN. Neither thins as it runs, because
+// a tell that fades is weakest at the moment it matters.
+vec4 tell_box(vec2 p, float pr) {
+	vec2 h = box.xy;
+	float r = box.z;
+	vec2 q = abs(p) - (h - vec2(r));
+	float d = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
+	float pw = max(fwidth(d), 1e-4) * PEN;
+	float seg = floor((atan(p.y / max(h.y, 1e-3), p.x / max(h.x, 1e-3)) / TAU + 0.5) * 24.0);
+	float edge = mod(seg, 2.0) > 0.5 ? 1e3 : abs(d) / pw - 1.0;
+	float bx = mix(-h.x, h.x, pr);
+	float bar = d <= 0.0 ? abs(p.x - bx) / (max(fwidth(p.x), 1e-4) * PEN) - 1.0 : 1e3;
+	return inked(min(edge, bar), MARK_HALO);
 }
 
 // A drop's tell (MobFx.tell_drop): its shadow on the ground where it will land,
@@ -475,8 +464,7 @@ void fragment() {
 	else if (mode == 6) { o = streak(p, pw, pr); }
 	else if (mode == 7) { o = bracket(p, pw, pr); }
 	else if (mode == 8) { o = vapour(p, px, pw, pr); }
-	else if (mode == 9) { o = tell_ring(p, pr); }
-	else if (mode == 10) { o = tell_line(p, pr); }
+	else if (mode == 9) { o = tell_box(p, pr); }
 	else if (mode == 11) { o = tell_drop(p, px, pr); }
 	else if (mode == 12) { o = tell_shade(p, px, pr); }
 	if (o.a < 0.5) {
@@ -606,8 +594,7 @@ const TELL := 5
 const STREAK := 6
 const BRACKET := 7
 const VAPOUR := 8
-const TELL_RING := 9
-const TELL_LINE := 10
+const TELL_BOX := 9
 const TELL_DROP := 11
 const TELL_SHADE := 12
 
@@ -1027,33 +1014,31 @@ static func ring(parent: Node, at: Vector3, col: Color, radius: float = 0.8, sec
 	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
 
 
-## A bite's tell on the ground (FightRules.tell_ring): a dashed ring of the size
-## of what it will strike, held for `seconds` (its windup), with a ring inside it
-## closing on the middle that arrives as the bite goes live.
+## A bite's or throw's tell on the ground (FightRules.tell_box): the footprint of
+## the ground it lands on, centred `at`, `half_len` along `angle` (the sim's,
+## radians in the ground plane) and `half_wid` across, its corners rounded by
+## `corner`, held for `seconds` (its windup), with a bar travelling out along it
+## that reaches the far end as the blow goes live.
 ## `through`: drawn over whatever stands between it and the eye (the listener's
 ## ear, FightKit.listen), where a flat mark under the close eye is depth-tested.
-static func tell_ring(parent: Node, at: Vector3, col: Color, radius: float, seconds: float, through := false) -> void:
+static func tell_box(parent: Node, at: Vector3, angle: float, half_len: float, half_wid: float, corner: float,
+		col: Color, seconds: float, through := false) -> void:
 	if not _ok(parent):
 		return
-	var mi := _mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col)
+	# A square quad a pen's room wider than the footprint, so its outline is
+	# never clipped at the quad's edge.
+	var s := maxf(half_len, half_wid) + TELL_BOX_ROOM
+	var mi := _mark(parent, at + Vector3(0, 0.04, 0), s * 2.0, TELL_BOX, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col)
 	if through:
 		(mi.material_override as ShaderMaterial).shader = _shader(&"flat")
-	_run(mi, seconds)
-
-
-## A throw's tell on the ground (FightRules.tell_lane): the lane it lands along,
-## from `from` out along `angle` (the sim's, radians in the ground plane) for
-## `length` tiles and `width` across, held for `seconds` (its windup), with a bar
-## travelling out along it that reaches the far end as the throw goes live.
-static func tell_line(parent: Node, from: Vector3, angle: float, length: float, width: float, col: Color, seconds: float) -> void:
-	if not _ok(parent):
-		return
-	var along := Vector3(cos(angle), 0.0, sin(angle))
-	var mi := _mark(parent, from + along * length * 0.5 + Vector3(0, 0.04, 0), 2.0, TELL_LINE, &"flat", int(from.x * 13.0 + from.z * 7.0), col, col)
-	# Laid flat (as every ground mark is), then turned so its x runs down the lane.
+	# Laid flat (as every ground mark is), then turned so its x runs along the blow.
 	mi.rotation = Vector3(-PI * 0.5, -angle, 0.0)
-	mi.scale = Vector3(length * 0.5, at_least(width, RING_PX * 0.25) * 0.5, 1.0)
+	(mi.material_override as ShaderMaterial).set_shader_parameter(&"box", Vector3(half_len / s, half_wid / s, corner / s))
 	_run(mi, seconds)
+
+
+## Tiles round a tell's footprint left on its quad for the outline's pen.
+const TELL_BOX_ROOM := 0.25
 
 
 ## A drop's tell on the ground (FightRules.tell_drop): a dashed ring the size of
