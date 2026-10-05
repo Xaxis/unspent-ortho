@@ -49,6 +49,11 @@ var props: Array[WorldProp] = []
 ## radius: float (cleared core), reach: float (built extent), id: int}. Village 0
 ## is the spawn village.
 var villages: Array[Dictionary] = []
+## The villages each landmass holds, by its id (`continent_at`): indices into
+## `villages`, dealt as they are laid (GenSettle). What a reader asks for the
+## roofs of one body without walking every village in the world (48_raids
+## `_target_for`). Empty on a world built by hand.
+var body_villages: Dictionary = {}
 
 ## How far this settlement's own buildings stand from its square, in tiles —
 ## RECORDED by GenScatter when it places them, never guessed from a constant.

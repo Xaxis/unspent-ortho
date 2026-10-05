@@ -427,6 +427,10 @@ static func _lay_villages(c: GenContext, chosen: Array[Vector3], cut_wide: Dicti
 			"level": _level_here(c, tx, ty),
 			"radius": CORE,
 		})
+		var body := w.continent_at(tx, ty)
+		var on_body: PackedInt32Array = w.body_villages.get(body, PackedInt32Array())
+		on_body.append(id)
+		w.body_villages[body] = on_body
 		# Pools keep three tiles clear of the farthest house.
 		GenWater.drain_pools(c, Vector2(tx + 0.5, ty + 0.5), HOUSE_REACH + 3.0)
 		var platform := c.defs[cc].village_platform

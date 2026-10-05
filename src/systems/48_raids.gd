@@ -1867,16 +1867,16 @@ func _on_works_part_broken(region: int, yard: Vector2) -> void:
 ## fire on that body (`_his_on_body`), his CAMP or his HOLDING; else NONE, and
 ## nobody is sent. Villages hold the far roofs, so the far search asks round each
 ## village on the body (its houses stand within GenSettle.HOUSE_REACH of its
-## square), never the whole prop table.
+## square, WorldData.body_villages), never the whole prop table or village list.
 func _target_for(yard: Vector2) -> Dictionary:
 	var roof := _nearest_roof_round(yard, yard, Reprisal.REACH)
 	if roof.is_finite():
 		return {"at": roof, "kind": Reprisal.ROOF}
 	var w := game.world
 	var villages: Array[Vector2] = []
-	for v: Dictionary in w.villages:
-		var vp: Vector2 = v.get("pos", Vector2.INF)
-		if vp.is_finite() and w.same_body(yard, vp):
+	for i: int in w.body_villages.get(w.continent_at(floori(yard.x), floori(yard.y)), PackedInt32Array()):
+		var vp: Vector2 = w.villages[i].get("pos", Vector2.INF)
+		if vp.is_finite():
 			villages.append(vp)
 	villages.sort_custom(func(a: Vector2, b: Vector2) -> bool:
 		return a.distance_squared_to(yard) < b.distance_squared_to(yard))
