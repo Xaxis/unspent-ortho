@@ -105,6 +105,9 @@ const FIRE_LIGHT := 5.0
 ## page invites exactly that. The guide's `lamp` and `carry` lessons name both
 ## keys in the player's own keys, and both are offered at these same moments.
 const DARK_LINE := "Too dark to find anything. Light the lamp."
+## The same press with the lamp carried but dry: lighting it only gutters it, and
+## the goal line already names the oil (#99).
+const DARK_DRY_LINE := "Too dark to find anything."
 ## Real seconds between two of the same nudge on an empty press.
 const NUDGE_SECONDS := 12.0
 ## Lamp oil, lamp and carried flasks, at or under which the player is told once.
@@ -393,7 +396,7 @@ static func use(game: Game) -> bool:
 	# Nothing to do here: say so, so a press is never swallowed without a word.
 	Events.sfx.emit(&"refuse", game.player.position)
 	if in_the_dark(game):
-		_nudge(game, DARK_LINE)
+		_nudge(game, DARK_DRY_LINE if game.inventory.has(&"lamp") and lamp_oil(game) <= 0.0 else DARK_LINE)
 	return false
 
 
