@@ -1435,19 +1435,38 @@ float tide_under(float y) {
 
 // Where a puddle stands on the drowned floor, 0..1 (TIDEFLAT): in the hollows of
 // one slow field, with its own shore, most of them under the old high water.
-// Read for the colour and again for the roughness, so the water is where it shows.
+// The colour and the roughness read the same value, so the water is where it shows.
+// ONE WATERLINE A PUDDLE. Value noise read on the world's own axes lays its
+// contours along the tile grid, and a shore wobble as large as the edge band
+// breaks every shore that lies flat into a field of square islands: from above,
+// a stepped dither round every puddle. So the field is turned off the axes,
+// warped, and each octave turned again (matter_fbm), and the wobble moves the
+// shore by less than the band is wide. Measured over 48 x 48 tiles at the same
+// share of floor under water: 890 islands under a twentieth of a tile became 13.
+const mat2 TIDE_TURN = mat2(vec2(0.857, 0.515), vec2(-0.515, 0.857));
+// The spill's glow at the shore at night, against the bloom colour below.
+const float TIDE_BLOOM = 0.6;
+float tide_field(vec3 wp) {
+	vec2 q = TIDE_TURN * wp.xz;
+	vec2 bend = vec2(ink_vnoise(q * 0.06 + 5.0), ink_vnoise(q * 0.06 + 29.0)) - 0.5;
+	return matter_fbm(q * 0.09 + bend * 1.6 + 17.0) + rag(q) * 0.15;
+}
+
+float tide_pool_of(float f, float y) {
+	return smoothstep(0.56, 0.58, f) * max(tide_under(y), 0.6);
+}
+
 float tide_pool(vec3 wp) {
-	float f = ink_vnoise(wp.xz * 0.09 + 17.0) * 0.75 + ink_vnoise(wp.xz * 0.37 + 3.0) * 0.25 + rag(wp.xz) * 1.2;
-	return smoothstep(0.54, 0.58, f) * max(tide_under(wp.y), 0.6);
+	return tide_pool_of(tide_field(wp), wp.y);
 }
 
 // TIDEFLAT: the drowned city's poured floor, and everything on it is the water's:
 // the SILT the flood laid under the high line, in scalloped drift lines with a
 // dark wrack dashed along each (the last tides' own marks); the cast floor's
 // broken expansion joints on the slant the city was laid to; weed greening the
-// rims of the standing water; and the water itself, black-green and still,
-// taking the sky (its roughness is taken off in fragment()).
-vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
+// rims of the standing water; and the water itself, a still film the floor
+// shows through, taking the sky (its roughness is taken off in fragment()).
+vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit, out float pool) {
 	float under = tide_under(wp.y);
 	// The joints: bays six units across on a turned grid, drawn only where they
 	// have opened, so it reads as a floor that was laid and never as a grid.
@@ -1467,10 +1486,16 @@ vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 			c = mix(c, INK2, 0.7 * under);
 		}
 	}
-	float pool = tide_pool(wp);
+	float f = tide_field(wp);
+	pool = tide_pool_of(f, wp.y);
 	float rim = tide_pool(wp + vec3(0.35, 0.0, 0.2));
 	if (pool > 0.0) {
-		c = mix(c, mix(SPRUCE1, BRINE0, 0.4), pool * 0.85);
+		// STANDING WATER IS SHALLOW. A body walks through it, so it reads as the
+		// floor under a film: the silt a step darker and cooler, deepening a
+		// little toward the middle, and never the canals' black, which is open
+		// water a body swims. A clear step in value lies between the two.
+		float deep = smoothstep(0.58, 0.72, f);
+		c = mix(c, mix(dn(c, 0.6), SLATE2, 0.2 + 0.25 * deep), pool);
 		// The water's edge: a dark wet line where it meets the silt.
 		if (pool < 0.45) {
 			c = dn(c, 0.4);
@@ -1478,12 +1503,13 @@ vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 		// What is in the water: whatever the port spilled, feeding a bloom
 		// that glows a sick green along the puddles' edges in the dark. Only
 		// in drifts and only at night (sky_view.y), faint: poisoned water,
-		// not a lamp.
-		// Over the whole of a puddle, faintly, and thickest where it drifts.
-		// (Measured: on the puddles' edges alone it was under a pixel wide and
-		// the frame did not move.)
+		// not a lamp. A sheen in the band inside the shore, most of a tile
+		// wide (the shore line alone is under a pixel and never shows), well
+		// under a lit window and lighting nothing: laid over whole puddles
+		// it read from above as a field of neon.
+		float shore = 1.0 - smoothstep(0.58, 0.62, f);
 		float bloom = 0.3 + 0.7 * smoothstep(0.5, 0.75, ink_vnoise(wp.xz * 0.2 + 33.0));
-		emit += vec3(0.10, 0.34, 0.24) * 3.5 * bloom * pool * sky_view.y * (0.75 + 0.25 * sin(TIME * 0.7 + wp.x));
+		emit += vec3(0.10, 0.34, 0.24) * TIDE_BLOOM * bloom * shore * pool * sky_view.y * (0.75 + 0.25 * sin(TIME * 0.7 + wp.x));
 	} else if (rim > 0.0) {
 		c = mix(c, MOSS2, rim * 0.6);
 	}
@@ -2876,6 +2902,7 @@ void fragment() {
 	float s2 = floor(style_packed / 16.0 + 0.01);
 	float unh = 0.0;
 	vec3 emit = vec3(0.0);
+	float tide_wet = 0.0;
 	if (patchy > 0.0) {
 		float pn = ink_vnoise(world_pos.xz * 0.11) * 0.65 + ink_vnoise(world_pos.xz * 0.37) * 0.35 + rag(world_pos.xz);
 		c *= 1.0 + patchy * (step(0.66, pn) * 0.04 - step(pn, 0.32) * 0.04);
@@ -2908,7 +2935,7 @@ void fragment() {
 			c = sea_ice(c, world_pos, px);
 		}
 		if (m == M_TIDEFLAT) {
-			c = tide_floor(c, world_pos, px, emit);
+			c = tide_floor(c, world_pos, px, emit, tide_wet);
 		}
 		if (pine) {
 			emit += pine_foxfire(world_pos.xz, px);
@@ -3048,7 +3075,12 @@ void fragment() {
 		// cut into a pale crust.
 		c *= (1.0 - smoothstep(0.15, 1.3, sunk) * 0.55) * (1.0 + smoothstep(0.3, 1.2, -sunk) * 0.14);
 	}
-	c = sky_apply(c, world_pos, TIME);
+	// The land's top is level wherever the weather is asked about it: its
+	// facets tilt only where the mesher bends it into a bank's lip or a bed
+	// (sky_apply_up). Walls and everything standing keep their faces.
+	float face_up = sky_face_up(world_pos);
+	float land_up = mark_ground(m) ? 1.0 : face_up;
+	c = sky_apply_up(c, world_pos, TIME, land_up);
 
 	// A WALL OF REFUSE IS PRESSED, NOT CRUMPLED. The mesher's wall runs in
 	// facets tipped a little up and down as the terrace edge wanders, and lit
@@ -3120,7 +3152,7 @@ void fragment() {
 	if (m == M_TIDEFLAT) {
 		// Standing water on the drowned floor is a mirror; the silt round it is not.
 		// ...unless it is raining on it: a pool under rain is broken, not a mirror.
-		rough_add -= tide_pool(world_pos) * (0.72 - 0.3 * clamp(sky_air.x, 0.0, 1.0));
+		rough_add -= tide_wet * (0.72 - 0.3 * clamp(sky_air.x, 0.0, 1.0));
 	} else if (m == M_STRATA_CAVE) {
 		// A cave wall runs wet in streaks: shinier where water is on it now.
 		rough_add -= smoothstep(0.55, 0.8, ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.2) * 1.3)) * 0.2;
@@ -3232,7 +3264,7 @@ void fragment() {
 	// What the wet ground mirrors is the sky, and under a colossus's pad coming
 	// down there is none left to mirror (sky.gdshaderinc `sky_colossus_pads`).
 	EMISSION = matter_light(c * emission_strength + emit)
-		+ matter_light(neon_reflect(world_pos, px) * (1.0 - under_pad) + neon_skyglow(c));
+		+ matter_light(neon_reflect_up(world_pos, px, land_up) * (1.0 - under_pad) + neon_skyglow(c));
 	// A blow's paper-white, as a sphere in world space: only the part that was
 	// struck goes to paper, so the body it landed on is still showing while the
 	// mark proves the hit (docs/LOOK.md; and see found.gdshader, which carries
