@@ -344,62 +344,21 @@ await climbing 3
 await climb_patch 10
 wait 1
 shot 27-on-the-cable with climbing,climb_patch
-# The cable, ledge to ledge, until its top hands him on to the drum.
-try 20
-release move_up
+# The cable, ledge by ledge (eighteen of them), until its top hands him on to
+# the drum; then each pitch to the top that lifts him into the bone. The world
+# runs at the climb's set-piece share while he is up (43_climb).
+climb onto 900
+climb rode 600
 until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:onto 0.1
-end
-# The drum, ledge to ledge, until its top takes him into the bone.
-try 12
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:rode 0.1
-end
-until climb_ready 240
-try 12
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:rode 0.1
-end
+climb rode 600
 until climb_ready 240
 shot 28-on-the-thigh with climbing,climb_patch
-try 16
-release move_up
+climb rode 900
 until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:rode 0.1
-end
-until climb_ready 240
-try 12
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:rode 0.1
-end
+climb rode 600
 until climb_ready 240
 shot 29-under-the-hubs-rim with climbing,climb_patch
-try 12
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:at_hub 0.1
-end
+climb at_hub 600
 await talking 5
 wait 1
 shot 30-the-panel-in-the-crown with talking

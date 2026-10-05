@@ -19,6 +19,16 @@ extends GameSystem
 ## At the hub the climb is over, and the panel in the crown is read as any thing
 ## with words on it is (49_story `read`): reading it is being answered.
 ##
+## THE CLIMB IS A SET PIECE IN TIME (the contract, tests/render/test_climb_time.gd):
+## from his first hand-on to the cable (`_begin`) until he steps off at the hub
+## (`_end`) the world clock runs at SET_PIECE of its rate, and the walkers at the
+## whole of it (WorldClock.set_piece, walk_lead). The climb is played in real
+## seconds and its drama is the lame leg's swing, 139 real seconds at full pace;
+## at the world's own rate those 16 real minutes were a whole game day, and he
+## reached the crown starving in the dark. The descent's lifts, in the time the
+## rides took, keep the same split. A fall does not end the climb, and the minutes
+## lost to one are the world's (WalkerClimb.CAUGHT_MINUTES).
+##
 ## THE BODY IS WHERE THE LEG IS, THIS FRAME. Numbered after the colossi (19),
 ## whose view poses every walker from the clock at the top of each frame: the
 ## step, the patch, the body and the eye are all set from that one pose here, so
@@ -36,6 +46,13 @@ extends GameSystem
 ##
 ## `--climb=PITCH[:HOLD]` stages a climb at a hold (BootOptions), for a frame of
 ## any pitch without climbing to it.
+
+## THE SET PIECE'S SHARE OF THE WORLD CLOCK'S RATE while he is up. An eighth:
+## the proof's climb on seed 1, with its three waits on the lame leg's swing,
+## took about 16 real minutes, which at 1.4 world minutes a second was 22.8 game
+## hours; at an eighth it is 2.8, under three, so he reaches the crown in about
+## the light he set out in and no meal later than he would on the ground.
+const SET_PIECE := 0.125
 
 const LegScript := preload("res://src/render/colossus/colossus_leg.gd")
 const LegModel := preload("res://src/models/colossus_leg_model.gd")
@@ -193,6 +210,8 @@ func _stage(spec: String) -> void:
 
 func _begin(c: WalkerClimb) -> void:
 	climb = c
+	if game.clock != null:
+		game.clock.set_piece = SET_PIECE
 	_go = false
 	_swing_said = false
 	game.player.hanging = true
@@ -696,8 +715,13 @@ func _end() -> void:
 	if game.camera != null:
 		game.camera.make_current()
 	_lift_near(false)
-	var minutes := down * (game.clock.rate if game.clock != null else Tuning.MINUTES_PER_SECOND)
+	# The lifts down in the time the rides up took, at the set piece's split: the
+	# world's share of those seconds passes, and the walkers walk the whole.
+	var walked := down * (game.clock.rate if game.clock != null else Tuning.MINUTES_PER_SECOND)
+	var minutes := walked * SET_PIECE
 	game.clock.skip(minutes)
+	game.clock.walk_lead += walked - minutes
+	game.clock.set_piece = 1.0
 	Events.time_skipped.emit(minutes, &"climbed")
 	_climbed = true
 	_latch(&"down")

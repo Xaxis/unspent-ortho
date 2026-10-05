@@ -89,7 +89,7 @@ func setup(g: Game) -> void:
 	foot = FootScript.new()
 	foot.name = "colossus_feet"
 	add_child(foot)
-	_start = g.clock.minutes if g.clock != null else 0.0
+	_start = g.clock.walk_minutes() if g.clock != null else 0.0
 	add_to_group(&"colossi")
 
 
@@ -131,8 +131,16 @@ func tour_hour(spec: String) -> float:
 	for r: RefCounted in view.routes:
 		if not (r.treads as Dictionary).is_empty():
 			var lap: float = r.lap_minutes()
-			return first + ceilf(maxf(0.0, game.clock.minutes - first) / lap) * lap
+			return world_at(first + ceilf(maxf(0.0, minutes() - first) / lap) * lap)
 	return NAN
+
+
+## The world minute at which the walks reach walk minute `m`, as the clock runs
+## now: the walks keep their own pace through a set piece (WorldClock.walk_lead),
+## so their minute and the world's are apart by the lead and any staging.
+func world_at(m: float) -> float:
+	var now: float = game.clock.minutes if game.clock != null else 0.0
+	return now + (m - minutes())
 
 
 ## Where this world's craters are, for whoever leads a player there
@@ -150,10 +158,12 @@ func craters() -> Array[Vector2]:
 	return out
 
 
-## The walk's own minute: the world clock, or the staged minute and however long
-## has passed since the game began.
+## The walk's own minute: the walkers' clock (WorldClock.walk_minutes: the
+## world's, and what set pieces held back from it but not from them), or the
+## staged minute and however long the walks have walked since the game began.
+## Every reader of a walker's pose or place asks this.
 func minutes() -> float:
-	var now: float = game.clock.minutes if game.clock != null else 0.0
+	var now: float = game.clock.walk_minutes() if game.clock != null else 0.0
 	if is_nan(_stage):
 		return now
 	return _stage + (now - _start)
