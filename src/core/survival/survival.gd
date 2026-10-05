@@ -461,6 +461,21 @@ static func words_in_front(game: Game) -> bool:
 	return false
 
 
+## Whether the words in front of him are nearer his hand than `d` tiles: a thing
+## he must press (a works housing, a road's barrier) that is nearer still keeps
+## the key, by the same distance rule `use_target` is held to. ONE PRESS, ONE
+## OWNER: the nearest thing in front owns it. A survey stake 1.25 tiles behind a
+## quarry's housing read as faced words from every stand in the housing's reach,
+## and the housing could never be broken (seed 42's bonelands quarry, #67).
+static func words_nearer_than(game: Game, d: float) -> bool:
+	if game == null:
+		return false
+	for s: Node in game.systems:
+		if s.has_method(&"faced_words_d") and float(s.call(&"faced_words_d")) < d:
+			return true
+	return false
+
+
 static func build_asked(game: Game) -> Vector2:
 	var ask := SurvivalState.of(game).build_ask
 	if ask.is_empty() or now_real() >= float(ask.until):

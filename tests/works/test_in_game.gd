@@ -161,6 +161,84 @@ func test_opening_a_housing_raises_the_plan_networks_file_on_the_player() -> voi
 	await frames(1)
 
 
+## ONE PRESS, ONE OWNER, BY WHICH IS NEARER HIS HAND (#67). Words he faces keep
+## the press from a housing only when they stand nearer than it: a survey stake
+## 1.25 tiles behind seed 42's bonelands quarry feed housing read as faced words
+## from every stand in its reach, and that yard could never be broken. Behind the
+## housing, the stake leaves it the press; between him and it, the words keep it.
+## Staged from a stand where the feed housing has the press, facing it, with the
+## ground's own takes (debris) cleared from his hands: a take nearer than the
+## words is what the key means (49_story), and seed 42's stand had none.
+func _at_the_feed(g: Game) -> WorksSite:
+	var site: WorksSite = _works(g).here()
+	check(site != null, "the player is standing on a depot's ground")
+	if site == null:
+		return null
+	var part := site.part(0)
+	for r: float in [1.1, 0.8, 1.4]:
+		for k in 12:
+			var p := part + Vector2.from_angle(TAU * float(k) / 12.0) * r
+			if not g.query.standable(floori(p.x), floori(p.y)) or Works.part_near(site, p) != 0:
+				continue
+			_stand(g, p)
+			Survival.face(g, (part - p).angle())
+			var take := Survival.use_target(g)
+			while take != null and take.pos.distance_to(p) < StoryProps.REACH:
+				g.world.depleted[take.id] = INF
+				take = Survival.use_target(g)
+			await frames(2)
+			if _works(g).use_line() == "housing - break":
+				return site
+	check(false, "a stand where the feed housing has the press")
+	return null
+
+
+func test_words_behind_a_housing_leave_it_the_press() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0",
+		"--place=works", "--held=axe_felling"]))
+	await frames(4)
+	var site := await _at_the_feed(g)
+	if site == null:
+		g.queue_free()
+		await frames(1)
+		return
+	var part := site.part(0)
+	var ahead := (part - g.player.pos).normalized()
+	Survival.add_prop(g, PropKind.SURVEY, part + ahead * 1.25, ahead.angle())
+	await frames(2)
+	check(bool(g.get_node("49_story").call(&"faces_words")), "the stake behind the housing is words in front of him")
+	eq(_works(g).use_line(), "housing - break", "and the housing, nearer his hand, names the press")
+	Input.action_press(&"use")
+	var got := false
+	for i in 400:
+		await frames(1)
+		if _works(g).tour_seen("works_part"):
+			got = true
+			break
+	Input.action_release(&"use")
+	check(got, "and the held key opens it")
+	g.queue_free()
+	await frames(1)
+
+
+func test_words_before_a_housing_keep_the_press() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0",
+		"--place=works", "--held=axe_felling"]))
+	await frames(4)
+	var site := await _at_the_feed(g)
+	if site == null:
+		g.queue_free()
+		await frames(1)
+		return
+	var ahead := (site.part(0) - g.player.pos).normalized()
+	Survival.add_prop(g, PropKind.SURVEY, g.player.pos + ahead * 0.5, ahead.angle())
+	await frames(2)
+	check(bool(g.get_node("49_story").call(&"faces_words")), "the stake between him and the housing is words in front of him")
+	eq(_works(g).use_line(), "", "and the words, nearer his hand, keep the press")
+	g.queue_free()
+	await frames(1)
+
+
 ## THE DECK IS A WALL. Nothing in this package stopped a body at all until the
 ## masses were written: a player walked into the middle of the depot deck and
 ## stood inside it, and the yard was an open field with decorative furniture.
