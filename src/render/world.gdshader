@@ -1798,10 +1798,18 @@ vec3 desert_pavement(vec3 c, vec3 wp, vec2 px) {
 // BLACK ice the sea shows through, strung with frozen bubbles and near a
 // mirror (its roughness in fragment()); and snow dust blown along the wind in
 // streaks. No square anything: the floes are the cells of a warped field.
+// THE BLACK ICE IS A FEW LEADS, NOT EVERY SEAM. Laid a third of a floe wide
+// (LEAD_WIDE) along every edge over half the field, it mirrors the sky, and at
+// dusk, when the sky in it goes dark, it was a dark net over the whole frost
+// sea at zoom 30 that swallowed the ground (#83). A lead is a seam that opened
+// and froze again: LEAD_WIDE of a floe across, and only where LEAD_SHARE of the
+// field has them, so the floes read as a field with a dark seam here and there.
+const float LEAD_WIDE = 0.1;
+const vec2 LEAD_SHARE = vec2(0.56, 0.68);
 float sea_black(vec2 p) {
 	vec3 cd = matter_cells(p * 0.35 + vec2(ink_vnoise(p * 0.2), ink_vnoise(p * 0.2 + 5.0)) * 1.2);
-	float lead = 1.0 - smoothstep(0.05, 0.3, cd.y - cd.x);
-	return lead * smoothstep(0.3, 0.5, ink_vnoise(p * 0.15 + 21.0));
+	float lead = 1.0 - smoothstep(LEAD_WIDE * 0.3, LEAD_WIDE, cd.y - cd.x);
+	return lead * smoothstep(LEAD_SHARE.x, LEAD_SHARE.y, ink_vnoise(p * 0.15 + 21.0));
 }
 
 vec3 sea_ice(vec3 c, vec3 wp, vec2 px) {

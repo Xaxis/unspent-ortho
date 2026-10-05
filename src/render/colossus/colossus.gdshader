@@ -97,6 +97,9 @@ uniform float beta_high = 1.1e-5;
 // metres away: grey bars hanging over every shot (2026-09-29). At this much a
 // shin 70 km off keeps under half its contrast before `presence` takes more.
 uniform float beta_far = 1.2e-5;
+// How far the eye is under the high air's rules (SkyLight.aloft_share): there
+// the walker takes the depth fog's law instead of its own.
+uniform float aloft = 0.0;
 // A lamp is far brighter than the plate it sits on, so it is still seen through
 // air that has taken the plate: its share of the air is this power of the
 // plate's transmittance (a half: at 180 km a beacon keeps a seventh of itself
@@ -353,6 +356,14 @@ void fragment() {
 	float low = clamp(pow(smoothstep(land_fog.x, land_fog.y, low_len), land_fog.z) * land_fog.w, 0.0, LOW_MOST);
 	float high = beta_high * thicken * layer_len(eye, true_world, h_high);
 	float air = 1.0 - (1.0 - low) * exp(-high - beta_far * distance(eye, true_world));
+	// FROM HIGH UP, ONE AIR FOR ONE DISTANCE. An eye aloft sees the land and the sea
+	// through the engine's depth fog (SkyLight._aloft), and the walker here took
+	// its own air on top, five times as thick at the same distance: from the thigh
+	// the climbed leg, 38 km off, sat in 0.37 of air against the sea's 0.08 behind
+	// it and came out the sea's own colour (#33). So aloft the walker takes the
+	// depth fog's law, the same air as everything else that far off.
+	float seen = clamp(pow(smoothstep(land_fog.x, land_fog.y, distance(eye, true_world)), land_fog.z) * land_fog.w, 0.0, 1.0);
+	air = mix(air, seen, aloft);
 	// A part drawn wider than it is gives the rest back to the air.
 	air = 1.0 - (1.0 - air) * clamp(thin, 0.0, 1.0);
 	bool lit_part = COLOR.a < 0.98;

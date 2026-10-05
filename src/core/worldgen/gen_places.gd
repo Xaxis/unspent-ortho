@@ -4,6 +4,7 @@ class_name GenPlaces
 ##   "moss"                    a standing tile deep inside a country, with room
 ##                             round it to set something down
 ##   "coast-pinewood"          a standing tile on that ecotone, where both mix
+##   "a|b|c"                   the first of those places this world has
 ##   "tip", "wreck2", ...      the Nth landmark of a kind (1-based, default 1)
 ##   "works", "works_breaker"  the Nth depot of the plan, or one of its housings;
 ##   "works_the_crags_feed"    of that landscape's depots; "works_the_crags_lip"
@@ -31,6 +32,15 @@ class_name GenPlaces
 
 static func find(w: WorldData, name: String) -> Vector2:
 	var key := name.to_lower().strip_edges()
+	# Alternatives, so a tour asks for a kind of place and not one border a seed
+	# may stop holding when its worldgen is reworked: canon.tour's two cities
+	# meeting stood on seed 7's slums-machine_city border until GEN 53 moved it.
+	if key.contains("|"):
+		for alt: String in key.split("|", false):
+			var at := find(w, alt)
+			if at.x >= 0.0:
+				return at
+		return Vector2(-1, -1)
 	if key == "spawn":
 		return w.spawn
 	# "village:LAND": the first village, in the world's list, whose stand is on

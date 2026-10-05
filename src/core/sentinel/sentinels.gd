@@ -866,8 +866,8 @@ static func founder_tiles(world: WorldData, at: Vector2, def: SentinelDef, enoug
 ## Where a lure draws it to founder (a tour's `near keeper_flats`): from the
 ## nearest tile (by its move) of its FOUNDER grounds that stands in a patch of
 ## them a body's width across, inside its reach, on away from its den until its
-## run at a player standing there would stop LURE_DEPTH short of them on the
-## ground too. Stood at the patch's edge, the anvil's run stopped on its own rock
+## run at a player standing there would stop on the ground too, with the spare
+## (lure_depth). Stood at the patch's edge, the anvil's run stopped on its own rock
 ## and it bit from there (the strike field's den). The edge where no spot further
 ## in holds; INF where there is none.
 static func founder_spot(world: WorldData, at: Vector2, def: SentinelDef) -> Vector2:
@@ -879,22 +879,36 @@ static func founder_spot(world: WorldData, at: Vector2, def: SentinelDef) -> Vec
 	var tall := int(ceil(float(Roster.row(def.kind).get("height", 1.0)) / WorldData.STEP))
 	var away := (edge - at).normalized()
 	var level := world.level_at(u.x, u.y)
+	var depth := lure_depth(def)
 	var p := edge
-	for k in int(LURE_DEPTH * 2.0) + 1:
+	for k in int(depth * 2.0) + 1:
 		p = edge + away * (0.5 * float(k))
 		var t := Vector2i(floori(p.x), floori(p.y))
 		if not sink.has(world.ground_at(t.x, t.y)) or not _keeper_ground(world, t.x, t.y, tall) \
 				or absi(world.level_at(t.x, t.y) - level) > 1:
 			return edge
-		var stop := p - away * LURE_DEPTH
+		var stop := p - away * depth
 		if sink.has(world.ground_at(floori(stop.x), floori(stop.y))):
 			return p
 	return edge
 
 
-## How far into its founder ground a lure stands: a run at the player stops to
-## bite with its front a bite's reach off and its middle about three tiles.
-const LURE_DEPTH := 3.0
+## Where a run at a player standing on a lure stops, from the player: Brains.
+## strike_range for its first phase (the two radii and four fifths of the reach).
+static func lure_stop(def: SentinelDef) -> float:
+	var reach := float(def.phase(0).bite.get("reach", 0.6))
+	return float(Roster.row(def.kind).get("radius", 0.5)) + Tuning.PLAYER_RADIUS + reach * 0.8
+
+
+## How far into its founder ground a lure stands: where its run stops (lure_stop)
+## with LURE_SPARE more of the ground under it. A flat three tiles was under the
+## anvil's 3.12, and its run ended off the sand and bit from its own ground
+## (test_anvil_ways, seed 7).
+static func lure_depth(def: SentinelDef) -> float:
+	return lure_stop(def) + LURE_SPARE
+
+
+const LURE_SPARE := 1.0
 
 
 ## How far from its den a keeper of `def` sees a lure on the ground it founders
