@@ -235,7 +235,7 @@ func _gather(focus: Vector2) -> void:
 ## prop: every building in the game is one PropKind and the kind alone cannot
 ## tell a six-storey tower from a cot.
 func _country(p: WorldProp) -> int:
-	return world.dress_country(floori(p.pos.x), floori(p.pos.y))
+	return world.built_country(p)
 
 
 func _place(i: int, p: WorldProp, focus: Vector2) -> void:

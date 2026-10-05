@@ -5,6 +5,9 @@
 # is measured here, room by room, and at every event the count must be zero:
 # --programs fails the run on any program first drawn after an event.
 #   tools/web.sh --tour=tours/every-room.tour --programs --timeout=900 --args=--seed=4,--hour=11,--weather=clear:0
+# The same rooms on the desktop, without the count (what a sweep runs; with only
+# the web's line it ran bare, on seed 1, where none of this was staged):
+#   TOUR_TIMEOUT=900 tools/tour.sh tours/every-room.tour --seed=4 --hour=11 --weather=clear:0
 coast calm
 wait 3.0
 echo event cottage_day

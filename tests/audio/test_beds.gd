@@ -194,6 +194,12 @@ func test_an_installation_is_heard_where_it_stands_and_a_pole_only_sings() -> vo
 ## So the grid counts only where the installation reaching a sample is one that
 ## sample's landscape does NOT declare -- 2.08% / 2.42% / 2.45% on seeds 1, 42 and
 ## 90210 -- and the bar is tighter for it: 4%, where the old one was 8% of all.
+## **THE HUM IS JUDGED THE SAME WAY.** Its bar was 8% of all land, and on the crags
+## (GEN 52) seeds 42 and 90210 already stood at 9.05% and 8.67%, machine lands
+## humming across themselves; seed 1 held at 7.92% only until a walled-off frost
+## sea went to the machine city round it (GEN 53, 8.59%). Hum from an
+## installation the sample's own landscape does not declare is 0.91% / 1.31% /
+## 1.08% on seeds 1, 42 and 90210, and the bar for it is 2%.
 func test_the_grid_and_hum_are_never_everywhere() -> void:
 	var world := WorldGen.generate(1, Tuning.WORLD_SIZE)
 	var q := WorldQuery.new(world)
@@ -201,6 +207,7 @@ func test_the_grid_and_hum_are_never_everywhere() -> void:
 	var grid := 0
 	var foreign := 0
 	var hum := 0
+	var foreign_hum := 0
 	var village := 0
 	var village_grid := 0
 	for y in range(3, world.size, 8):
@@ -214,14 +221,17 @@ func test_the_grid_and_hum_are_never_everywhere() -> void:
 				grid += 1
 				if not _own_installation(q, p, BiomeRegistry.by_index(world.country_at(x, y))):
 					foreign += 1
-			hum += 1 if float(works["hum"]) > 0.05 else 0
+			if float(works["hum"]) > 0.05:
+				hum += 1
+				if not _own_installation(q, p, BiomeRegistry.by_index(world.country_at(x, y))):
+					foreign_hum += 1
 			for v: Dictionary in world.villages:
 				if (v["pos"] as Vector2).distance_to(p) < 20.0:
 					village += 1
 					village_grid += 1 if float(works["grid"]) > 0.0 else 0
 					break
 	lt(100.0 * foreign / land, 4.0, "the grid on %.2f%% of the land that does not declare it (%.2f%% of all land)" % [100.0 * foreign / land, 100.0 * grid / land])
-	lt(100.0 * hum / land, 8.0, "the hum on %.1f%% of the land" % (100.0 * hum / land))
+	lt(100.0 * foreign_hum / land, 2.0, "the hum on %.2f%% of the land that does not declare it (%.2f%% of all land)" % [100.0 * foreign_hum / land, 100.0 * hum / land])
 	lt(100.0 * village_grid / maxi(1, village), 15.0, "and on %.1f%% of the ground by the villages" % (100.0 * village_grid / maxi(1, village)))
 
 

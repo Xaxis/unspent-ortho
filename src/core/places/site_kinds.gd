@@ -100,6 +100,21 @@ const ROWS := {
 			[PropKind.DEBRIS, 4, 7.0], [PropKind.REEDS, 6, 8.0]],
 		"holds": &"copper", "behind": WATER, "guard": 0.1, "clear": 24.0,
 	},
+	&"floe_camp": {
+		# The frost sea: a dead expedition's tents and sledges and its graves. No
+		# FIRE: a fire prop burns, and this one went out a lifetime ago.
+		"ground": KEEP, "radius": 6.0, "wants": ANY,
+		"props": [[PropKind.SHACK, 2, 3.0], [PropKind.DEBRIS, 2, 4.0], [PropKind.GRAVE, 2, 5.0]],
+		"holds": &"salvage_kit", "behind": PRESSURE, "guard": 0.0, "clear": 30.0,
+	},
+	&"barrow": {
+		# The crags: a mound with a cairn on it and a trilithon at its mouth, the
+		# dead round it. The challenge is the dark, not a machine. Holds `iron`.
+		"ground": KEEP, "radius": 5.0, "wants": ANY,
+		"props": [[PropKind.CAIRN, 1, 0.0], [PropKind.LINTEL, 1, 3.0],
+			[PropKind.GRAVE, 3, 4.0], [PropKind.STANDING_STONE, 1, 4.5]],
+		"holds": &"iron", "behind": OPEN, "guard": 0.0, "clear": 26.0,
+	},
 	&"flooded_hall": {
 		# The drowned city: a hall whose roof went and whose floor the sea took,
 		# its walls standing out of the black water to their broken heights, what

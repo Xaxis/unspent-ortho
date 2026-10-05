@@ -278,7 +278,9 @@ func setup(g: Game) -> void:
 	lr.position = Vector3(0, 0.08, 0)
 	lantern.add_child(lr)
 	add_child(lantern)
-	_indexed_world = g.world
+	# The world's index was built beside its raise (RealmWarm) when it was raised
+	# for this game: taken, it is only caught up on what was laid since.
+	_adopt(_take_prepared(g.world), g.world)
 	_index_sources()
 	_update(0.0, true)
 
@@ -777,15 +779,7 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	var kept: Array = _index_of.get(game.world.get_instance_id(), [])
 	if kept.is_empty():
 		kept = _take_prepared(game.world)
-	if not kept.is_empty() and (kept[0] as WeakRef).get_ref() == game.world:
-		sources = kept[1]
-		_cells = kept[2]
-		_indexed = kept[3]
-	else:
-		sources = [] as Array[Dictionary]
-		_cells = {}
-		_indexed = 0
-	_indexed_world = game.world
+	_adopt(kept, game.world)
 	for i in _assigned.size():
 		_assigned[i] = null
 	for id: int in _glows.keys():
@@ -797,6 +791,20 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	_index_sources()
 	# The next frame does the assigning, rather than a second _update here.
 	_refresh = 0.0
+
+
+## `w`'s index from a kept or prepared entry [world ref, sources, cells, indexed],
+## or an empty one to build from the first prop.
+func _adopt(kept: Array, w: WorldData) -> void:
+	if not kept.is_empty() and (kept[0] as WeakRef).get_ref() == w:
+		sources = kept[1]
+		_cells = kept[2]
+		_indexed = kept[3]
+	else:
+		sources = [] as Array[Dictionary]
+		_cells = {}
+		_indexed = 0
+	_indexed_world = w
 
 
 ## Index every light source of the world from where it was left (`_indexed`).
@@ -858,7 +866,7 @@ static func index_of(w: WorldData, from: int, into: Array[Dictionary], cells: Di
 			# needed the same two numbers and could not see them: a hearth was
 			# placed at the front wall of coast variant 0 whatever house the baker
 			# had actually built.
-			var country := maxi(Country.COAST, w.country_at(floori(p.pos.x), floori(p.pos.y)))
+			var country := w.built_country(p)
 			var variant := PropModels.variant_of(p, w.seed_value, country)
 			if PLACED_SOURCES.has(p.kind):
 				var pts := PropModels.glow_points(p.kind, variant, country)
@@ -914,7 +922,7 @@ func _tube_of(s: Dictionary) -> void:
 	if s.has("neon_at") or bool(s.get("dark", false)):
 		return
 	var p := _prop_of(s)
-	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var country := game.world.built_country(p)
 	var tube := PropModels.neon_point(p.kind, PropModels.variant_of(p, game.world.seed_value, country), country)
 	if tube.is_empty():
 		s.dark = true
@@ -926,11 +934,13 @@ func _tube_of(s: Dictionary) -> void:
 
 ## Where a house's lit front is, in its own frame: the middle of the glow points
 ## that are its OWN light. A stolen tube is somebody else's and hangs where the
-## model runs it, so it must not drag the hearth's pool off the door.
+## model runs it, so it must not drag the hearth's pool off the door, and it is
+## not asked for: reading it builds the house, and the index asks this of every
+## house on the island, on the raise's worker (1.6 s of its 1.8 s at 1840).
 static func _front_of(kind: int, variant: int, country: int) -> Vector3:
 	var sum := Vector3.ZERO
 	var n := 0
-	for g: Dictionary in glow_points(kind, variant, country):
+	for g: Dictionary in PropModels.glow_points(kind, variant, country, false):
 		if bool(g.get("neon", false)):
 			continue
 		sum += g.at as Vector3
@@ -1219,7 +1229,7 @@ static func _may_glow(kind: int, glow: Dictionary) -> bool:
 
 
 static func _points_of(w: WorldData, p: WorldProp, glow: Dictionary) -> Array:
-	var country := maxi(Country.COAST, w.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var country := w.built_country(p)
 	var variant := PropModels.variant_of(p, w.seed_value, country)
 	var key := (p.kind * PropModels.MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
 	if not glow.has(key):

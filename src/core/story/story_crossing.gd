@@ -14,6 +14,9 @@ class_name StoryCrossing
 ## The two places 49_cast adds to the cast for it: where he puts in, where he lands.
 const LAUNCH := &"the_crossing"
 const LANDING := &"the_landing"
+## And where the landing is the landfall city's port stair (rule 1), the port
+## itself, where the story stands its sign (StoryContent.STOOD).
+const PORT := &"the_port"
 
 const PUT_IN := &"seen:raft_put_in"
 const CROSSED := &"seen:far_shore"
@@ -85,10 +88,15 @@ static func _narrowest(world: WorldData, homes: Array[Vector2], fars: Array[Vect
 
 
 ## Where the raft crosses on a world the story is cast on (`cast`: StoryPlan.cast's
-## answer): ashore at the world's landfall where it lies on the archive's body
-## (`to_landfall`), else across the narrows between the crew's camp and the
-## archive (`find`). The one rule the game (49_cast) and every test read the
-## crossing by.
+## answer), first that holds of three, because the world names where a raft from
+## home comes in and the story must land him there, under the clock:
+##   1. at the landfall city's port stair (Landmarks.port_of), where the landfall
+##      lies on the archive's body (`to_port`);
+##   2. else on the sea shore at the landfall itself (`to_landfall`), on a world
+##      whose landfall laid no port;
+##   3. else across the narrows between the crew's camp and the archive (`find`),
+##      on a body no landfall row names.
+## The one rule the game (49_cast) and every test read the crossing by.
 static func of(world: WorldData, cast: Dictionary) -> Dictionary:
 	if not cast.has(&"the_camp") or not cast.has(&"the_archive"):
 		return {}
@@ -96,8 +104,34 @@ static func of(world: WorldData, cast: Dictionary) -> Dictionary:
 	var archive: Vector2 = cast[&"the_archive"].pos
 	var c := {}
 	if cast.has(&"the_landfall") and world.same_body(cast[&"the_landfall"].pos, archive):
-		c = to_landfall(world, camp, cast[&"the_landfall"].pos)
+		c = to_port(world, camp, Landmarks.port_of(world))
+		if c.is_empty():
+			c = to_landfall(world, camp, cast[&"the_landfall"].pos)
 	return c if not c.is_empty() else find(world, camp, archive)
+
+
+## THE PORT: the raft lands on its stair (`port`, the step on the water side of
+## the quay, its stair going down into the open sea), put in from the home shore
+## within PUT_IN_REACH whose straight run to it is open water, the narrowest such.
+## {launch, land, water}, or {} where there is no port or no open run to it.
+static func to_port(world: WorldData, from: Vector2, port: Vector2) -> Dictionary:
+	if world == null or not port.is_finite():
+		return {}
+	var home := world.continent_at(floori(from.x), floori(from.y))
+	if home == 0:
+		return {}
+	var homes: Array[Vector2] = []
+	var lo := Vector2i((port - Vector2(PUT_IN_REACH, PUT_IN_REACH)).floor())
+	var hi := Vector2i((port + Vector2(PUT_IN_REACH, PUT_IN_REACH)).ceil())
+	for y in range(lo.y, hi.y + 1, STEP):
+		for x in range(lo.x, hi.x + 1, STEP):
+			if world.continent_at(x, y) != home or not _shore(world, x, y):
+				continue
+			var p := Vector2(x, y) + Vector2(0.5, 0.5)
+			if p.distance_to(port) <= PUT_IN_REACH:
+				homes.append(p)
+	var fars: Array[Vector2] = [port]
+	return _narrowest(world, homes, fars)
 
 
 ## How far from the landfall the raft may come ashore, and put in from, in tiles:

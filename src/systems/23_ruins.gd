@@ -3,11 +3,12 @@ extends GameSystem
 ## handed to WorldQuery as the circles along its walls, for the whole island
 ## like the landmarks' mass.
 ##
-## THE WALLS ARE STAMPED ONCE PER QUERY AND WORLD, and again only when a ruin
-## falls. An island holds thousands of ruins and tens of thousands of circles,
-## and restamping them on every take and every realm crossing cost a room's
-## way out 1.5 s (test_doors): the outside's query comes back from a room with
-## its walls still stamped, and a take that was not a ruin changes none of them.
+## THE WALLS ARE SET ONCE PER QUERY AND WORLD, and again only when a ruin
+## falls, and stamped a cell at a time (WorldQuery.set_blocks_by_cell). An
+## island holds thousands of ruins and tens of thousands of circles, and
+## restamping them on every take and every realm crossing cost a room's way out
+## 1.5 s (test_doors): the outside's query comes back from a room with its walls
+## still stamped, and a take that was not a ruin changes none of them.
 
 ## Which world's walls each query carries: query instance id -> world instance id.
 var _stamped := {}
@@ -40,7 +41,7 @@ func _set_walls(force: bool) -> void:
 	var wid := game.world.get_instance_id()
 	if not force and int(_stamped.get(q, 0)) == wid:
 		return
-	game.query.set_blocks(&"ruins", RuinWalls.of_world(game.world))
+	game.query.set_blocks_by_cell(&"ruins", RuinWalls.of_world(game.world))
 	_stamped[q] = wid
 	_ruins_of = wid
 	_ruin_ids = RuinWalls.ids_of(game.world)
@@ -70,3 +71,4 @@ func _on_fell() -> void:
 
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	_set_walls(false)
+
