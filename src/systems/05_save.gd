@@ -95,6 +95,9 @@ func started() -> void:
 		var moved := SaveCore.disagrees(game, r.header) if r.ok else ""
 		if r.ok and moved == "":
 			SaveGame.apply(r.data)
+			# Every system was set up on the world as raised; what the save says
+			# has fallen is worked out again from what still stands (Events.fell).
+			Events.fell.emit()
 			loaded_from = slot
 			last_saved_at = Time.get_unix_time_from_system()
 			_forced_weather = Weather.forced_kind != &""

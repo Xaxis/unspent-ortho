@@ -29,14 +29,109 @@ var _block_by: Dictionary = {}  # owner -> Array[Vector3]
 ## Tiles of slack when a circle is stamped into the grid, so one tile lookup is
 ## enough for any body narrower than this.
 const BLOCK_SLACK := 1.0
+## AN OWNER WITH A WHOLE ISLAND OF CIRCLES IS STAMPED A CELL AT A TIME, the first
+## time a tile of that cell is asked about (`set_blocks_by_cell`). The ruins were
+## 95k circles stamped into 2.4M tile entries at every new game's start, 0.7-1.7 s
+## and 85 MB on seed 7 at 1840, for tiles nobody went near; a tile that is asked
+## about holds what an eager stamp would have put there, its cell stamped whole.
+## Cells are this many tiles a side, so the first step into the most crowded is
+## a short stamp: on a walk into seed 7's (335 circles) the worst frame spent
+## 1.2-1.6 ms on walls, where 16-tile cells spent 2.6 and stamping cells ahead of
+## him on a 2 ms budget spent more in all and no less in the worst frame.
+const BLOCK_CELL := 8
+var _cell_circles: Dictionary = {}  # owner -> {cell key -> Array[Vector3]}
+var _cell_waiting: Dictionary = {}  # cell key -> Array of owners not yet stamped there
+
+
+## WHAT STOPS A BODY IS LOOKED FOR IN TWO TIERS. A fixed two-tile search let a
+## body sink into any solid over about 1.72, 1.45 tiles into one of 3.22 (city
+## buildings, the big coastal houses, murals). One window sized for the widest
+## solid fixed that and made every step of every body search 3.5 tiles round
+## where 1.8 do: 1.55-1.85x a `_fits` (seed 1, city and pinewood, walk and
+## crowd). So a solid up to ORDINARY is found in the tiles round a body, and the
+## few wider ones are filed in their own coarse grid (WIDE_CELL tiles a side)
+## and searched at their own reach (`_wide_most`). `solid_rows_near` is the one
+## search; every reader of what stops a body asks it.
+const ORDINARY := 1.5
+const WIDE_CELL := 8
+var _wide: Dictionary = {}  # coarse cell index -> PackedInt32Array of rows
+var _wide_most := 0.0
+## The widest ghost: there are a handful, searched at their own reach.
+var _ghost_most := 0.0
 
 
 func _init(w: WorldData) -> void:
 	world = w
 	w.sync_table()
 	var pos := w.table.pos
+	var solid := w.table.solid
 	for row in w.table.size():
 		_file(floori(pos[row].y) * w.size + floori(pos[row].x), row)
+		if solid[row] > ORDINARY:
+			_file_wide(pos[row], row, solid[row])
+
+
+func _file_wide(at: Vector2, row: int, solid: float) -> void:
+	_wide_most = maxf(_wide_most, solid)
+	var k := _wide_key(floori(at.x) / WIDE_CELL, floori(at.y) / WIDE_CELL)
+	var cell: PackedInt32Array = _wide.get(k, PackedInt32Array())
+	cell.append(row)
+	_wide[k] = cell
+
+
+func _wide_key(cx: int, cy: int) -> int:
+	return cy * (world.size / WIDE_CELL + 1) + cx
+
+
+## The table rows of every solid prop that could touch a body of radius `r` at
+## `p`: the ordinary ones in the tiles round it, and every wide one whose coarse
+## cell lies within its reach. Each row once; a caller still asks the distance.
+func solid_rows_near(p: Vector2, r: float) -> PackedInt32Array:
+	var out := ordinary_rows_near(p, r)
+	out.append_array(wide_rows_in(p, p, r))
+	return out
+
+
+## The ordinary tier alone: solids up to ORDINARY whose tile is within its reach.
+func ordinary_rows_near(p: Vector2, r: float) -> PackedInt32Array:
+	var t := world.table
+	var out := PackedInt32Array()
+	for row in rows_near(p, ORDINARY + r):
+		var solid := t.solid[row]
+		if solid > 0.0 and solid <= ORDINARY:
+			out.append(row)
+	return out
+
+
+## The wide tier alone: every wide solid whose coarse cell could reach a body of
+## radius `r` anywhere in the box `lo`..`hi` (a whole nav field asks once).
+func wide_rows_in(lo: Vector2, hi: Vector2, r: float) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	if _wide.is_empty():
+		return out
+	var reach := _wide_most + r
+	var last := (world.size - 1) / WIDE_CELL
+	for cy in range(maxi(0, floori(lo.y - reach)) / WIDE_CELL, mini(last, maxi(0, floori(hi.y + reach)) / WIDE_CELL) + 1):
+		for cx in range(maxi(0, floori(lo.x - reach)) / WIDE_CELL, mini(last, maxi(0, floori(hi.x + reach)) / WIDE_CELL) + 1):
+			var k := _wide_key(cx, cy)
+			if _wide.has(k):
+				out.append_array(_wide[k])
+	return out
+
+
+## The ghosts whose solid could touch a body of radius `r` at `p`.
+func solid_ghosts_near(p: Vector2, r: float) -> Array[WorldProp]:
+	return ghosts_near(p, _ghost_most + r)
+
+
+## `solid_rows_near` and `solid_ghosts_near` as props, for a reader that wants
+## the objects.
+func solid_props_near(p: Vector2, r: float) -> Array[WorldProp]:
+	var out: Array[WorldProp] = []
+	for row in solid_rows_near(p, r):
+		out.append(world.prop_at(row))
+	out.append_array(solid_ghosts_near(p, r))
+	return out
 
 
 func _file(k: int, row: int) -> void:
@@ -73,15 +168,75 @@ func set_blocks(owner: StringName, circles: Array[Vector3]) -> void:
 		_stamp(_block_by[owner])
 
 
-## Every tile a circle could stop a body in, stamped with the circle itself, so
-## `blocks_at` is one lookup.
-func _stamp(circles: Array[Vector3]) -> void:
+## `owner`'s circles, stamped cell by cell as `blocks_at` first asks in a cell
+## (BLOCK_CELL), replacing whatever it said before: what was stamped of the last
+## set goes now, and what was still waiting is dropped.
+func set_blocks_by_cell(owner: StringName, circles: Array[Vector3]) -> void:
+	var had: Dictionary = _cell_circles.get(owner, {})
+	for key: int in had:
+		var waiting: Array = _cell_waiting.get(key, [])
+		if waiting.has(owner):
+			waiting.erase(owner)
+			if waiting.is_empty():
+				@warning_ignore("return_value_discarded")
+				_cell_waiting.erase(key)
+		else:
+			_unstamp(had[key] as Array[Vector3], _cell_rect(key))
+	var cells := {}
+	var wide := _cells_wide()
 	for c: Vector3 in circles:
 		var r := ceili(c.z + BLOCK_SLACK)
 		var cx := floori(c.x)
 		var cy := floori(c.y)
-		for ty in range(maxi(0, cy - r), mini(world.size - 1, cy + r) + 1):
-			for tx in range(maxi(0, cx - r), mini(world.size - 1, cx + r) + 1):
+		for gy in range(maxi(0, cy - r) / BLOCK_CELL, mini(world.size - 1, cy + r) / BLOCK_CELL + 1):
+			for gx in range(maxi(0, cx - r) / BLOCK_CELL, mini(world.size - 1, cx + r) / BLOCK_CELL + 1):
+				var key := gy * wide + gx
+				if not cells.has(key):
+					cells[key] = [] as Array[Vector3]
+				(cells[key] as Array[Vector3]).append(c)
+	if cells.is_empty():
+		@warning_ignore("return_value_discarded")
+		_cell_circles.erase(owner)
+		return
+	_cell_circles[owner] = cells
+	for key: int in cells:
+		if not _cell_waiting.has(key):
+			_cell_waiting[key] = []
+		(_cell_waiting[key] as Array).append(owner)
+
+
+func _cells_wide() -> int:
+	return (world.size + BLOCK_CELL - 1) / BLOCK_CELL
+
+
+func _cell_rect(key: int) -> Rect2i:
+	var wide := _cells_wide()
+	return Rect2i((key % wide) * BLOCK_CELL, (key / wide) * BLOCK_CELL, BLOCK_CELL, BLOCK_CELL)
+
+
+## Every owner still waiting in cell `key`, stamped there now.
+func _stamp_cell(key: int) -> void:
+	var rect := _cell_rect(key)
+	for owner: StringName in (_cell_waiting[key] as Array):
+		_stamp((_cell_circles[owner] as Dictionary)[key] as Array[Vector3], rect)
+	@warning_ignore("return_value_discarded")
+	_cell_waiting.erase(key)
+
+
+## Every tile a circle could stop a body in, stamped with the circle itself, so
+## `blocks_at` is one lookup; within `clip` only, when one is given.
+func _stamp(circles: Array[Vector3], clip := Rect2i()) -> void:
+	var lo := Vector2i.ZERO
+	var hi := Vector2i(world.size - 1, world.size - 1)
+	if clip.has_area():
+		lo = clip.position
+		hi = clip.end - Vector2i.ONE
+	for c: Vector3 in circles:
+		var r := ceili(c.z + BLOCK_SLACK)
+		var cx := floori(c.x)
+		var cy := floori(c.y)
+		for ty in range(maxi(lo.y, cy - r), mini(hi.y, cy + r) + 1):
+			for tx in range(maxi(lo.x, cx - r), mini(hi.x, cx + r) + 1):
 				var k := ty * world.size + tx
 				if not _blocks.has(k):
 					_blocks[k] = []
@@ -91,13 +246,18 @@ func _stamp(circles: Array[Vector3]) -> void:
 ## The exact inverse, walking the same tiles. `erase` takes ONE match, which is
 ## right: `_stamp` appended one entry per circle per tile, so two owners holding
 ## an identical circle keep one entry each.
-func _unstamp(circles: Array[Vector3]) -> void:
+func _unstamp(circles: Array[Vector3], clip := Rect2i()) -> void:
+	var lo := Vector2i.ZERO
+	var hi := Vector2i(world.size - 1, world.size - 1)
+	if clip.has_area():
+		lo = clip.position
+		hi = clip.end - Vector2i.ONE
 	for c: Vector3 in circles:
 		var r := ceili(c.z + BLOCK_SLACK)
 		var cx := floori(c.x)
 		var cy := floori(c.y)
-		for ty in range(maxi(0, cy - r), mini(world.size - 1, cy + r) + 1):
-			for tx in range(maxi(0, cx - r), mini(world.size - 1, cx + r) + 1):
+		for ty in range(maxi(lo.y, cy - r), mini(hi.y, cy + r) + 1):
+			for tx in range(maxi(lo.x, cx - r), mini(hi.x, cx + r) + 1):
 				var k := ty * world.size + tx
 				var got: Variant = _blocks.get(k)
 				if got == null:
@@ -109,12 +269,17 @@ func _unstamp(circles: Array[Vector3]) -> void:
 
 
 ## The walls whose tile `p` stands in. One lookup: every circle is stamped into
-## every tile it could stop a body in, so this is the whole answer.
+## every tile it could stop a body in (an owner set by cell, into its cell's
+## tiles the first time one of them is asked about), so this is the whole answer.
 func blocks_at(p: Vector2) -> Array:
 	var tx := floori(p.x)
 	var ty := floori(p.y)
 	if tx < 0 or ty < 0 or tx >= world.size or ty >= world.size:
 		return []
+	if not _cell_waiting.is_empty():
+		var key := (ty / BLOCK_CELL) * _cells_wide() + tx / BLOCK_CELL
+		if _cell_waiting.has(key):
+			_stamp_cell(key)
 	return _blocks.get(ty * world.size + tx, [])
 
 
@@ -123,7 +288,10 @@ func add_prop(p: WorldProp) -> void:
 	var row := world.row_of_id(p.id)
 	if row >= 0:
 		_file(k, row)
+		if p.solid > ORDINARY:
+			_file_wide(p.pos, row, p.solid)
 		return
+	_ghost_most = maxf(_ghost_most, p.solid)
 	if not _ghosts.has(k):
 		_ghosts[k] = [] as Array[WorldProp]
 	(_ghosts[k] as Array[WorldProp]).append(p)
@@ -138,6 +306,13 @@ func remove_prop(p: WorldProp) -> void:
 		if at >= 0:
 			cell.remove_at(at)
 			_cells[k] = cell
+		var wk := _wide_key(floori(p.pos.x) / WIDE_CELL, floori(p.pos.y) / WIDE_CELL)
+		if _wide.has(wk):
+			var wide: PackedInt32Array = _wide[wk]
+			var wat := wide.find(row)
+			if wat >= 0:
+				wide.remove_at(wat)
+				_wide[wk] = wide
 		return
 	if _ghosts.has(k):
 		var ghosts: Array[WorldProp] = _ghosts[k]
@@ -326,7 +501,7 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 	var best := Vector2.INF
 	var best_d := INF
 	var t := world.table
-	for row in rows_near(to, 2.0):
+	for row in solid_rows_near(to, r):
 		var solid := t.solid[row]
 		if solid <= 0.0 or world.depleted.has(t.id[row]):
 			continue
@@ -336,7 +511,7 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 		if after < rr * rr and after < at.distance_squared_to(from) and after < best_d:
 			best_d = after
 			best = at
-	for q in ghosts_near(to, 2.0):
+	for q in solid_ghosts_near(to, r):
 		if q.solid <= 0.0:
 			continue
 		var rr := q.solid + r
@@ -370,7 +545,7 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims, tall):
 			return false
 	var t := world.table
-	for row in rows_near(to, 2.0):
+	for row in solid_rows_near(to, r):
 		var solid := t.solid[row]
 		if solid <= 0.0 or world.depleted.has(t.id[row]):
 			continue
@@ -380,7 +555,7 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 		# Only block when it would bring us closer: bodies can always leave an overlap.
 		if after < rr * rr and after < at.distance_squared_to(from):
 			return false
-	for q in ghosts_near(to, 2.0):
+	for q in solid_ghosts_near(to, r):
 		if q.solid <= 0.0:
 			continue
 		var rr := q.solid + r

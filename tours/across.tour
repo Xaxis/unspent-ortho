@@ -67,15 +67,33 @@ tap ride
 await parked:raft 3
 mark the_raft
 wait 1.0
-shot 03-the-raft-left-at-the-landing with parked:raft
+# The landing is the drowned city's port stair (StoryCrossing, rule 1): the raft
+# comes in where the shortest water from home does, the clock standing over it in
+# the shallows, the one tall line he steps off under. No `land:` here: he stands
+# on the stair itself, over the water, and the ground under a stair is sea.
+shot 03-the-raft-left-at-the-port-under-the-clock with parked:raft,landmark:clock_tower
+# The sign the story stands at the stair (`the_port`, `port_arrivals`), read on
+# `use`: it files boats, not people. `reading`, not a beat: `counted` has long
+# since landed.
+at stood:the_port
+await stood:the_port 5
+near sign
+wait 0.6
+press use
+await reading 4
+shot 03b-the-sign-at-the-stair with reading,land:drowned_city
+press use
+wait 0.6
 
 # --- 3 THE ARCHIVE: the far shore heard, the goal is the archive and the man who keeps it ---
+# Off the stair and into the flooded streets by the goal line alone: still in the
+# city when the line under the health bar becomes the archive's.
 walkto at:slot:the_archive 30 till:goal:archive
 # The far body's name pings over the goal first; the goal is pinned once it has.
 until ping 6
 await goal_shown 30
 wait 0.3
-shot 04-the-goal-is-the-archive with goal:archive,goal_shown
+shot 04-the-goal-is-the-archive-across-the-city with goal:archive,goal_shown,land:drowned_city
 at cast:otto
 await cast:otto 8
 wait 0.6
@@ -471,8 +489,6 @@ wait 0.4
 shot 36-rook-will-see-to-it with talking,beat:rook_told
 press use
 wait 0.8
-
-# --- TODO 12 THE DROWNED CITY (step 6): the third landscape, on the leg-1 body. Still building.
 
 # --- 13 THE RELAY BELOW: the slice's last lead, held into slice 4 -----------------------------
 await goal:relay 5

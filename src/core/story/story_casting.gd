@@ -24,13 +24,63 @@ const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 ## did exactly that). Not keyed by WorldStamp either: it costs a millisecond and
 ## the gates are cast every frame.
 static var _surface: Dictionary = {}
+## Casting runs on workers too (GenTreads on the raise, StoryPlan.prepare beside
+## it) while the main thread casts a world it enters.
+static var _surface_lock := Mutex.new()
 const SURFACE_MOST := 16
 
 
+## How many castings have been worked out, for a test to see where one was.
+static var casts := 0
+
+
 static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
-	var out := {}
 	if world == null:
+		return {}
+	return _cast(world, slots, _keeper_grounds(world))
+
+
+## NO STORY PLACE ON A KEEPER'S GROUND (#72). A place the story deals (a village,
+## a works, a landmark, a shaft) keeps off every keeper's ground, its reach of its
+## lair (Sentinels.states), so the people who live there and the thing they read
+## are not in the fight. At 1840, seed 42's Sefa stood on the pan_rake's den and
+## seed 41's whole Covenant seat 17 tiles from the lockkeeper's; at 256, seed 1's
+## camp had no tile off the listener's ground for its box.
+## Each keeper as (lair x, lair y, reach).
+static func _keeper_grounds(world: WorldData) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	if world.realm != Realm.SURFACE:
 		return out
+	for st: SentinelState in Sentinels.states(world):
+		var def := Sentinels.by_id(st.design)
+		if def != null:
+			out.append(Vector3(st.lair.x, st.lair.y, def.reach))
+	return out
+
+
+## How far `p` stands past the nearest keeper's ground, in tiles (negative on
+## it); INF where no keeper stands.
+static func _keeper_margin(p: Vector2, keepers: Array[Vector3]) -> float:
+	var m := INF
+	for k: Vector3 in keepers:
+		m = minf(m, p.distance_to(Vector2(k.x, k.y)) - k.z)
+	return m
+
+
+## THE LADDER A PLACE IS TAKEN BY, best first, on the slot's own body: a slot never
+## leaves its leg for a keeper and is never lost to one. 1: past the ground by
+## STOOD_REACH, the farthest anyone or anything cast at a slot stands off it
+## (49_cast), so all of them are off it too. 2: off the ground, only nearer. 3:
+## where no place on the body is off it (seed 41's leg 1, all the lockkeeper's),
+## the one farthest from any keeper's ground.
+static func _keeper_step(p: Vector2, keepers: Array[Vector3]) -> int:
+	var m := _keeper_margin(p, keepers)
+	return 1 if m > StoryWorld.STOOD_REACH else (2 if m > 0.0 else 3)
+
+
+static func _cast(world: WorldData, slots: Array[StorySlot], keepers: Array[Vector3]) -> Dictionary:
+	var out := {}
+	casts += 1
 	# Cast in declaration order, because `apart` measures against what is already
 	# placed: the spine's own sequence decides who gets the good ground.
 	var taken: Array[Vector2] = []
@@ -85,7 +135,7 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 		if not s.ordered:
 			start = 0
 		for rank in range(start, order.size()):
-			place = _fill(world, s, taken, order[rank])
+			place = _fill(world, s, taken, order[rank], keepers)
 			if not place.is_empty():
 				place["body"] = order[rank]
 				if s.realm == world.realm and s.ordered:
@@ -96,9 +146,12 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 		out[s.id] = place
 		taken.append(place.get("pos", Vector2.ZERO) as Vector2)
 	if world.realm == Realm.SURFACE:
+		var key := _key(world)
+		_surface_lock.lock()
 		if _surface.size() >= SURFACE_MOST:
 			_surface.clear()
-		_surface[_key(world)] = out
+		_surface[key] = out
+		_surface_lock.unlock()
 	return out
 
 
@@ -107,10 +160,16 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 ## 2029 costs nothing), and otherwise the surface grown from the same seed.
 static func _twin(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	var key := _key(world)
-	if not _surface.has(key):
+	_surface_lock.lock()
+	var had := _surface.has(key)
+	_surface_lock.unlock()
+	if not had:
 		@warning_ignore("return_value_discarded")
 		cast(WorldGen.generate(world.seed_value, world.size), slots)
-	return _surface.get(key, {})
+	_surface_lock.lock()
+	var got: Dictionary = _surface.get(key, {})
+	_surface_lock.unlock()
+	return got
 
 
 static func _key(world: WorldData) -> String:
@@ -120,7 +179,7 @@ static func _key(world: WorldData) -> String:
 	return "%d:%d:%s" % [world.seed_value, world.size, ",".join(ids)]
 
 
-static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: int) -> Dictionary:
+static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: int, keepers: Array[Vector3]) -> Dictionary:
 	if s.realm != &"" and world.realm != s.realm:
 		return {}
 	var fits: Array[Dictionary] = []
@@ -147,9 +206,41 @@ static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: i
 		fits.append(c)
 	if fits.is_empty():
 		return {}
+	# Of those, where the story may stand: not under a walker's foot, and on the
+	# best step of the keeper ladder any of them reaches (`_keeper_step`). The pick
+	# below is still made over every fit, so a place refused moves only its own
+	# slot, to the nearest place allowed, and never reshuffles another slot's pick.
+	var standing: Array[Dictionary] = []
+	for f: Dictionary in fits:
+		if not bool(f.get("trodden", false)):
+			standing.append(f)
+	if standing.is_empty():
+		return {}
+	var step := 3
+	for f: Dictionary in standing:
+		step = mini(step, _keeper_step(f.pos, keepers))
+	var allowed: Array[Dictionary] = []
+	if step < 3:
+		for f: Dictionary in standing:
+			if _keeper_step(f.pos, keepers) == step:
+				allowed.append(f)
+	else:
+		var far: Dictionary = standing[0]
+		for f: Dictionary in standing:
+			if _keeper_margin(f.pos, keepers) > _keeper_margin(far.pos, keepers):
+				far = f
+		allowed.append(far)
+	var chosen := _choose(world, s, fits, allowed)
+	chosen["keeper_step"] = step
+	return chosen
+
+
+## Of `allowed`, the one slot `s` takes: nearest home where it asks for that, else
+## its own pick of `fits` where that is allowed, else the allowed place nearest it.
+static func _choose(world: WorldData, s: StorySlot, fits: Array[Dictionary], allowed: Array[Dictionary]) -> Dictionary:
 	if s.nearest:
-		var best: Dictionary = fits[0]
-		for f: Dictionary in fits:
+		var best: Dictionary = allowed[0]
+		for f: Dictionary in allowed:
 			if (f.pos as Vector2).distance_to(world.spawn) < (best.pos as Vector2).distance_to(world.spawn):
 				best = f
 		return best
@@ -157,7 +248,14 @@ static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: i
 	# or a save would open onto a thread that had moved.
 	var key := s.mirror if s.mirror != &"" else s.id
 	var at := int(Rng.hash01(world.seed_value, absi(int(key.hash())), 0, 0x5717) * float(fits.size()))
-	return fits[clampi(at, 0, fits.size() - 1)]
+	var pick: Dictionary = fits[clampi(at, 0, fits.size() - 1)]
+	if allowed.has(pick):
+		return pick
+	var near: Dictionary = allowed[0]
+	for f: Dictionary in allowed:
+		if (f.pos as Vector2).distance_to(pick.pos) < (near.pos as Vector2).distance_to(pick.pos):
+			near = f
+	return near
 
 
 static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
@@ -171,12 +269,16 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 			for w: WorksSite in Works.sites(world):
 				out.append({"pos": w.pos, "region": w.region, "land": w.land, "site": StorySlot.WORKS})
 		StorySlot.LANDMARK:
-			# Every landmark SITED, trodden or standing, so a walker's foot never moves
-			# a story place: GenTreads keeps every cast one out from under its feet.
+			# Every landmark SITED, each saying whether a walker's foot came down on
+			# it (`trodden`): what lies under a crater is no place to stand, and the
+			# story reads the world as the feet left it. GenTreads never asks the
+			# story where it stands. Sited, not only standing, so a trodden one
+			# moves its own slot and leaves every other pick where it was (`_fill`).
 			for l: LandmarkSite in Landmarks.sited(world):
 				if s.kind != &"" and l.kind != s.kind:
 					continue
-				out.append({"pos": l.pos, "region": l.region, "land": l.land, "site": StorySlot.LANDMARK, "kind": l.kind})
+				out.append({"pos": l.pos, "region": l.region, "land": l.land, "site": StorySlot.LANDMARK, "kind": l.kind,
+					"trodden": Landmarks.trodden(world, l.id)})
 		StorySlot.PORTAL:
 			for pt: Portal in Portals.in_world(world):
 				out.append({"pos": pt.pos, "region": pt.region, "land": _land_at(world, pt.pos), "site": StorySlot.PORTAL})

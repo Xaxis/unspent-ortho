@@ -450,8 +450,10 @@ static func mesh(kind: int) -> ArrayMesh:
 ## rays: [inner px, outer px, flicker 0..1, spokes]} (read by 15_lights).
 ## Windows and lamp glass are drawn lit by the models themselves (lamp-coded
 ## washes), so these carry no panes: only where the light stands and the
-## flame strokes.
-static func glow_points(kind: int, variant: int = 0, country: int = Country.COAST) -> Array:
+## flame strokes. `tubes` false leaves out a house's stolen tube, which is read
+## off its built model (`neon_point`): a caller after the house's own light only
+## builds no model.
+static func glow_points(kind: int, variant: int = 0, country: int = Country.COAST, tubes := true) -> Array:
 	# One source for the machines' own light: the geometry and the pool it casts
 	# must not disagree about what colour a strip or a beacon is.
 	var cold := Color(Works.STRIP, 1.0)
@@ -511,9 +513,10 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 		PropKind.HOUSE:
 			# The door side is +X on every house variant (props/houses.gd).
 			var house: Array = [{"at": Vector3(1.15, 0.7, 0.0), "size": Vector2.ZERO, "color": Palette.COPPER[4]}]
-			var tube := neon_point(kind, variant, country)
-			if not tube.is_empty():
-				house.append(tube)
+			if tubes:
+				var tube := neon_point(kind, variant, country)
+				if not tube.is_empty():
+					house.append(tube)
 			return house
 		PropKind.LAMP:
 			# The lantern hangs off its arm at x 0.4 (props/built.gd lamp_post).

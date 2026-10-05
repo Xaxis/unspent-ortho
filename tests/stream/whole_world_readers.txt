@@ -26,15 +26,20 @@ src/core/black_site.gd::_sea::tiles
 src/core/chapter/chapter.gd::_def_of::list
 src/core/chapter/chapter.gd::_ids_by_region::builder Landmarks.sites
 src/core/chapter/chapter.gd::ore_taken::list
+src/core/chapter/chapter.gd::ore_taken_by_region::list
 src/core/chapter/chapters.gd::for_regions::builder Chapter.read
 src/core/chapter/chapters.gd::of::builder Chapter.read
 src/core/chapter/road_hold.gd::sites::list
+src/core/colossus/colossus_treads.gd::owned::list
+src/core/colossus/colossus_treads.gd::pressed::list
 src/core/colossus/colossus_treads.gd::wanted::tiles
 src/core/interior/interior_gen.gd::grow::raw
 src/core/interior/interiors.gd::thresholds::builder Landmarks.sites
 src/core/interior/interiors.gd::thresholds::builder Works.sites
 src/core/interior/interiors.gd::thresholds::list
 src/core/landmarks/landmarks.gd::_trod::list
+src/core/landmarks/landmarks.gd::port_of::list
+src/core/landmarks/landmarks.gd::has_row::list
 src/core/landmarks/landmarks.gd::sited::list
 src/core/mobs/coast.gd::_first_due::builder Spawner.green_distance
 src/core/mobs/coast.gd::_first_meeting::builder Spawner.green_distance
@@ -46,6 +51,8 @@ src/core/realm/portals.gd::_score::list
 src/core/realm/portals.gd::_stands::raw
 src/core/realm/portals.gd::_whole::tiles
 src/core/realm/portals.gd::standing::builder GenPlaces.solid_mask
+src/core/realm/realm_warm.gd::prepare::builder Sentinels.states
+src/core/realm/realm_warm.gd::prepare::builder Works.sites
 src/core/save/save_core.gd::load_world::list
 src/core/save/save_core.gd::save_world::list
 src/core/sentinel/sentinels.gd::feeds::list
@@ -55,8 +62,9 @@ src/core/sentinel/sentinels.gd::states::list
 src/core/story/story_casting.gd::_candidates::builder Portals.in_world
 src/core/story/story_casting.gd::_candidates::builder Works.sites
 src/core/story/story_casting.gd::_candidates::list
+src/core/story/story_casting.gd::_keeper_grounds::builder Sentinels.states
+src/core/story/story_casting.gd::_cast::builder StoryJourney.bodies
 src/core/story/story_casting.gd::_twin::builder WorldGen.generate
-src/core/story/story_casting.gd::cast::builder StoryJourney.bodies
 src/core/story/story_gates.gd::all::builder StoryPlan.cast
 src/core/story/story_journey.gd::bodies::list
 src/core/story/story_rooms.gd::_deal::builder Interiors.thresholds
@@ -149,16 +157,12 @@ src/systems/10_sky.gd::setup::builder SkyWear.texture
 src/systems/18_trample.gd::tour_place::builder SkyGround.texture
 src/systems/19_colossi.gd::_landed::raw
 src/systems/19_colossi.gd::_tread_minute::list
-src/systems/19_colossi.gd::owned_of::list
-src/systems/19_colossi.gd::prepare_world::builder WorldQuery.new
-src/systems/19_colossi.gd::pressed_of::list
 src/systems/19_colossi.gd::realm_changed::builder Treads.hand_over
 src/systems/19_colossi.gd::realm_changed::whole
 src/systems/19_colossi.gd::setup::builder Treads.hand_over
 src/systems/19_colossi.gd::setup::whole
 src/systems/19_colossi.gd::tour_place::list
 src/systems/19_colossi.gd::tour_place::raw
-src/systems/20_realms.gd::_as_landmark::list
 src/systems/20_realms.gd::_draw_gates::builder StoryGates.all
 src/systems/20_realms.gd::_read_portals::builder Portals.in_world
 src/systems/20_realms.gd::_save::whole
@@ -167,13 +171,11 @@ src/systems/20_realms.gd::enter::builder WorldQuery.new
 src/systems/20_realms.gd::setup::builder RealmWorlds.keep
 src/systems/21_doors.gd::realm_changed::builder Interiors.thresholds
 src/systems/21_doors.gd::setup::builder Interiors.thresholds
-src/systems/22_landmarks.gd::_as_landmark::list
 src/systems/22_landmarks.gd::_read_sites::builder Landmarks.sites
 src/systems/24_holds.gd::_read_sites::builder Hold.sites
 src/systems/24_holds.gd::_refresh_chapters::builder Chapters.for_regions
 src/systems/32_disposition.gd::_network_name::list
 src/systems/32_disposition.gd::_reads::builder Chapters.of
-src/systems/34_works.gd::_as_landmark::list
 src/systems/34_works.gd::_read_sites::builder Works.sites
 src/systems/35_folk.gd::_stream::list
 src/systems/37_fauna.gd::_find_sites::list

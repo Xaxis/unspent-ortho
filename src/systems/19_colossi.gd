@@ -482,40 +482,8 @@ func _crush(pads: Array[Vector3]) -> void:
 ## prop crushed asked the view to bake its chunk's props again: 1.5 s of the
 ## start on the way down a shaft (S5e). The same rule as `_crush`.
 static func prepare_world(w: WorldData) -> void:
-	var q := WorldQuery.new(w)
-	var owned := owned_of(w)
-	for pads: Array[Vector3] in pressed_of(w):
-		for pad: Vector3 in pads:
-			var at := Vector2(pad.x, pad.y)
-			for q2: WorldProp in q.props_near(at, pad.z + 4.0):
-				if owned.has(q2.id) or (w.depleted.has(q2.id) and is_inf(float(w.depleted[q2.id]))):
-					continue
-				if q2.pos.distance_to(at) > pad.z + q2.solid:
-					continue
-				w.depleted[q2.id] = INF
-
-
-## Every tread's pads, each as (x, y, rim radius): what a landing presses.
-static func pressed_of(w: WorldData) -> Array[Array]:
-	var out: Array[Array] = []
-	for m: Dictionary in w.landmarks:
-		if StringName(m.get("kind", &"")) != &"tread":
-			continue
-		var pressed: Array[Vector3] = []
-		for p: Vector3 in (m.pads as Array):
-			pressed.append(Vector3(p.x, p.y, Treads.rim_r(p)))
-		out.append(pressed)
-	return out
-
-
-## The ids of every prop the tread stage laid round its own craters.
-static func owned_of(w: WorldData) -> Dictionary:
-	var owned := {}
-	for m: Dictionary in w.landmarks:
-		if StringName(m.get("kind", &"")) == &"tread" and m.has("props"):
-			for id: int in PackedInt32Array(m.props):
-				owned[id] = true
-	return owned
+	for id: int in Treads.crushed(w):
+		w.depleted[id] = INF
 
 
 ## The props the tread stage laid round its own craters (the crushed wreck in
@@ -529,7 +497,7 @@ var _owned_world: WorldData = null
 func _treads_own() -> Dictionary:
 	if _owned_world != game.world:
 		_owned_world = game.world
-		_owned = owned_of(game.world)
+		_owned = Treads.owned(game.world)
 	return _owned
 
 
@@ -600,7 +568,7 @@ func started() -> void:
 func _crush_treads() -> void:
 	if view == null:
 		return
-	for pressed: Array[Vector3] in pressed_of(game.world):
+	for pressed: Array[Vector3] in Treads.pressed(game.world):
 		_crush(pressed)
 
 

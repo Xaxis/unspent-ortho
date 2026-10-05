@@ -92,9 +92,11 @@ func update(target: Vector2) -> void:
 			if l != NOT_GROUND and not near_target:
 				if tall > 0 and world.headroom_at(x, y) < tall:
 					l = NOT_GROUND
-				elif prop_radius > 0.0 and query != null and prop_stands_in(query, Vector2(x + 0.5, y + 0.5), prop_radius, breaks):
+				elif prop_radius > 0.0 and query != null and _stands_in(query, query.ordinary_rows_near(Vector2(x + 0.5, y + 0.5), prop_radius), Vector2(x + 0.5, y + 0.5), prop_radius, breaks):
 					l = NOT_GROUND
 			_level[ly * _side + lx] = l
+	if prop_radius > 0.0 and query != null:
+		_stamp_wide(ox, oy)
 	var start := RADIUS * _side + RADIUS
 	if _level[start] == NOT_GROUND:
 		return
@@ -141,6 +143,29 @@ func update(target: Vector2) -> void:
 						buckets.append(PackedInt32Array())
 					buckets[nd].append(ni)
 		k += 1
+
+
+## THE WIDE SOLIDS, STAMPED ONCE PER REBUILD by their own footprint: a city
+## building or a big house shuts every cell whose centre lies within its solid
+## plus the body's radius, the same answer `prop_stands_in` gives cell by cell.
+## Asking the wide tier per cell cost a city field 3.6 ms of its 17-50 ms; one
+## sweep of the field's square asks it once. The target's tile and its
+## neighbours stay open, as `update` leaves them.
+func _stamp_wide(ox: int, oy: int) -> void:
+	var t := world.table
+	var rows := query.wide_rows_in(Vector2(ox, oy), Vector2(ox + _side, oy + _side), prop_radius)
+	for row in rows:
+		var solid := t.solid[row]
+		if solid <= 0.0 or world.depleted.has(t.id[row]) or breaks.has(t.kind[row]):
+			continue
+		var at: Vector2 = t.pos[row]
+		var rr := solid + prop_radius
+		for ly in range(maxi(0, floori(at.y - rr - 0.5) - oy), mini(_side - 1, ceili(at.y + rr - 0.5) - oy) + 1):
+			for lx in range(maxi(0, floori(at.x - rr - 0.5) - ox), mini(_side - 1, ceili(at.x + rr - 0.5) - ox) + 1):
+				if absi(lx - RADIUS) <= 1 and absi(ly - RADIUS) <= 1:
+					continue
+				if Vector2(ox + lx + 0.5, oy + ly + 0.5).distance_squared_to(at) < rr * rr:
+					_level[ly * _side + lx] = NOT_GROUND
 
 
 ## Cost from this tile to the player's; FAR when there is no way within the radius.
@@ -220,8 +245,12 @@ func direction(p: Vector2) -> Vector2:
 ## Whether a solid prop stands where a body of `radius` at `p` would be (its
 ## move's test, WorldQuery._fits), leaving the kinds in `through`.
 static func prop_stands_in(q: WorldQuery, p: Vector2, radius: float, through: Array = []) -> bool:
+	return _stands_in(q, q.solid_rows_near(p, radius), p, radius, through)
+
+
+static func _stands_in(q: WorldQuery, rows: PackedInt32Array, p: Vector2, radius: float, through: Array) -> bool:
 	var t := q.world.table
-	for row in q.rows_near(p, 2.0 + radius):
+	for row in rows:
 		var solid := t.solid[row]
 		if solid <= 0.0 or q.world.depleted.has(t.id[row]) or through.has(t.kind[row]):
 			continue
