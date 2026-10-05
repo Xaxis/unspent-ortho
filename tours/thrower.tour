@@ -1,6 +1,6 @@
 # THE THROWER (improvement 3b; Brains `throw`, the middens' sorter). Its bite is
 # a lane five tiles long, thrown from where it stands, and its tell is that lane
-# on the ground for the whole windup (FightRules.tell_lane, MobFx.tell_line) with
+# on the ground for the whole windup (FightRules.tell_box, MobFx.tell_box) with
 # the arm cocked up and back over its hopper and the hopper's light climbing to
 # the throw. A sorter is a worker: struck at its round, it backs off to a lane's
 # length and throws. Each frame is taken while its tell is up, by day and by

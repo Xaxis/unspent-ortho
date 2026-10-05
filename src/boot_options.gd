@@ -72,6 +72,9 @@ extends RefCounted
 ##                     `roof` or `arch`, for drawing what hangs overhead on any
 ##                     seed without worldgen (AboveStage)
 ## --stats             print render stats (draw calls, chunk build times) before the shot
+## --hit-areas         draw what the fight tests, over what it draws: the player's
+##                     live blow box (magenta) and every body's hit body (cyan),
+##                     for a frame that shows drawn against hit (40_fight)
 ## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package;
 ##                     `:wind=W` also holds the wind at W, -1..1 (clear:0:wind=0.8)
 ## --lamp              start with the player's lantern lit, sky package
@@ -223,6 +226,7 @@ var hush := ""
 ## "roof", "arch" or "": a staged span (AboveStage), planted before a chunk is drawn.
 var above := ""
 var stats := false
+var hit_areas := false
 ## "kind:strength[:bolt]" or "" (the weather rules decide). Read by 10_sky.
 var weather := ""
 var lamp := false
@@ -356,6 +360,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"above": o.above = v
 			"realm": o.realm = StringName(v)
 			"stats": o.stats = true
+			"hit-areas": o.hit_areas = true
 			"weather": o.weather = v
 			"lamp": o.lamp = true
 			"wake": o.wake = true

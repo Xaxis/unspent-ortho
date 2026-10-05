@@ -198,6 +198,8 @@ func _process(delta: float) -> void:
 	if not _curtains.is_empty():
 		_age_curtains()
 	game.player.draw_swing(sim.now)
+	if game.options.hit_areas:
+		_draw_hit_areas()
 	if _heavy_let_go >= 0.0 and sim.now >= _heavy_let_go:
 		_let_go()
 	if sim.hero.held() and not frozen:
@@ -420,7 +422,9 @@ func _curtain(e: Dictionary) -> void:
 			var secs := float(e.ms) / 1000.0
 			var crown := _at3(m.pos, float(m.row.get("height", 4.0)) * 0.95)
 			MobFx.line(fx, crown, _at3(at, 1.6), lime, secs)
-			MobFx.tell_ring(fx, _at3(at), lime, float((e.from as Vector2).distance_to(e.to)) * 0.5 + 0.3, secs)
+			# The round the curtain will hold the player out of (FightSim._held_by_curtains).
+			var hold := float(e.r) + sim.hero.radius
+			MobFx.tell_box(fx, _at3(at), 0.0, hold, hold, hold, lime, secs)
 			Events.sfx.emit(&"splash", _at3(at))
 		&"curtain_up":
 			var node := MeshInstance3D.new()
@@ -458,6 +462,51 @@ func _curtain(e: Dictionary) -> void:
 			MobFx.puffs(fx, _at3(at, 0.9), Vector2.ZERO, lime, 8 if broken else 3, 1.0 if broken else 0.6, int(e.id) + 3)
 			if broken:
 				Events.sfx.emit(&"break", _at3(at))
+
+
+## --hit-areas: the player's blow box while it is live, and each body's hit
+## circle, outlined over everything (no depth test) in the plane the stroke is
+## drawn in (Player.draw_swing: half a unit over his feet), so a frame shows the
+## hit on top of the stroke drawn for it.
+var _hit_lines: MeshInstance3D = null
+
+
+func _draw_hit_areas() -> void:
+	if _hit_lines == null:
+		_hit_lines = MeshInstance3D.new()
+		_hit_lines.mesh = ImmediateMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.vertex_color_use_as_albedo = true
+		mat.no_depth_test = true
+		mat.render_priority = 100
+		_hit_lines.material_override = mat
+		_hit_lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		game.add_child(_hit_lines)
+	var im := _hit_lines.mesh as ImmediateMesh
+	im.clear_surfaces()
+	var loops: Array[Array] = []
+	var b := sim.hero.blow
+	if b != null and b.live_in(sim.hero.blow_at, sim.now - 1.0, sim.now):
+		loops.append([FightRules.blow_outline(sim.hero.pos, sim.hero.facing, sim.hero.radius, b), Color(1, 0, 1)])
+	for m in sim.mobs:
+		if m.alive and not m.removed and m.pos.distance_to(sim.hero.pos) < 12.0:
+			var ring := PackedVector2Array()
+			for i in 32:
+				ring.append(m.pos + Vector2.from_angle(i * TAU / 32.0) * m.radius)
+			loops.append([ring, Color(0, 1, 1)])
+	if loops.is_empty():
+		return
+	var plane := game.player.global_position.y + 0.5
+	im.surface_begin(Mesh.PRIMITIVE_LINES)
+	for loop: Array in loops:
+		var pts: PackedVector2Array = loop[0]
+		im.surface_set_color(loop[1])
+		for i in pts.size():
+			for q: Vector2 in [pts[i], pts[(i + 1) % pts.size()]]:
+				var w := _at3(q)
+				im.surface_add_vertex(Vector3(w.x, plane, w.z))
+	im.surface_end()
 
 
 func _at3(p: Vector2, lift: float = 0.0) -> Vector3:
@@ -812,21 +861,19 @@ func _handle(events: Array[Dictionary]) -> void:
 					MobFx.tell(on, _part_at(m), up, m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5, MobFx.FLICK_DOWN)
 				if m.blow != null:
 					# And on the ground, where it will land: the pose is small over the
-					# shoulder and a ring reads from above and behind alike. It lasts the
-					# windup, so it is gone the instant the bite is down.
-					# A thrown blow is told by its lane: a ring that long would mark the
-					# ground either side of it, which is where a player has to go.
+					# shoulder and a mark on the ground reads from above and behind alike.
+					# It lasts the windup, so it is gone the instant the bite is down. It
+					# is the ground the blow lands on, exactly: a bite's or a throw's box
+					# grown by the player's radius (FightRules.tell_box).
 					if m.blow.area and m.drop_at.is_finite():
 						# Coming down from above: its shadow, growing where it lands.
 						var spot := FightRules.tell_drop(m.drop_at, m.radius, m.blow, sim.hero.radius)
 						MobFx.tell_drop(fx, _at3(Vector2(spot.x, spot.y)), Palette.LINEN[5], spot.z, m.blow.windup / 1000.0)
-					elif FightRules.throws(m.blow):
-						var lane := FightRules.tell_lane(m.pos, m.radius, m.blow, sim.hero.radius)
-						MobFx.tell_line(fx, _at3(Vector2(lane.x, lane.y)), m.facing, lane.z, lane.w, Palette.LINEN[5], m.blow.windup / 1000.0)
 					else:
-						var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
+						var tb := FightRules.tell_box(m.pos, m.facing, m.radius, m.blow, sim.hero.radius)
 						# Heard through a wall with the listener's ear (FightKit.listen).
-						MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0, hero.kit.listen)
+						MobFx.tell_box(fx, _at3(Vector2(tb.x, tb.y)), m.facing, tb.z, tb.w, sim.hero.radius,
+								Palette.LINEN[5], m.blow.windup / 1000.0, hero.kit.listen)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))
@@ -924,6 +971,13 @@ var _stripped_at := -INF
 func tour_seen(what: StringName) -> bool:
 	var now := Time.get_ticks_msec() / 1000.0
 	match what:
+		# The player's blow is live with four steps of its slice left, so a
+		# `shot` (three steps on) takes it at the end of its live slice, the
+		# stroke drawn furthest across its box (swing_drawn.tour).
+		&"swing_closing":
+			var b := sim.hero.blow
+			var e := sim.now - sim.hero.blow_at
+			return b != null and e >= b.windup and e >= b.windup + b.active - 67.0 and e < b.windup + b.active
 		&"raked":
 			return now - _raked_at < 0.35
 		&"grip_failed":
