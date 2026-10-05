@@ -99,9 +99,15 @@ func act() -> void:
 	# the way (a rise between its plates and the sand) is crossed, not stepped
 	# back off: the step back onto its level and the step on to the lure undid
 	# each other every frame, and the player stood on the rise's lip in its row
-	# while the anvil's bites caught it (seed 1's den, test_anvil_ways).
+	# while the anvil's bites caught it (seed 1's den, test_anvil_ways). Where a
+	# step straight on does not take the body on, it goes round by the way a
+	# body can walk (`_walk_to`): pressed into a scrap tip on the line, it stood
+	# six seconds while the anvil bit it down (seed 7's den). Walked round all
+	# the way, it took a line a tile off the straight one, held there short of
+	# the sand, and the anvil stood telling at its edge for 90 s (seed 1).
 	if lure.is_finite() and m.roused() and drawing and hero.pos.distance_to(lure) > 0.3 and sim.now >= _escape_until:
-		hero.move = (lure - hero.pos).normalized()
+		var straight := (lure - hero.pos).normalized()
+		hero.move = straight if _gets_on(straight) else _walk_to(lure)
 		return
 	# A wary keeper wakes only to someone it has seen inside its guard, and stood
 	# off it, held to the flats or behind a rise its level does not meet, the

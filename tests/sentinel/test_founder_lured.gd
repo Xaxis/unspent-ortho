@@ -90,9 +90,9 @@ func test_it_founders_where_it_stands_not_where_its_bite_spent_it() -> void:
 
 ## Where a lure draws a keeper out (Sentinels.founder_spot, a tour's `near
 ## keeper_flats`), its run at a player standing there stops on the ground it
-## founders in: a bite's reach short of them, LURE_DEPTH back toward its den. At
-## the sand's edge the anvil's run stopped on its own rock and it bit from there,
-## never foundering (the strike field's den, second-keeper).
+## founders in: where its bite reaches (Sentinels.lure_stop) back toward its den.
+## At the sand's edge the anvil's run stopped on its own rock and it bit from
+## there, never foundering (the strike field's den, second-keeper).
 func test_the_lure_stands_where_its_run_ends_on_the_ground_it_founders_in() -> void:
 	var w := F.flat_world(64, Ground.ROCK, Country.COAST, 7)
 	for y in 64:
@@ -106,6 +106,6 @@ func test_the_lure_stands_where_its_run_ends_on_the_ground_it_founders_in() -> v
 	if not spot.is_finite():
 		return
 	var sink := Sentinels.founders(def)
-	var stop := spot - (spot - den).normalized() * Sentinels.LURE_DEPTH
+	var stop := spot - (spot - den).normalized() * Sentinels.lure_stop(def)
 	check(sink.has(w.ground_at(floori(spot.x), floori(spot.y))), "the spot is on the sand (%s)" % spot)
 	check(sink.has(w.ground_at(floori(stop.x), floori(stop.y))), "and its run at the player there ends on the sand too (stops at %s)" % stop)
