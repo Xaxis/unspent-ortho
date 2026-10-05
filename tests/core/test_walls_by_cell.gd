@@ -3,7 +3,8 @@ extends TestCase
 ## are all stamped at once (WorldQuery, PropWalls): every tile holds exactly the
 ## circles an eager stamp of every walled prop would put there, whichever cell
 ## was asked first, and again after some of them fall with cells already made.
-## Seed 7 at 512.
+## Seeds 1, 3 and 7 at 512: seed 7 alone never lays a wall whose own tile stands
+## a whole tile past its prop's reach, and filing by the reach alone missed it.
 
 
 func _sorted(a: Array) -> Array:
@@ -42,6 +43,9 @@ func _differ(w: WorldData, q: WorldQuery, want: Dictionary, backwards: bool) -> 
 
 
 func test_cells_made_on_first_ask_hold_what_an_eager_stamp_does() -> void:
+	for s: int in [1, 3]:
+		var other := WorldGen.generate(s, 512)
+		eq(_differ(other, WorldQuery.new(other), _eager(other), false), 0, "seed %d: every tile holds the eager walls" % s)
 	var w := WorldGen.generate(7, 512)
 	var want := _eager(w)
 	var held := 0

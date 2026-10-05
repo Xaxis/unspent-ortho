@@ -210,12 +210,14 @@ func _file_walls(row: int) -> void:
 		_unmake_walls(key)
 
 
-## The cells walled `row`'s walls could reach, cast at their widest.
+## The cells walled `row`'s walls could reach, cast at their widest, as `_stamp`
+## lays them: a circle's own tile can be a whole tile past `floor(pos)` plus its
+## reach, so one tile more than the reach.
 func _wall_cells(row: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	var t := world.table
 	var at: Vector2 = t.pos[row]
-	var r := ceili(PropWalls.kind_reach(int(t.kind[row])) * float(t.scale[row]) + BLOCK_SLACK)
+	var r := ceili(PropWalls.kind_reach(int(t.kind[row])) * float(t.scale[row]) + BLOCK_SLACK) + 1
 	var wide := _cells_wide()
 	var last := world.size - 1
 	for gy in range(maxi(0, floori(at.y) - r) / BLOCK_CELL, mini(last, floori(at.y) + r) / BLOCK_CELL + 1):
