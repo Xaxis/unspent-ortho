@@ -411,7 +411,11 @@ end
 # draws the nearest standing keeper out onto its own founder ground: asked of the
 # keeper, so it holds wherever a seed puts the Reaper (a walk staged near HIM
 # went 400 tiles the wrong way on seed 7). A down it comes to walks back.
-near keeper
+# Stood on the ground it founders in (`keeper_flats`), not beside it: the
+# flats lie past its den from the side `near keeper` stands him, and the walk
+# out crossed its reach; downed there he came to and walked back the same way,
+# 4-5 downs a run at any hour (seed 1), against none from the flats.
+near keeper_flats
 await sentinel 12
 drive res://tests/fight/plate_reader.gd 240 sentinel_fallen:tide_reaper lure
 wait 1.0
