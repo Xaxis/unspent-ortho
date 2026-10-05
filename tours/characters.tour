@@ -62,24 +62,24 @@ shot 10-dawn
 # The other lands: teleports, then the same wait and walk to someone.
 hour 11
 zoom 12
-# Villages are numbered by worldgen and the numbers move: 10 is Pennock on the
-# coast now, and this frame has been a picture of green grass and a sandy shore
-# called "snowfield" ever since. The `land:` claim is what keeps it honest.
-village 12
+# Each village by its name, never by worldgen's number, which moves: 12 became
+# the scrapwood's Rivetgate and this frame stopped being a snowfield's. The
+# `land:` claim is what keeps it honest.
+village hush_fold
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
 shot 11-snowfield-hush-fold with folk,land:snowfield
 zoom 12
-village 8
+village emberlow
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
 shot 12-burning-emberlow with folk,land:burning
 zoom 12
-village 1
+village fennick
 await folk 8
 walkto folk 12
 zoom 7
