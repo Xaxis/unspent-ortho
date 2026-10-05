@@ -7,15 +7,13 @@
 coast calm
 tap shoulder
 await shoulder 3
-near keeper
+# On the shallows off its shore, by name (`keeper_flats`: the nearest water its
+# move reaches from its den, stood so its run at him ends in it), never by a
+# heading, which a moved Reaper turned into a walk up the grass. Held out there,
+# it comes on into the water and founders.
+near keeper_flats
 await sentinel 12
-wait 3.0
-walkto mob 6
-wait 0.6
-# Off its shore and into the shallows, with it coming on behind.
-walk -1,0 4 run
-walk 0,1 3 run
-await sentinel_fallen 25
+drive res://tests/fight/plate_reader.gd 60 sentinel_fallen lure
 shot 01-the-tide-takes-it with shoulder,sentinel_fallen
 wait 2.0
 shot 02-foundered-off-its-own-shore with shoulder,sentinel_fallen
