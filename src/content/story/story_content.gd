@@ -137,7 +137,7 @@ const BEATS := {
 	&"marens_lead": {"short": "iron for the crew", "arc": &"the_holdfast", "says": "The crew camped past the old works pay for iron. The fire-keeper wants them kept from her fire."},
 	&"reaper_down": {"short": "the yard dark", "arc": &"the_holdfast", "says": "The gantry that kept the yard past the point is down, and the yard is dark."},
 	&"holdfast_fight": {"short": "still fighting", "arc": &"the_holdfast", "says": "There are people still fighting to take the world back. Not many."},
-	&"holdfast_price": {"short": "what it costs", "arc": &"the_holdfast", "says": "Every works the Holdfast breaks brings the hunters down on a village."},
+	&"holdfast_price": {"short": "what it costs", "arc": &"the_holdfast", "says": "When the Holdfast breaks a works, the hunters come for the nearest roof."},
 	&"holdfast_hope": {"short": "a weapon", "arc": &"the_holdfast", "says": "To the Holdfast, anybody who knows the old machines is a weapon."},
 	&"vera_knew": {"reveal": true, "short": "filed under weather", "arc": &"the_holdfast", "says": "Vera knows the machines file the Holdfast under weather. She has not told her people."},
 	&"covenant_fed": {"short": "fed for it", "arc": &"the_covenant", "says": "Some people live on what the machines leave, and are glad of it."},
@@ -4206,7 +4206,7 @@ const TALKS := {
 			# The keeper down (`reaper_down`): what a dark yard means for her village.
 			# Left alone, for now; the price is the next yard's (`holdfast_price`).
 			&"dark": {
-				"says": ["Saw it go from the fire. First dark out there since they built it.", "So we're let be. For now. The crew will want the next yard, and that one sends its hunters here."],
+				"says": ["Saw it go from the fire. First dark out there since they built it.", "So we're let be. For now. The crew will want the next yard, and its hunters a roof. Maybe ours."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"lost": {
