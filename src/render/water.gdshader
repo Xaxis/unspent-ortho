@@ -143,6 +143,49 @@ float sea_slicks(vec2 wp, float t) {
 	return smoothstep(0.6, 0.85, ink_vnoise(q * vec2(1.0 / 9000.0, 1.0 / 1800.0) + vec2(31.0, 5.0)));
 }
 
+// THE SUN ON THE SEA FROM HIGH UP IS A BAND, NOT A DISC (#33). Up a leg the far
+// sea is flat to the eye and the light's highlight on it was the engine's round
+// lobe, a disc kilometres across round the island at 10:26. The glitter a sun
+// lays on open water runs along its bearing: faces tilted across it turn the
+// light away from the eye, faces tilted along it bring it back from further up
+// and down the water. That is a lobe long along the bearing and narrow across
+// it, and the engine's is round, so it is drawn: round the light's mirror point
+// (`GLINT_NEAR` across, `GLINT_ALONG` along, radians) the sea keeps its specular
+// in a band `GLINT_ACROSS` wide on the sun's bearing and `GLINT_FLOOR` of it
+// either side, which takes the round lobe's flanks off; and down the band each
+// point is as rough as it must be for the lobe to reach the sun from it (half
+// the angle off, as a slope), up to `GLINT_ROUGH`, which carries the light the
+// band's length, fading. Roughness alone cannot narrow it: a smoother face only
+// mirrors the sun brighter just off the point. Not the engine's anisotropy:
+// that is not the same on the web.
+const float GLINT_ACROSS = 0.015;
+const float GLINT_NEAR = 0.09;
+const float GLINT_ALONG = 0.18;
+const float GLINT_FLOOR = 0.15;
+const float GLINT_ROUGH = 0.34;
+// x: how far in the band the mirror ray from `eye` off `p` is, 0..1; y: how far
+// along the bearing it is off the sun, radians; z: how near the light's mirror
+// point, 0..1. `sky_sun.xy` is the light's bearing over max(0.2, tan elevation):
+// under about eleven degrees its height is lost, and a sun that low lays its own
+// long path, so the band stands down there.
+vec3 glint_band(vec3 p, vec3 eye) {
+	vec2 toward = sky_sun.xy;
+	float lean = length(toward);
+	if (lean < 1e-3) {
+		return vec3(0.0);
+	}
+	vec3 s = normalize(vec3(toward.x, 1.0, toward.y));
+	vec2 bearing = toward / lean;
+	vec3 v = normalize(eye - p);
+	vec3 r = vec3(-v.x, v.y, -v.z);
+	float across = asin(clamp(dot(r.xz, vec2(-bearing.y, bearing.x)), -1.0, 1.0));
+	float along = atan(r.y, dot(r.xz, bearing)) - asin(s.y);
+	float a = across / GLINT_ACROSS;
+	float n = across / GLINT_NEAR;
+	float l = along / GLINT_ALONG;
+	return vec3(exp(-a * a), along, exp(-n * n - l * l) * (1.0 - smoothstep(4.0, 4.9, lean)));
+}
+
 // The chop at `wp`: two octaves of the ink noise, each on axes turned off the
 // lattice (37 and 71 degrees) so neither lays a grid.
 float chop_at(vec2 wp, float t) {
@@ -361,6 +404,13 @@ void fragment() {
 	SPECULAR *= 1.0 - under_pad;
 	float far_rough = kind == 0 ? mix(SEA_OPEN_ROUGH - SEA_LANE_ROUGH * lanes, SEA_SLICK_ROUGH, slick) : SEA_FAR_ROUGH;
 	ROUGHNESS = mix(mix(ROUGHNESS, max(ROUGHNESS, far_rough), far), 1.0, under_pad);
+	if (kind == 0 && far > 0.0) {
+		vec3 g = glint_band(world_pos, CAMERA_POSITION_WORLD);
+		float on = far * day * g.z * (1.0 - under_pad);
+		SPECULAR *= mix(1.0, mix(GLINT_FLOOR, 1.0, g.x), on);
+		float reach = clamp(sqrt(tan(abs(g.y) * 0.5)), min(ROUGHNESS, GLINT_ROUGH), GLINT_ROUGH);
+		ROUGHNESS = mix(ROUGHNESS, reach, g.x * on);
+	}
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the
 	// way water does instead of standing as a mirror.
