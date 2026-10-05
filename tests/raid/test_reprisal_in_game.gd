@@ -188,9 +188,15 @@ func _his_place(g: Game, site: WorksSite, people: int) -> Settlement:
 			# Gone for good, as a burned house is (48_raids `_burn`): a minute here is
 			# when it grows back.
 			g.world.depleted[q.id] = INF
+	return _found(g, site, people, [20.0, 24.0, 28.0, 32.0])
+
+
+## His place, a fire and a lean-to, on the first standable ground off the yard at
+## one of `radii`, with `people` living in it; null when no ground for it.
+func _found(g: Game, site: WorksSite, people: int, radii: Array[float]) -> Settlement:
 	var yards := Works.sites(g.world)
 	var at := Vector2.INF
-	for r: float in [20.0, 24.0, 28.0, 32.0]:
+	for r: float in radii:
 		for k in 16:
 			var p := site.pos + Vector2.from_angle(TAU * float(k) / 16.0) * r
 			if g.query.standable(floori(p.x), floori(p.y)) and g.world.same_body(site.pos, p) and Works.at(yards, p) == null:
@@ -274,6 +280,39 @@ func test_with_no_roof_left_on_its_body_they_burn_his_holdings_beds() -> void:
 			else:
 				check(not p.ruined, "and the rest of it stands: his %s" % StructureKind.display_name(p.kind))
 		eq(home.people.size(), 1, "and nobody is lost")
+	Story.forget()
+	g.queue_free()
+	await frames(1)
+
+
+## THE MACHINES ARE BLIND TO WHOSE ROOF IT IS (#96, the ants rule): his holding's
+## beds are a roof like any village's, ranked by distance with them, so a holding
+## nearer the yard than any village house is what its hunters go for. A camp has
+## no roof, and a village's is still chosen over it however near it stands.
+func test_his_holding_nearer_than_any_village_is_the_roof_they_go_for() -> void:
+	var g := _game()
+	await frames(4)
+	Story.forget()
+	var site: WorksSite = g.get_node("34_works").call(&"here")
+	check(site != null, "the player stands on a depot's ground")
+	if site != null:
+		var raids := _raids(g)
+		var home := _found(g, site, 0, [20.0, 24.0, 28.0, 32.0])
+		if home != null:
+			# Every house nearer the yard than his place gone, as burned houses are:
+			# the village roofs left all stand farther off than he does.
+			var mine := home.centre.distance_to(site.pos)
+			for q in g.query.props_near(site.pos, mine + 2.0):
+				if q.kind == PropKind.HOUSE and q.pos.distance_to(site.pos) <= mine + 1.0:
+					g.world.depleted[q.id] = INF
+			var camp: Dictionary = raids.call(&"_target_for", site.pos)
+			eq(camp.kind, Reprisal.ROOF, "his camp %.0f off has no roof, and a farther village's is the one" % mine)
+			check(camp.kind == Reprisal.ROOF and (camp.at as Vector2).distance_to(site.pos) > mine,
+				"that village roof stands farther off than his place (%.0f)" % (camp.at as Vector2).distance_to(site.pos))
+			home.people.append(home.take_person_id())
+			var held: Dictionary = raids.call(&"_target_for", site.pos)
+			eq(held.kind, Reprisal.HOLDING, "with his people living there, his holding %.0f off is the nearest roof, and what they go for" % mine)
+			eq(held.at, home.centre, "at his holding")
 	Story.forget()
 	g.queue_free()
 	await frames(1)
