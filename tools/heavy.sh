@@ -159,4 +159,8 @@ done
 rm -f "$ticket"
 trap 'rm -rf $lock; [ "$(cat "$reserve" 2>/dev/null)" = $$ ] && rm -f "$reserve"' EXIT
 echo "heavy: clear in $lock, $(free_mb) MB free at $(date +%T)" >&2
+# The job and everything it starts run in this slot: a serial tool whose own
+# heavy step comes after its other work (preflight's shaders) reads this and takes
+# the slot it is already in, instead of holding it idle while it waits for another.
+export HEAVY_HELD="$lock"
 "$@"

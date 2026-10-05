@@ -1,7 +1,7 @@
 class_name Holding
 extends RefCounted
 ## THE HOLDING (ROADMAP slice 2, step 2): the people who have seen him, kept
-## where a yard cannot reach them. A village that has seen him is asked once to
+## where a yard's snatch cannot reach them. A village that has seen him is asked once to
 ## come to his holding (46_settlements `holding_offer`); as many as the holding
 ## has free beds walk there with him and live there; a snatch night for that
 ## village takes nobody who went (48_raids `_come_for_the_seen`). Beds are the

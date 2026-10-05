@@ -36,8 +36,10 @@ extends MachineModel
 ##        drops to the ice
 ## windup the two forward spears cock back over the crown, high, and the deck
 ##        leans back under them
-## strike those two drive forward and down through where you were, the deck
-##        lunging after them
+## strike those two are fired forward on their lines, near level, through where
+##        you were, the deck lunging after them: their points land where the
+##        blow lands (the bite box's front, MachineModel.strike_front), and the
+##        lines that carry them show only while they fly
 ## hurt   the crown slews off true; the saw jams
 ## dead   the deck comes down flat on the ice, the legs splay, the spears fall
 ##        outward one after another: a wreck with its needles fanned round it
@@ -65,6 +67,16 @@ const DOWN_TILT := 1.95
 const CREASE_SIX := 66.0
 ## Hips round the deck, radians from +X: two forward, two abeam, two aft.
 const HIPS: Array[float] = [-0.45, 0.45, -1.5708, 1.5708, -2.7, 2.7]
+
+## The strike: the deck lunging, and the fired spears' tilt off their rest
+## (level over the lunging deck, a little up: they fly at a person, not into
+## the ice).
+const STRIKE_DECK := [Vector3(0.3, -0.08, 0), Vector3(0, 0, -0.2)]
+const STRIKE_TILT := -1.1
+const CROWN_AT := Vector3(-0.12, 0.14, 0.0)
+## A fired spear's line, run from its socket up its shaft: long enough to reach
+## the butt at the farthest shot, and inside the shaft at a short one.
+const LINE := 2.6
 
 var _t := 0.0
 
@@ -227,6 +239,14 @@ func _crown(deck: Node3D, R: Array, D: Array, DD: Array) -> void:
 		sk.smooth_end(CREASE_SIX)
 		FoundKit.rivets(sk, Vector3(0.07, 0.42, -0.02), Vector3(0.07, 0.42, 0.02), Vector3.RIGHT, 2, R[5], FoundKit.PX * 1.2)
 		body_mesh(sk, spear)
+	# The lines the two forward spears are fired on, shown while they fly.
+	for j: int in [0, SPEARS - 1]:
+		var a := (float(j) + 0.5) / SPEARS * TAU
+		var line := joint(StringName("line_%d" % j), crown, Vector3(cos(a) * SPEAR_RING, 0.16, sin(a) * SPEAR_RING), Vector3(0, -a, -REST_TILT))
+		strike_only(line)
+		var lk := FoundKit.kit()
+		FoundKit.tbar(lk, Vector3.ZERO, Vector3(0, LINE, 0), 0.014, 0.014, 4, FoundKit.flat(Palette.INK[2]))
+		body_mesh(lk, line)
 	# The cable that carries what the crown hears down to the receiver, spliced.
 	var w := FoundKit.kit()
 	FoundKit.cable(w, Vector3(-0.4, 0.16, 0.2), Vector3(-0.86, -0.02, 0.1), 0.05, 0.016, Palette.INK[2], Palette.MACHINE["lineman"], 4)
@@ -320,11 +340,15 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"saw"] = r(Vector3(-0.42, 0, 0))
 			d[&"crown"] = r(Vector3(0, 0, 0.1))
 		&"strike":
-			# They drive forward and down through where you were, the deck lunging
-			# after them.
-			d[&"deck"] = pr(Vector3(0.3, -0.08, 0), Vector3(0, 0, -0.2))
-			d[_spear(0)] = r(Vector3(0, 0, -2.1))
-			d[_spear(SPEARS - 1)] = r(Vector3(0, 0, -2.1))
+			# They are fired forward on their lines through where you were, the
+			# deck lunging after them.
+			d[&"deck"] = pr(STRIKE_DECK[0], STRIKE_DECK[1])
+			for j: int in [0, SPEARS - 1]:
+				var a := (float(j) + 0.5) / SPEARS * TAU
+				var run := _fired(j) if strike_front > 0.0 else 0.0
+				var turn := Basis.from_euler(Vector3(0, -a, -REST_TILT + STRIKE_TILT))
+				d[_spear(j)] = pr(turn * Vector3(0, run, 0), Vector3(0, 0, STRIKE_TILT))
+				d[StringName("line_%d" % j)] = r(Vector3(0, 0, STRIKE_TILT))
 			for j in range(1, SPEARS - 1):
 				d[_spear(j)] = r(Vector3(0, 0, -0.5))
 			d[&"saw"] = r(Vector3(-0.42, 0, 0))
@@ -385,6 +409,18 @@ func _routine(delta: float, on: bool) -> void:
 	var crown := joints[&"crown"] as Node3D
 	crown.rotation.y = 0.0 if locked() else sin(_t * 0.35) * 0.4
 	(joints[&"blade"] as Node3D).rotation.z = _t * 5.2
+
+
+## How far fired spear `j` runs out of its socket along its own line, so its
+## point lands at strike_front.
+func _fired(j: int) -> float:
+	var a := (float(j) + 0.5) / SPEARS * TAU
+	var crown := Transform3D(Basis.from_euler(STRIKE_DECK[1]), Vector3(0, DECK_Y, 0) + STRIKE_DECK[0]) * Transform3D(Basis(), CROWN_AT)
+	var turn := Basis.from_euler(Vector3(0, -a, -REST_TILT + STRIKE_TILT))
+	var socket := Vector3(cos(a) * SPEAR_RING, 0.16, sin(a) * SPEAR_RING)
+	var tip := crown * (socket + turn * Vector3(0, SPEAR_LEN + 0.14, 0))
+	var along := (crown.basis * turn * Vector3.UP).x
+	return maxf(0.0, (strike_reach() - tip.x) / along)
 
 
 static func _spear(i: int) -> StringName:

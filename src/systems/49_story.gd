@@ -281,6 +281,20 @@ func faces_words() -> bool:
 	return not _what_is_in_front().is_empty()
 
 
+## How far from his hand the words in front of him are (`_what_is_in_front`'s
+## person, readable thing or story slot), or INF when there are none: what a
+## press-taker that is nearer still keeps the key against (Survival.words_nearer_than).
+func faced_words_d() -> float:
+	var it := _what_is_in_front()
+	if it.has("person"):
+		return float((it.person as Dictionary).get("_d", INF))
+	if it.has("prop"):
+		return _edge_to(it.prop as WorldProp)
+	if it.has("slot"):
+		return float(_slot_in_front().get("_d", INF))
+	return INF
+
+
 ## What the key would open: {slot: ID}, {person: ROW} or {prop: PROP}, or {}
 ## when it is the ground's or nobody's.
 func _what_is_in_front() -> Dictionary:

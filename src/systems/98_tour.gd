@@ -8,8 +8,10 @@ extends GameSystem
 ##   at prop:NAME           stand beside the nearest prop of that kind (PropKind.NAMES,
 ##                          a space written as _), facing it, in reach of `use`: a tour
 ##                          takes from the world without knowing where the world put it
-##   village N|LAND         teleport beside village N, or the first village in the
-##                          landscape LAND (by id), which holds when worldgen
+##   village WHO [square]   teleport to where an arrival is set down at a village,
+##                          or with `square` onto its square: WHO is its index, its
+##                          name (`oyster_row`) or a landscape (GenPlaces
+##                          `village:` / `square:`), which hold when worldgen
 ##                          reorders the villages
 ##   mark NAME              remember where the player stands, by a name
 ##   at mark:NAME           stand there again (a fire the player laid: the place is
@@ -517,18 +519,10 @@ func _run() -> void:
 				else:
 					_teleport(pp)
 			"village":
-				if parts[1].is_valid_int():
-					var vi := parts[1].to_int()
-					if vi < game.world.villages.size():
-						_teleport(game.world.village_stand(game.world.villages[vi]))
-					else:
-						ok = false
-				else:
-					var at := GenPlaces.find(game.world, "village:" + parts[1])
-					if at.x >= 0.0:
-						_teleport(at)
-					else:
-						ok = false
+				var at := GenPlaces.find(game.world, ("square:" if parts.size() > 2 and parts[2] == "square" else "village:") + parts[1])
+				ok = at.x >= 0.0
+				if ok:
+					_teleport(at)
 			"hour":
 				# `hour H +D`: D days on, at H (a night the plan comes, a day later).
 				# `hour treadN[+M]`: on to when the walker's foot next comes down

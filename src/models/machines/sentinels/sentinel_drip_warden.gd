@@ -24,7 +24,11 @@ extends MachineModel
 ## stand  the lance lowered, the crown turning slowly on its bearing
 ## alert  the legs plant wider and the crown cants toward the player
 ## windup the lance swings up and back on its swivel, the mast leaning away
-## strike the lance comes round: the hose
+## strike the lance comes round onto the line it was told on and hoses it: a
+##        spray of wet lime from the nozzle out to where the blow lands (the
+##        bite box's front, MachineModel.strike_front), drawn only while it is
+##        live. The nozzle is two tiles out; the bite reaches four, and what a
+##        person is hit by out there is the spray, so the spray is drawn there.
 ## hurt   the crown judders
 ## dead   the back leg folds and the mast goes over forwards, the crown down on
 ##        the floor it kept dry
@@ -39,6 +43,14 @@ const CROWN_R := 1.0
 ## The lance's swivel up the mast, and how far out and down its nozzle reaches.
 const SWIVEL_Y := 2.35
 const LANCE := Vector3(1.55, -0.95, 0.0)
+## The lance's strike, on the mast's: brought round onto the line, nozzle down.
+const STRIKE_MAST := Vector3(0, 0, -0.06)
+const STRIKE_LANCE := Vector3(0, -0.12, -0.12)
+## The spray: gouts from the nozzle to the landing, how high it lands (a
+## person's chest, in build units) and how far its flight bows up.
+const SPRAY := 8
+const SPRAY_LAND_Y := 0.75
+const SPRAY_BOW := 0.3
 ## The whole body, grown to a keeper's scale: at 1.0 it read at eye level as a
 ## lamp on stilts, a thing far off and slight, not the cave's keeper.
 const SIZE := 1.3
@@ -63,7 +75,8 @@ func build() -> void:
 	var mast := joint(&"mast", hip, Vector3.ZERO)
 	_mast(mast, R, D, DD)
 	_pack(mast, R, D, DD)
-	_lance(mast, R, D, DD)
+	var lance := _lance(mast, R, D, DD)
+	_spray(lance)
 	var crown := joint(&"crown", mast, Vector3(0, MAST_TOP - HIP_Y, 0))
 	_crown(crown, R, D)
 	finish_rig()
@@ -195,7 +208,7 @@ func _pack(mast: Node3D, R: Array, D: Array, DD: Array) -> void:
 
 ## The spray lance on its swivel: a long barrel out and down to a nozzle, the
 ## nozzle's lip crusted with lime.
-func _lance(mast: Node3D, R: Array, D: Array, DD: Array) -> void:
+func _lance(mast: Node3D, R: Array, D: Array, DD: Array) -> Node3D:
 	var arm := joint(&"lance", mast, Vector3(0, SWIVEL_Y - HIP_Y, 0))
 	var k := FoundKit.kit()
 	FoundKit.lathe(k, Vector3(0, -0.14, 0), Vector3.UP, [Vector2(0.27, 0.0), Vector2(0.31, 0.05), Vector2(0.31, 0.24), Vector2(0.27, 0.28)], 10, DD, PI / 10.0)
@@ -208,6 +221,36 @@ func _lance(mast: Node3D, R: Array, D: Array, DD: Array) -> void:
 	m.rock(LANCE.x + 0.12, LANCE.y - 0.04, 0.0, 0.14, 0.08, 640, lime[4], 6)
 	m.rock(LANCE.x + 0.06, LANCE.y - 0.1, 0.05, 0.1, 0.06, 641, lime[3], 5)
 	wear_matter(m, arm)
+	return arm
+
+
+## The spray the lance lays as it strikes: gouts of wet lime strung from the
+## nozzle to the landing, fattening as the stream breaks up, the last a splash.
+## Each rides its own joint on the lance, so the strike pose strings them out
+## to wherever the blow lands (_spray_at).
+func _spray(lance: Node3D) -> void:
+	var spray := holder("spray", lance, LANCE)
+	strike_only(spray)
+	var lime := _lime()
+	for i in SPRAY:
+		var g := joint(StringName("gout%d" % i), spray, Vector3.ZERO)
+		var t := float(i + 1) / SPRAY
+		var rr := lerpf(0.07, 0.2, t)
+		var m := FoundKit.matter_kit(Ink.NONE)
+		m.rock(0.0, -rr * 0.6, 0.0, rr, rr * 1.2, 680 + i, lime[3 + i % 3], 6)
+		matter_mesh(m, g)
+
+
+## Where gout `i` hangs in the strike, in the spray holder's frame: on a bowed
+## line from the nozzle to the landing, the last gout's front at strike_front.
+func _spray_at(i: int) -> Vector3:
+	var lance_xf := Transform3D(Basis.from_euler(STRIKE_MAST), Vector3(0, HIP_Y, 0)) \
+			* Transform3D(Basis.from_euler(STRIKE_LANCE), Vector3(0, SWIVEL_Y - HIP_Y, 0))
+	var nozzle := lance_xf * LANCE
+	var land := Vector3(strike_reach() - 0.2, SPRAY_LAND_Y, 0.0)
+	var t := float(i + 1) / SPRAY
+	var at := nozzle.lerp(land, t) + Vector3.UP * SPRAY_BOW * 4.0 * t * (1.0 - t)
+	return (lance_xf * Transform3D(Basis(), LANCE)).affine_inverse() * at
 
 
 ## The drip crown: a flared bell on a bearing, a ring of meters under its rim
@@ -264,8 +307,11 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"mast"] = r(Vector3(0, 0, 0.08))
 			d[&"crown"] = r(Vector3(0, 0, -0.1))
 		&"strike":
-			d[&"lance"] = r(Vector3(0, -0.8, -0.1))
-			d[&"mast"] = r(Vector3(0, 0, -0.06))
+			d[&"lance"] = r(STRIKE_LANCE)
+			d[&"mast"] = r(STRIKE_MAST)
+			if strike_front > 0.0:
+				for i in SPRAY:
+					d[StringName("gout%d" % i)] = pr(_spray_at(i))
 		&"hurt":
 			d[&"crown"] = r(Vector3(0.12, 0, 0.08))
 		&"dead":

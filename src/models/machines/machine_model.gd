@@ -184,6 +184,15 @@ var hunting := false
 ## light climbs across all of it and tops out at the strike (_light_scale). Mob
 ## sets it from the bite as the windup starts.
 var tell_s := 0.6
+## Where the blow being told lands, in world tiles ahead of the body's centre:
+## its bite box's front (radius + reach). Mob sets it as each blow is told. A
+## kind's strike pose carries its biting part there, or draws the part of the
+## blow that does the landing (a spray, a thrown weight, a bolt): what is drawn
+## is what hits (#76). 0 until a blow is told.
+var strike_front := 0.0
+## True while the told blow is live (its active slice); Mob sets it. A piece
+## marked strike_only shows only then, where and when the blow lands.
+var blow_live := false
 ## The merged meshes by surface kind, once built.
 var surfaces: Dictionary = {}
 var skeleton: Skeleton3D
@@ -207,6 +216,7 @@ var _glow_size := 0.7
 var _scans: Array = []
 var _beams: Array = []
 var _dead_only: Array = []
+var _strike_only: Array[Node3D] = []
 ## [MeshInstance3D, living Mesh, dead Mesh]: the matter drawn without and with
 ## the dead-only spills, so a living machine's mesh bounds are its body's alone.
 var _matter_swap: Array = []
@@ -588,6 +598,18 @@ func dead_only(n: Node3D, delay: float) -> void:
 	_dead_only.append([n, delay])
 
 
+## A node that is the landing part of a blow (a spray, a bolt): drawn only while
+## the blow is live (strike pose, blow_live).
+func strike_only(n: Node3D) -> void:
+	n.visible = false
+	_strike_only.append(n)
+
+
+## strike_front in the kind's own build units (before the model's scale).
+func strike_reach() -> float:
+	return strike_front / scale.x
+
+
 ## Call last in build(): records the rest rig and merges every queued piece.
 func finish_rig() -> void:
 	for jn: StringName in joints:
@@ -666,6 +688,7 @@ func animate(delta: float, speed: float) -> void:
 	_apply_light(dt)
 	_run_lights()
 	_show_dead_only()
+	_show_strike_only()
 	_sync_bones()
 
 
@@ -707,6 +730,7 @@ func settle() -> void:
 	_apply_light(0.0)
 	_run_lights()
 	_show_dead_only()
+	_show_strike_only()
 	_sync_bones()
 
 
@@ -1232,6 +1256,11 @@ func _apply_pose() -> void:
 func _show_dead_only() -> void:
 	for d: Array in _dead_only:
 		(d[0] as Node3D).visible = pose == &"dead" and pose_time >= float(d[1])
+
+
+func _show_strike_only() -> void:
+	for n in _strike_only:
+		n.visible = pose == &"strike" and blow_live
 
 
 func _run_scans() -> void:

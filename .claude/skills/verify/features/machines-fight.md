@@ -37,6 +37,7 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   `tools/tour.sh tours/keeper-fall.tour --seed=1 --hour=22 --weather=clear:0 --fallen=coast:72`
   and `tools/test.sh test_fall_changes_the_coast`.
   - Plough (snowfield keeper, furrows): `tools/test.sh test_plough`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough.tour` (h).
+  - A keeper's strike is drawn where its bite lands (MachineModel.strike_front, the bite box's front; the part that lands, a spray, a bolt, a fired spear, a grab, shows only while the blow is live): `tools/test.sh test_keeper_strike_reach`; each pose against its box, a pale bar across the front with a person-high post at each end: `tools/shot.sh shots/x.png --scene=gallery --filter="sentinel_KIND strike" --zoom=8 --bearing=-45`.
   - Every keeper a boss a person beats at a cost (the shoulder reader with human hands, seeds 17 and 29: won 18+/24, 25-45 s, 2+ health lost; the perfect reader wins all 24): `tools/heavy.sh tools/test.sh test_keeper_bouts` (~4 min). Every keeper bite told long enough for a person at 450 ms to dodge and walk out of it (FightRules.readable_windup): `tools/test.sh test_readable_tells`. The readers decide only on what is drawn (tests/fight/seen.gd; a reader's source naming a brain field fails): `tools/test.sh test_seen`.
   - Come-round: `tools/test.sh test_come_round`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (h).
   - Reach (`NavField.for_body`, `Brains._hunt`, `Sentinels.lair`): `tools/test.sh test_keeper_reach` (~2 min).

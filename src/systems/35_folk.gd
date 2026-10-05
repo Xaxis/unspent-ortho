@@ -477,23 +477,35 @@ func _taken_from(index: int) -> Vector2i:
 ## 6, 8 or 12 and none of them may move — and past that it opens into further
 ## rings far enough apart to keep bodies out of each other, so a street of forty
 ## is a street and not one pile. Only the outer rings test the ground, for the
-## same reason: the inner one must stay exactly what it was.
+## same reason: the inner one must stay exactly what it was. Somebody whose seat
+## out there is water takes the next seat along, so a call for N stands N: the
+## crowd's cost (TourPeople `perf folk`) is divided by the N it asked for.
 const RING_FIRST := 12
 const RING_GAP := 1.5
 const RING_APART := 1.1
+## Seats one person past the first ring looks along for dry ground before they are
+## left out: a bank can take half of a ring, and a man in the sea all of it.
+const RING_TRIES := 64
 
 
 func _ring(n: int) -> void:
 	var at: Vector2 = game.player.pos
 	var looks := PersonLook.crowd(game.world.seed_value * 7 + 3, n)
 	var inner := mini(looks.size(), RING_FIRST)
+	var seat := 0
 	for i in looks.size():
 		if i < RING_FIRST:
 			var a := TAU * i / inner
 			var p := at + Vector2(cos(a), sin(a)) * (1.6 + 0.25 * (i % 2))
 			_add(looks[i], p, &"idle", -2, float(i) / n, p)
 			continue
-		var out := _ring_seat(at, i - RING_FIRST)
+		var out := _ring_seat(at, seat)
+		var tries := 0
+		while not _standable(out) and tries < RING_TRIES:
+			seat += 1
+			tries += 1
+			out = _ring_seat(at, seat)
+		seat += 1
 		if _standable(out):
 			_add(looks[i], out, &"idle", -2, float(i) / n, out)
 
