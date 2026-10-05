@@ -474,6 +474,24 @@ const FRAGMENTS := {
 		],
 		"beats": [&"covenant_fed"],
 	},
+	# The drowned city's port stair, where every raft comes in (StoryCrossing rule 1,
+	# 49_cast `the_port`): read on `use` only. It files boats, not people, which is
+	# why a raft passes the lockkeeper; it names nobody and nothing that drowned it.
+	&"port_arrivals": {
+		"kind": &"sign", "title": "a sign at the stair", "lands": [],
+		"lines": [
+			"An enamel sign at the head of the stair:",
+			"  ARRIVALS. PASSENGERS ARE TO REMAIN",
+			"  ABOARD UNTIL THE VESSEL IS SECURED.",
+			"",
+			"Stencilled across it, newer:",
+			"  PASSENGERS: NOT APPLICABLE.",
+			"",
+			"Under that, a clock face in chalk, its",
+			"hands at a quarter past.",
+		],
+		"beats": [&"counted"],
+	},
 	&"broadcast": {
 		"kind": &"terminal", "title": "a radio, still on", "lands": [],
 		"lines": BROADCAST,
@@ -3577,6 +3595,9 @@ const PLACED := {
 	# The Covenant's own notice, at its seat (slice 3 step 2): read where it is
 	# posted, not on any sign in any landscape.
 	&"the_covenant": [&"covenant_notice"],
+	# The drowned city's port, where the raft comes in, only on a world whose
+	# crossing lands on its stair (49_cast `the_port`).
+	&"the_port": [&"port_arrivals"],
 	# At the channel, when the orbital realm is grown: until then it stands nowhere.
 	&"the_channel": [&"channel_console"],
 	# Ring Four, when the orbital realm is grown: the case Calloway sent up.
@@ -3591,6 +3612,7 @@ const STOOD := {
 	&"the_yard": PropKind.CONSOLE,
 	&"the_camp": PropKind.DOC_BOX,
 	&"the_covenant": PropKind.SIGN,
+	&"the_port": PropKind.SIGN,
 }
 
 # --- words that belong to a kind of room ---------------------------------------
@@ -5220,8 +5242,15 @@ const TALKS := {
 				"replies": [
 					{"text": "Who set the timetable?", "pick": &"asked_table", "to": &"table"},
 					{"text": "Where do they go?", "pick": &"asked_where", "to": &"where"},
+					{"text": "Who lives in the hulls?", "pick": &"asked_hulls", "to": &"hulls"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			# The barge families, from her side of the water: no beat, no `when`. Her
+			# "either" answers her own "Nobody drives them".
+			&"hulls": {
+				"says": ["Families. Their grans came in the war, on the barges.", "Nobody was steering those either, to hear them tell it."],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"table": {
 				"says": ["That's the thing. It's ours. The city's own, from before the water.", "Same stops, same hours. The stops are twenty feet under now.", "They're still running a service for a city that isn't there."],
@@ -6177,7 +6206,6 @@ const KEEPER_FELL := {
 	&"anvil": {
 		&"force": "The mast comes apart, and its crown rings down onto the glass.",
 		&"founder": "The mast skates into the drift and stops. The sand closes over its core.",
-		# Kept though the way waits on a strike field no world lays yet.
 		&"starve": "The crown calls and nothing answers. The mast stands on its skates, and goes quiet.",
 	},
 }

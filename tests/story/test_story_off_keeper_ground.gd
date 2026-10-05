@@ -25,6 +25,10 @@ func test_no_story_place_stands_on_a_keepers_ground() -> void:
 		var cast := StoryPlan.cast(w)
 		var keepers := StoryCasting._keeper_grounds(w)
 		gt(float(keepers.size()), 0.0, "seed %d has keepers to keep off" % s)
+		# Twelve full-size worlds, tens of seconds each on the gate, whose hang
+		# guard (tools/check.sh) reads ten silent minutes as a hang: a line per
+		# seed keeps a slow file from being killed as a stuck one.
+		print("  info off keeper ground: seed %d cast, %d keepers" % [s, keepers.size()])
 		for slot: StorySlot in StoryPlan.slots():
 			if slot.require and slot.realm == w.realm and not cast.has(slot.id):
 				check(false, "seed %d: the required %s is cast" % [s, slot.id])

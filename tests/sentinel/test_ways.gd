@@ -210,87 +210,10 @@ func test_robbing_its_feeds_by_hand_starves_it() -> void:
 	# this is the keeper's way, not a crowd's.
 	(Sx.system(g, "30_mobs").get("coast") as Object).set("spawning", false)
 	g.player.sim.clear_mobs()
-	var reach := def.reach * Sentinels.FEED_SHARE
-	var works: Array[WorldProp] = []
-	for q: WorldProp in g.query.props_near(s.lair, reach):
-		if def.feeds.has(q.kind) and q.pos.distance_to(s.lair) <= reach:
-			works.append(q)
-	works.sort_custom(func(a: WorldProp, b: WorldProp) -> bool: return a.pos.distance_to(s.lair) > b.pos.distance_to(s.lair))
-	gt(float(works.size()), float(SentinelWay.FEEDS_LEAST) - 0.5, "it is fed by %d works" % works.size())
-	var refused := {}
-	var said: Array[String] = []
-	var hear := func(line: String) -> void: said.append(line)
-	Events.message.connect(hear)
-	var waited := 0.0
-	var thefts := 0
-	for q in works:
-		var away := (q.pos - s.lair).normalized() if q.pos.distance_to(s.lair) > 0.1 else Vector2.RIGHT
-		for take in 8:
-			if g.world.depleted.has(q.id):
-				break
-			# A theft stirs it (34_works: a plan work opened tells its machines),
-			# and a fight still on refuses a long take ("Not with that so close").
-			# A player goes off out of its ground until it has settled, and back.
-			var m: MobState = s.body
-			if (m != null and (m.disturbed or m.roused() or m.mood == MobState.ALERTED)) or g.player.sim.fight_on or Survival.threat_near(g):
-				# Off out of its ground until it has settled, and back.
-				g.player.place(s.lair + away * Sentinels.PUT_OUT * 2.0)
-				var w0 := g.player.sim.now
-				while (s.body != null or g.player.sim.fight_on) and g.player.sim.now - w0 < 60000.0:
-					await tree.physics_frame
-				waited += (g.player.sim.now - w0) / 1000.0
-			# Back in on the far side of its lair from the work: it comes out
-			# facing that way, and the work is taken behind its back.
-			if s.body == null and q.pos.distance_to(s.lair) < 8.0:
-				g.player.place(_off_its_guard(g, s, -away))
-				for f in 30:
-					await tree.physics_frame
-			# Beside the work, and out of the keeper's eye where there is a side of
-			# it that is: a player robbing its intake keeps behind its back.
-			if Condition.hours_to_full(g.body.fed_until, g.clock.minutes) >= 4.0 and Survival.best_food(g) != &"":
-				@warning_ignore("return_value_discarded")
-				Survival.eat(g, Survival.best_food(g))
-			# Coming to after a down, the body is busy a moment (40_fight _wake).
-			for f in 2000:
-				if not Survival.busy(g):
-					break
-				await tree.physics_frame
-			var spot := _unseen_beside(g, q, s.body)
-			g.player.place(spot, (q.pos - spot).angle())
-			await frames(2)
-			var used := Survival.use(g)
-			if not used:
-				var t := Survival.use_target(g)
-				var line: String = said.back() if not said.is_empty() else ""
-				refused[PropKind.NAMES[q.kind]] = "%s (aimed at %s, said %s)" % [q.pos.distance_to(s.lair), PropKind.NAMES[t.kind] if t != null else "nothing", line]
-				if line == Survival.DARK_LINE and not g.body.lamp_lit:
-					# Hours gone after a down and night come on: the lamp, lit with its key.
-					Input.action_press(&"lamp")
-					await tree.physics_frame
-					await tree.process_frame
-					Input.action_release(&"lamp")
-					await tree.physics_frame
-					said.clear()
-					continue
-				if line == Survival.THREAT_LINE or line == Outcomes.KEEPER_DOWNED_LINE:
-					# Seen and turned on (or downed by it): off again until it
-					# settles, and another go.
-					said.clear()
-					continue
-				break
-			thefts += 1
-			# The take itself is a real second and a bit (Survival.WORK_SECONDS):
-			# waited out in frames, however many that is on this box.
-			for f in 20000:
-				if SurvivalState.of(g).job.is_empty():
-					break
-				await tree.physics_frame
-	Events.message.disconnect(hear)
-	var robbed := 0
-	for q in works:
-		robbed += int(g.world.depleted.has(q.id))
-	print("  info starve: robbed %d of %d in %d takes, %.0f s waited off its ground, refused %s" % [robbed, works.size(), thefts, waited, refused])
-	eq(robbed, works.size(), "every work that fed it is robbed out, in the world")
+	var out: Dictionary = await KF.rob_larder(tree, g, s)
+	print("  info starve: robbed %d of %d in %d takes, %.0f s waited off its ground, refused %s" % [out.robbed, out.works, out.thefts, out.waited, out.refused])
+	gt(float(out.works), float(SentinelWay.FEEDS_LEAST) - 0.5, "it is fed by %d works" % out.works)
+	eq(out.robbed, out.works, "every work that fed it is robbed out, in the world")
 	# Away from it, and the dark counted.
 	g.player.place(s.lair + Vector2(Sentinels.PUT_OUT * 2.0, 0.0))
 	var t0 := g.player.sim.now
@@ -298,32 +221,6 @@ func test_robbing_its_feeds_by_hand_starves_it() -> void:
 		await tree.physics_frame
 	check(s.fallen and s.how == def.way_of(SentinelWay.STARVE).id(), "and it stands dark and keeps nothing (%s)" % s.how)
 	Sx.end(g)
-
-
-## Standable ground 12 tiles off its lair on the `away` side (or round from it):
-## outside the guard it turns on a player inside, inside the ground it is put out on.
-func _off_its_guard(g: Game, s: SentinelState, away: Vector2) -> Vector2:
-	for k in 16:
-		var p := s.lair + away.rotated(float((k + 1) / 2) * (TAU / 16.0) * (1.0 if k % 2 == 0 else -1.0)) * 12.0
-		if g.query.standable(floori(p.x), floori(p.y)) and g.world.same_body(p, s.lair):
-			return p
-	return s.lair + away * 12.0
-
-
-## A spot to stand beside `q` and take from it, as far out of `m`'s view (the
-## angle off its facing) as the ground allows.
-func _unseen_beside(g: Game, q: WorldProp, m: MobState) -> Vector2:
-	var best := Vector2.INF
-	var best_off := -1.0
-	for k in 16:
-		var p := q.pos + Vector2.from_angle(TAU * k / 16.0) * (q.solid + 0.7)
-		if not g.query.standable(floori(p.x), floori(p.y)) or not g.query.body_fits(p, Tuning.PLAYER_RADIUS, null, true, FightSim.HERO_TALL):
-			continue
-		var off := 0.0 if m == null else absf(wrapf((p - m.pos).angle() - m.facing, -PI, PI))
-		if off > best_off:
-			best_off = off
-			best = p
-	return best if best.is_finite() else q.pos + Vector2.RIGHT * (q.solid + 0.7)
 
 
 const PR := preload("res://tests/fight/plate_reader.gd")

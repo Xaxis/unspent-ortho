@@ -29,6 +29,18 @@ var _block_by: Dictionary = {}  # owner -> Array[Vector3]
 ## Tiles of slack when a circle is stamped into the grid, so one tile lookup is
 ## enough for any body narrower than this.
 const BLOCK_SLACK := 1.0
+## AN OWNER WITH A WHOLE ISLAND OF CIRCLES IS STAMPED A CELL AT A TIME, the first
+## time a tile of that cell is asked about (`set_blocks_by_cell`). The ruins were
+## 95k circles stamped into 2.4M tile entries at every new game's start, 0.7-1.7 s
+## and 85 MB on seed 7 at 1840, for tiles nobody went near; a tile that is asked
+## about holds what an eager stamp would have put there, its cell stamped whole.
+## Cells are this many tiles a side, so the first step into the most crowded is
+## a short stamp: on a walk into seed 7's (335 circles) the worst frame spent
+## 1.2-1.6 ms on walls, where 16-tile cells spent 2.6 and stamping cells ahead of
+## him on a 2 ms budget spent more in all and no less in the worst frame.
+const BLOCK_CELL := 8
+var _cell_circles: Dictionary = {}  # owner -> {cell key -> Array[Vector3]}
+var _cell_waiting: Dictionary = {}  # cell key -> Array of owners not yet stamped there
 
 
 ## WHAT STOPS A BODY IS LOOKED FOR IN TWO TIERS. A fixed two-tile search let a
@@ -174,15 +186,75 @@ func set_blocks(owner: StringName, circles: Array[Vector3]) -> void:
 		_stamp(_block_by[owner])
 
 
-## Every tile a circle could stop a body in, stamped with the circle itself, so
-## `blocks_at` is one lookup.
-func _stamp(circles: Array[Vector3]) -> void:
+## `owner`'s circles, stamped cell by cell as `blocks_at` first asks in a cell
+## (BLOCK_CELL), replacing whatever it said before: what was stamped of the last
+## set goes now, and what was still waiting is dropped.
+func set_blocks_by_cell(owner: StringName, circles: Array[Vector3]) -> void:
+	var had: Dictionary = _cell_circles.get(owner, {})
+	for key: int in had:
+		var waiting: Array = _cell_waiting.get(key, [])
+		if waiting.has(owner):
+			waiting.erase(owner)
+			if waiting.is_empty():
+				@warning_ignore("return_value_discarded")
+				_cell_waiting.erase(key)
+		else:
+			_unstamp(had[key] as Array[Vector3], _cell_rect(key))
+	var cells := {}
+	var wide := _cells_wide()
 	for c: Vector3 in circles:
 		var r := ceili(c.z + BLOCK_SLACK)
 		var cx := floori(c.x)
 		var cy := floori(c.y)
-		for ty in range(maxi(0, cy - r), mini(world.size - 1, cy + r) + 1):
-			for tx in range(maxi(0, cx - r), mini(world.size - 1, cx + r) + 1):
+		for gy in range(maxi(0, cy - r) / BLOCK_CELL, mini(world.size - 1, cy + r) / BLOCK_CELL + 1):
+			for gx in range(maxi(0, cx - r) / BLOCK_CELL, mini(world.size - 1, cx + r) / BLOCK_CELL + 1):
+				var key := gy * wide + gx
+				if not cells.has(key):
+					cells[key] = [] as Array[Vector3]
+				(cells[key] as Array[Vector3]).append(c)
+	if cells.is_empty():
+		@warning_ignore("return_value_discarded")
+		_cell_circles.erase(owner)
+		return
+	_cell_circles[owner] = cells
+	for key: int in cells:
+		if not _cell_waiting.has(key):
+			_cell_waiting[key] = []
+		(_cell_waiting[key] as Array).append(owner)
+
+
+func _cells_wide() -> int:
+	return (world.size + BLOCK_CELL - 1) / BLOCK_CELL
+
+
+func _cell_rect(key: int) -> Rect2i:
+	var wide := _cells_wide()
+	return Rect2i((key % wide) * BLOCK_CELL, (key / wide) * BLOCK_CELL, BLOCK_CELL, BLOCK_CELL)
+
+
+## Every owner still waiting in cell `key`, stamped there now.
+func _stamp_cell(key: int) -> void:
+	var rect := _cell_rect(key)
+	for owner: StringName in (_cell_waiting[key] as Array):
+		_stamp((_cell_circles[owner] as Dictionary)[key] as Array[Vector3], rect)
+	@warning_ignore("return_value_discarded")
+	_cell_waiting.erase(key)
+
+
+## Every tile a circle could stop a body in, stamped with the circle itself, so
+## `blocks_at` is one lookup; within `clip` only, when one is given.
+func _stamp(circles: Array[Vector3], clip := Rect2i()) -> void:
+	var lo := Vector2i.ZERO
+	var hi := Vector2i(world.size - 1, world.size - 1)
+	if clip.has_area():
+		lo = clip.position
+		hi = clip.end - Vector2i.ONE
+	for c: Vector3 in circles:
+		var r := ceili(c.z + BLOCK_SLACK)
+		var cx := floori(c.x)
+		var cy := floori(c.y)
+		for ty in range(maxi(lo.y, cy - r), mini(hi.y, cy + r) + 1):
+			for tx in range(maxi(lo.x, cx - r), mini(hi.x, cx + r) + 1):
 				var k := ty * world.size + tx
 				if not _blocks.has(k):
 					_blocks[k] = []
@@ -192,13 +264,18 @@ func _stamp(circles: Array[Vector3]) -> void:
 ## The exact inverse, walking the same tiles. `erase` takes ONE match, which is
 ## right: `_stamp` appended one entry per circle per tile, so two owners holding
 ## an identical circle keep one entry each.
-func _unstamp(circles: Array[Vector3]) -> void:
+func _unstamp(circles: Array[Vector3], clip := Rect2i()) -> void:
+	var lo := Vector2i.ZERO
+	var hi := Vector2i(world.size - 1, world.size - 1)
+	if clip.has_area():
+		lo = clip.position
+		hi = clip.end - Vector2i.ONE
 	for c: Vector3 in circles:
 		var r := ceili(c.z + BLOCK_SLACK)
 		var cx := floori(c.x)
 		var cy := floori(c.y)
-		for ty in range(maxi(0, cy - r), mini(world.size - 1, cy + r) + 1):
-			for tx in range(maxi(0, cx - r), mini(world.size - 1, cx + r) + 1):
+		for ty in range(maxi(lo.y, cy - r), mini(hi.y, cy + r) + 1):
+			for tx in range(maxi(lo.x, cx - r), mini(hi.x, cx + r) + 1):
 				var k := ty * world.size + tx
 				var got: Variant = _blocks.get(k)
 				if got == null:
@@ -210,12 +287,17 @@ func _unstamp(circles: Array[Vector3]) -> void:
 
 
 ## The walls whose tile `p` stands in. One lookup: every circle is stamped into
-## every tile it could stop a body in, so this is the whole answer.
+## every tile it could stop a body in (an owner set by cell, into its cell's
+## tiles the first time one of them is asked about), so this is the whole answer.
 func blocks_at(p: Vector2) -> Array:
 	var tx := floori(p.x)
 	var ty := floori(p.y)
 	if tx < 0 or ty < 0 or tx >= world.size or ty >= world.size:
 		return []
+	if not _cell_waiting.is_empty():
+		var key := (ty / BLOCK_CELL) * _cells_wide() + tx / BLOCK_CELL
+		if _cell_waiting.has(key):
+			_stamp_cell(key)
 	return _blocks.get(ty * world.size + tx, [])
 
 

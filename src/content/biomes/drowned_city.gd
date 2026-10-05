@@ -319,10 +319,16 @@ static func _works(L: Object) -> void:
 	var nrm: Vector2 = L.nrm
 	# The port first, sited where the region's canals are: its lock, the stairs
 	# down off its quays, and the sea walls along them that keep off the stairs.
+	# A lock its keeper cannot den by is taken back (`_lock`) and the next reach
+	# is tried, never dropped.
+	var sites := _lock_sites(L, LOCK_TRIES)
+	var next := 0
 	for n in GenWorks._n_station(L, 1.0):
-		var at := _lock_site(L)
-		if at.z >= 0.0:
-			GenWorks._work(L, &"_lock", Vector2(at.x, at.y), [int(at.z)])
+		while next < sites.size():
+			var at: Vector3 = sites[next]
+			next += 1
+			if GenWorks._work(L, &"_lock", Vector2(at.x, at.y), [int(at.z)]):
+				break
 	# THE PORT, when the landfall is this region's: a stair down into the sea on
 	# the quay nearest where the raft comes ashore, recorded as `port`. The raft
 	# is landed there (StoryCrossing) and the clock stands over it (Landmarks,
@@ -457,18 +463,21 @@ const LOCK_GATES: Array[float] = [-3.2, -1.1, 1.1, 3.2]
 const LOCK_OFF := 4.8
 
 
-## The middle of a canal reach to lock in the region being laid: a flooded street
-## LOCK_OFF along from a crossing, water under every leaf and dry banks of this
-## region on both sides, off the villages and the spawn; of those, the nearest
-## the region's heart.
-## (x, y, axis), axis 0 a street running along `nrm` and 1 along `d`; z -1 for
-## none.
-static func _lock_site(L: Object) -> Vector3:
+## How many reaches a region's lock is tried at.
+const LOCK_TRIES := 4
+
+
+## The middles of canal reaches to lock in the region being laid: a flooded
+## street LOCK_OFF along from a crossing, water under every leaf and dry banks
+## of this region on both sides, off the villages and the spawn; up to `count`
+## of them, the nearest the region's heart first (ties in scan order).
+## Each (x, y, axis), axis 0 a street running along `nrm` and 1 along `d`.
+static func _lock_sites(L: Object, count: int) -> Array[Vector3]:
 	var d: Vector2 = L.d
 	var nrm: Vector2 = L.nrm
 	var heart := Vector2(GenWorks._heart(L))
-	var best := Vector3(-1, -1, -1)
-	var best_d := INF
+	# By distance first: the reach's own test reads its leaves and banks.
+	var all: Array = []
 	for rect: Rect2 in L.rects:
 		if heart.x < 0.0:
 			heart = rect.get_center()
@@ -486,12 +495,16 @@ static func _lock_site(L: Object) -> Vector3:
 					var crossing := d * float(m) * STREET_PITCH + nrm * float(n) * STREET_PITCH if axis == 0 else d * float(n) * STREET_PITCH + nrm * float(m) * STREET_PITCH
 					for off: float in [LOCK_OFF, -LOCK_OFF]:
 						var p := crossing + along * off
-						var dist := p.distance_to(heart)
-						if dist >= best_d or not _canal_reach(L, p, along, across):
-							continue
-						best_d = dist
-						best = Vector3(p.x, p.y, axis)
-	return best
+						all.append([p.distance_to(heart), Vector3(p.x, p.y, axis), along, across, all.size()])
+	all.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and a[4] < b[4]))
+	var out: Array[Vector3] = []
+	for e: Array in all:
+		var v: Vector3 = e[1]
+		if _canal_reach(L, Vector2(v.x, v.y), e[2], e[3]):
+			out.append(v)
+			if out.size() >= count:
+				break
+	return out
 
 
 ## A canal at `p` running `along`: water under every leaf, and dry ground of
@@ -514,7 +527,7 @@ static func _canal_reach(L: Object, p: Vector2, along: Vector2, across: Vector2)
 	return true
 
 
-## One lock at `at` (`GenWorks._work`): a[0] the street's axis, as `_lock_site`.
+## One lock at `at` (`GenWorks._work`): a[0] the street's axis, as `_lock_sites`.
 static func _lock(L: Object, at: Vector2, a: Array) -> bool:
 	var along: Vector2 = L.nrm if int(a[0]) == 0 else L.d
 	var across := Vector2(-along.y, along.x)

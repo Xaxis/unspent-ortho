@@ -274,11 +274,22 @@ static func _never(c: GenContext, built: PackedByteArray) -> PackedByteArray:
 	var village := c.village
 	var level := c.w.level
 	var ground := c.w.ground
+	# A frost sea's leads are its ice opened, not standing water (BiomeDef.leads):
+	# a foot comes down through them as through the sheet round them. Asked of
+	# the RECIPE that laid the tile, so a lead its rules ran into the blend band
+	# of the land next door is a lead too.
+	var recipe := c.recipe
+	var opened := PackedByteArray()
+	opened.resize(256)
+	for def: BiomeDef in BiomeRegistry.all():
+		if def.leads:
+			opened[def.index] = 1
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for i in range(y0 * size, y1 * size):
 			var g := ground[i]
 			if land[i] == 0 or water[i] != 0 or level[i] <= 0 \
-					or g == Ground.DEEP_WATER or g == Ground.WATER or g == Ground.BLACKWATER or g == Ground.RIVER:
+					or g == Ground.DEEP_WATER or g == Ground.WATER or g == Ground.RIVER \
+					or (g == Ground.BLACKWATER and opened[recipe[i]] == 0):
 				no[i] = HARD
 			elif village[i] != 0 or built[i] != 0:
 				no[i] = KEPT
@@ -486,14 +497,17 @@ static func _floor_of(c: GenContext, pads: Array[Vector3]) -> int:
 	return maxi(1, lowest - Treads.DEPTH)
 
 
-## Every tile a tread must never cut: the plan's depots and the landmarks that
-## carry load (`_bearing`). A house, a wreck or a tank standing alone out on the
-## land is crushed where a pad comes down (19_colossi, at load); a village is kept
-## to its radius (`_never`).
+## Every tile a tread must never cut: the plan's depots, the landmarks that
+## carry load (`_bearing`) and the keepers' stations. A house, a wreck or a tank
+## standing alone out on the land is crushed where a pad comes down (19_colossi,
+## at load); a village is kept to its radius (`_never`).
 ## How far past a depot's yard its parts and walls reach, and a margin.
 const YARD_ROOM := 18.0
 ## How far round a landmark's own spot its model and cache reach, and a margin.
 const LANDMARK_ROOM := 9.0
+## How far past a keeper's station's own footprint (its record's `half`) a pad
+## keeps: its larder's runs (an intake's pipe) and a margin.
+const STATION_ROOM := 8.0
 static func _built(c: GenContext, bears: Dictionary) -> PackedByteArray:
 	var w := c.w
 	var out := PackedByteArray()
@@ -520,6 +534,18 @@ static func _built(c: GenContext, bears: Dictionary) -> PackedByteArray:
 	for site: LandmarkSite in Landmarks.sited(w):
 		if bears.has(site.id):
 			mark.call(site.pos, LANDMARK_ROOM)
+	# And a keeper's first station, the work its larder is laid round (an
+	# intake, a lock, a strike field; `Sentinels.lair` dens by it, and its STARVE
+	# way is robbing what stands there): a pad on it crushes the way with the
+	# works. Seed 1's lame walker came down on the glass's strike field and
+	# crushed all nine of its rods. Its other stations (a hulk, a sea wall) are a
+	# den's ground and nothing it eats, and crushed they cost no way.
+	for m: Dictionary in w.landmarks:
+		var land := BiomeRegistry.by_index(int(m.get("country", -1)))
+		var keeper := Sentinels.for_land(land.id) if land != null else null
+		if keeper != null and not keeper.stations.is_empty() and keeper.stations[0] == StringName(str(m.get("kind", &""))):
+			var half: Vector2 = m.get("half", Vector2.ZERO)
+			mark.call(m.pos as Vector2, maxf(half.x, half.y) + STATION_ROOM)
 	return out
 
 

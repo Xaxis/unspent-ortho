@@ -52,6 +52,10 @@ const BREATH_SECONDS := 1.6
 
 ## Hazard id -> the real second its next cue is due.
 var _cue_at: Dictionary = {}
+## `_near_grounds`' last answer and the tile and world it was asked on.
+var _ground_tile := Vector2i(-1000000, -1000000)
+var _ground_world: WorldData = null
+var _ground_near: Dictionary = {}
 ## The cue mark last drawn on the body and the real second it stops counting as
 ## JUST drawn, so a tour can `await breath` (or shimmer, cough, tick, drip,
 ## ring) instead of guessing at the beat and shooting into the gap between two
@@ -131,6 +135,8 @@ func place() -> Hazards.Place:
 	p.spring = _spring()
 	p.pos = pos
 	p.near_props = _near_props(pos)
+	p.ground = game.world.ground_at(floori(pos.x), floori(pos.y))
+	p.near_grounds = _near_grounds(pos)
 	# The realm decides whether there is a sky, and it is the SAME question
 	# 20_realms asks to set `SkyLight.closed`. Asked here rather than derived
 	# from the landscape, because no landscape file may say the hour has stopped
@@ -162,6 +168,19 @@ func _near_props(pos: Vector2) -> Array:
 			continue
 		out.append(p)
 	return out
+
+
+## The ground round the body that presses it (`GroundHazards.near`), read again
+## only when the body steps onto another tile or into another world, and asked of
+## the tile's middle so a tile always answers the same: a sweep standing still
+## reads nothing, and a step costs (2 * reach_most + 1)^2 ground reads, 25 today.
+func _near_grounds(pos: Vector2) -> Dictionary:
+	var tile := Vector2i(floori(pos.x), floori(pos.y))
+	if tile != _ground_tile or game.world != _ground_world:
+		_ground_tile = tile
+		_ground_world = game.world
+		_ground_near = GroundHazards.near(game.world, Vector2(tile) + Vector2(0.5, 0.5))
+	return _ground_near
 
 
 ## How close the body is to water it can drink: 1 at a cistern's rim, falling

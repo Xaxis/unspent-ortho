@@ -36,6 +36,7 @@ static func make() -> BiomeDef:
 	d.temp_range = Vector2(0.35, 0.8)
 	d.moist_range = Vector2(0.35, 0.8)
 	d.coastal = 1.0
+	d.sea_bound = true
 	d.dunes = true
 	d.relief = {
 		&"base": 2.6, &"hills": 3.4, &"ridge": 1.0, &"near": 2.0, &"terrace": 0.0, &"valley": 0.42,

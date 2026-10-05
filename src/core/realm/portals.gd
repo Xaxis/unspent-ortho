@@ -95,6 +95,19 @@ static func in_world(w: WorldData) -> Array[Portal]:
 	return out
 
 
+## A shaft is a place worth walking to, so it goes in the world's own list of
+## them: the map draws it, a tour reaches it by name (`place shaft`) rather than
+## by a coordinate, and nothing else has to be taught what a portal is. Added
+## after generation, so no worldgen stage sees it and no island moves; written on
+## the raise's worker with the other rows (RealmWarm), and again by 20_realms
+## for a world nobody got ready.
+static func record(w: WorldData) -> void:
+	for p: Portal in in_world(w):
+		if not Landmarks.has_row(w, &"shaft", p.pos):
+			w.landmarks.append({"kind": &"shaft", "pos": p.pos,
+				"country": w.country_at(floori(p.pos.x), floori(p.pos.y))})
+
+
 ## Tiles round a shaft that nothing laid after it may stand on: the mouth, and
 ## the room in front of it `_score` asks for (3.5 tiles out) with the step off.
 const HOLD := 4

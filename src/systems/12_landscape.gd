@@ -516,10 +516,12 @@ func _window_line() -> String:
 	gpu.sort()
 	cpu.sort()
 	var at := func(a: Array, q: float) -> float: return float(a[clampi(int(q * (a.size() - 1)), 0, a.size() - 1)]) if not a.is_empty() else 0.0
-	return "\nworld window: chunk builds %d, chunks %d (parked %d, far %d/%d), draw calls %d, primitives %d (shadow %d), gpu p50 %.1f p95 %.1f ms, render cpu p50 %.1f p95 %.1f ms" % [
+	return "\nworld window: chunk builds %d, chunks %d (parked %d, far %d/%d), draw calls %d, objects %d, nodes %d, primitives %d (shadow %d), gpu p50 %.1f p95 %.1f ms, render cpu p50 %.1f p95 %.1f ms" % [
 		v.build_count - _builds_at, v.chunk_count(), v.parked_count(),
 		v.far.block_count() if v.far != null else 0, v.far_wanted(),
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+		Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
 		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 		v.get_viewport().get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME),
 		at.call(gpu, 0.5), at.call(gpu, 0.95), at.call(cpu, 0.5), at.call(cpu, 0.95)]

@@ -25,7 +25,9 @@
 //   --out=PREFIX     screenshot prefix (default shots/export/web)
 //   --args=A,B       extra boot arguments (the shell passes the query string after --)
 //   --after=SECS     second screenshot this long after ready (default 4)
-//   --timeout=SECS   each ready line must come within this (default 90)
+//   --timeout=SECS   each ready line must come within this (default 300: a full new game
+//                    raises its island in the page, and on the Linux box's GPU at load 25-43
+//                    seed 7's came 100-146 s after Enter, so 90 failed runs that were only slow)
 //   --play           start a new game from the title with real keys and shoot it
 //   --reload         reload and require user:// (IndexedDB) to have kept the probe's save
 //   --resize=WxH     then resize the page and require the scale to stay an exact integer
@@ -79,7 +81,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const opt = { dir: 'build/web', out: 'shots/export/web', args: '', after: '4', timeout: '90', resize: '', tour: '', frames: '', window: '' };
+const opt = { dir: 'build/web', out: 'shots/export/web', args: '', after: '4', timeout: '300', resize: '', tour: '', frames: '', window: '' };
 for (const a of process.argv.slice(2)) {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/);
   if (m) opt[m[1]] = m[2] === undefined ? true : m[2];

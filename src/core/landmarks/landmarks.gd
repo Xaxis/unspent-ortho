@@ -410,6 +410,39 @@ static func cache_of(site: LandmarkSite) -> Vector2:
 	return site.pos + Vector2.from_angle(site.facing) * CACHE_OUT
 
 
+## EVERY STANDING LANDMARK IN THE WORLD'S OWN LIST of places, under the kind's own
+## name, so the map, the reads app and `place NAME` find it without being taught
+## what a landmark is, once each. No `mark`: a mark means the machines cut the
+## ground here, and half of these were standing long before they did.
+##
+## Recorded at its CACHE and not at its own middle: `place lighthouse` means "take
+## me to the lighthouse", and arriving inside the tower with the cache behind you
+## is not that.
+##
+## Written on the raise's worker before anything asks where a keeper dens
+## (RealmWarm), and again by 22_landmarks for a world nobody got ready: a design
+## that stations at a landmark (the drip warden at a sump pump) dens at its
+## region's heart until the row is there and at the pump after it, and asked both
+## sides of the write, one game held two dens for one keeper.
+static func record(world: WorldData) -> void:
+	for s: LandmarkSite in sites(world):
+		var at := cache_of(s)
+		if not has_row(world, s.kind, at):
+			world.landmarks.append({"kind": s.kind, "pos": at,
+				"country": world.country_at(floori(at.x), floori(at.y)),
+				"dir": Vector2.from_angle(s.facing)})
+
+
+## Whether the world's list holds a row of `kind` within half a tile of `at`.
+static func has_row(world: WorldData, kind: StringName, at: Vector2) -> bool:
+	for m: Dictionary in world.landmarks:
+		# Typed before compared: this runs on the raise's worker.
+		var k: StringName = StringName(str(m.get("kind", &"")))
+		if k == kind and (m.get("pos", Vector2.INF) as Vector2).distance_to(at) < 0.5:
+			return true
+	return false
+
+
 ## What one landmark holds, rolled once and for good: the same seed and the same
 ## site always give the same things, so a cache cannot be rerolled by loading.
 static func loot(site: LandmarkSite, seed_value: int) -> Array:
@@ -527,6 +560,16 @@ static func _trod(world: WorldData) -> Dictionary:
 ## (docs/ROADMAP.md's start budget). The sweep gathers every tile with room on it
 ## once, scoring it for each thing the region's own kinds want, and the picking
 ## afterwards is a walk over a few hundred candidates.
+## Where the landfall city's port stair stands (its works row `port`: the step
+## on the water side of the quay, the raft's landing), or INF on a world whose
+## landfall laid none.
+static func port_of(world: WorldData) -> Vector2:
+	for m: Dictionary in world.landmarks:
+		if m.get("kind") == &"port":
+			return m.pos
+	return Vector2.INF
+
+
 static func sited(world: WorldData) -> Array[LandmarkSite]:
 	var out: Array[LandmarkSite] = []
 	if world == null:
@@ -568,10 +611,7 @@ static func sited(world: WorldData) -> Array[LandmarkSite]:
 	# laid there (its works row `port`), or where the shortest water from home
 	# comes ashore (GenBodies marks `landfall` and `from` on its row) on a world
 	# with no port. A &"landfall" kind stands as near it as it can (`_wants`).
-	var port := Vector2.INF
-	for m: Dictionary in world.landmarks:
-		if m.get("kind") == &"port":
-			port = m.pos
+	var port := port_of(world)
 	var ashore_on := {}
 	for row: Dictionary in world.continents:
 		if bool(row.get("landfall", false)) and row.has("from"):

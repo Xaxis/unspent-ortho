@@ -24,9 +24,13 @@ zoom 8
 await dog 10
 wait 0.8
 shot 04-the-village-dog with dog
-# Gulls over the refuse: the nearest tip or wreck, whatever village is near.
+# Gulls over the refuse: stood by the nearest tip or wreck by name (a walk from
+# Oyster Row found no flocked heap in reach on GEN 47's world), then off it far
+# enough not to put the flock up.
+near tip,wreck
+wait 1.0
 zoom 15
-walkto refuse 60
+walkto refuse 20
 zoom 9
 await gulls 40
 wait 0.5

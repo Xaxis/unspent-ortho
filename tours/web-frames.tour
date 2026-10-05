@@ -1,0 +1,133 @@
+# WHAT A FRAME COSTS WHERE A PLAYER IS (ROADMAP 9, frame-time budgets on the
+# web): one `--stats` window (p50/p95/p99/worst past warm-up) per scene a player
+# lives in, walking or turning on the real keys: the coast by day, a fight, a
+# village at night, a crowd fight at dusk under its lamps, the pinewood over the
+# shoulder, the drowned city, the densest landscape (at its port, down its most
+# characteristic street, and over it from the furthest the play camera goes,
+# 09_view FAR), and a room, last because a `place` cannot leave one. The cave's are tours/cave-cost.tour's. Measured
+# uncapped, so the number is the frame's cost and not the display's pace.
+#   tools/web.sh --tour=tours/web-frames.tour --uncapped --timeout=900 --trace --args=--seed=7,--weather=clear:0,--stats
+#   tools/tour.sh tours/web-frames.tour --seed=7 --weather=clear:0 --stats
+coast calm
+hour 11
+place coast
+wait 2.0
+perf stats begin
+walk 1,0 2.0
+walk 0,1 2.0
+walk -1,0 2.0
+perf stats end coast_day
+shot 01-coast-day with land:coast
+
+spawn runner
+spawn harvester
+wait 1.0
+perf stats begin
+hold swing
+walk 1,0 1.5
+wait 1.5
+release swing
+press dodge
+walk -1,0 1.5
+wait 1.0
+perf stats end fight_day
+shot 02-fight-day with mob:runner,mob:harvester
+coast calm
+
+hour 23
+near house
+wait 2.0
+perf stats begin
+walk -1,0 2.0
+walk 0,-1 2.0
+walk 1,0 2.0
+perf stats end village_night
+shot 03-village-night
+
+hour 19.5
+near house
+wait 1.5
+spawn runner
+spawn runner@90
+spawn harvester@180
+spawn cutter@270
+wait 1.0
+perf stats begin
+hold swing
+walk 1,0 1.5
+wait 1.5
+release swing
+press dodge
+walk 0,1 1.5
+wait 1.0
+perf stats end crowd_dusk
+shot 04-crowd-dusk with mob:runner,mob:harvester,mob:cutter
+coast calm
+
+hour 11
+place pinewood
+wait 1.5
+tap shoulder
+await shoulder 20
+wait 2.0
+perf stats begin
+walk 0,-1 2.0
+mouse 640,0 0.6
+wait 1.0
+mouse 640,0 0.6
+walk 0,-1 2.0
+perf stats end pinewood_shoulder
+shot 05-pinewood-shoulder with shoulder,land:pinewood
+tap shoulder
+wait 1.0
+
+# Each city window is an event, so `--programs` counts the GL programs it is
+# first to draw: arriving in the city's densest ground is where a web compile
+# freeze would be met.
+hour 12
+echo event city_port
+place clock_tower
+wait 3.0
+shot 06-city-port with land:drowned_city
+perf stats begin
+walk 1,0 3.0
+walk -1,0 3.0
+walk 0,-1 2.0
+walk 0,1 2.0
+perf stats end city_port
+
+echo event city_street
+place typical_drowned_city
+wait 3.0
+shot 07-city-street with land:drowned_city
+perf stats begin
+walk 0,-1 3.0
+walk 0,1 3.0
+walk 1,0 2.0
+walk -1,0 2.0
+perf stats end city_street
+
+echo event city_above
+zoom 34
+wait 3.0
+shot 08-city-above with land:drowned_city
+perf stats begin
+walk 1,0 5.0
+walk -1,0 5.0
+perf stats end city_above
+zoom 15
+
+# Back to the pinewood for its cottage.
+place pinewood
+wait 1.5
+near door:cottage
+await door 10
+press use 0.1
+await inside:cottage 30
+wait 2.0
+perf stats begin
+walk 1,0 1.5
+walk -1,0 1.5
+wait 1.0
+perf stats end room
+shot 09-room with inside:cottage
