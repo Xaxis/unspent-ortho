@@ -198,6 +198,8 @@ func _process(delta: float) -> void:
 	if not _curtains.is_empty():
 		_age_curtains()
 	game.player.draw_swing(sim.now)
+	if game.options.hit_areas:
+		_draw_hit_areas()
 	if _heavy_let_go >= 0.0 and sim.now >= _heavy_let_go:
 		_let_go()
 	if sim.hero.held() and not frozen:
@@ -458,6 +460,51 @@ func _curtain(e: Dictionary) -> void:
 			MobFx.puffs(fx, _at3(at, 0.9), Vector2.ZERO, lime, 8 if broken else 3, 1.0 if broken else 0.6, int(e.id) + 3)
 			if broken:
 				Events.sfx.emit(&"break", _at3(at))
+
+
+## --hit-areas: the player's blow box while it is live, and each body's hit
+## circle, outlined over everything (no depth test) in the plane the stroke is
+## drawn in (Player.draw_swing: half a unit over his feet), so a frame shows the
+## hit on top of the stroke drawn for it.
+var _hit_lines: MeshInstance3D = null
+
+
+func _draw_hit_areas() -> void:
+	if _hit_lines == null:
+		_hit_lines = MeshInstance3D.new()
+		_hit_lines.mesh = ImmediateMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.vertex_color_use_as_albedo = true
+		mat.no_depth_test = true
+		mat.render_priority = 100
+		_hit_lines.material_override = mat
+		_hit_lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		game.add_child(_hit_lines)
+	var im := _hit_lines.mesh as ImmediateMesh
+	im.clear_surfaces()
+	var loops: Array[Array] = []
+	var b := sim.hero.blow
+	if b != null and b.live_in(sim.hero.blow_at, sim.now - 1.0, sim.now):
+		loops.append([FightRules.blow_outline(sim.hero.pos, sim.hero.facing, sim.hero.radius, b), Color(1, 0, 1)])
+	for m in sim.mobs:
+		if m.alive and not m.removed and m.pos.distance_to(sim.hero.pos) < 12.0:
+			var ring := PackedVector2Array()
+			for i in 32:
+				ring.append(m.pos + Vector2.from_angle(i * TAU / 32.0) * m.radius)
+			loops.append([ring, Color(0, 1, 1)])
+	if loops.is_empty():
+		return
+	var plane := game.player.global_position.y + 0.5
+	im.surface_begin(Mesh.PRIMITIVE_LINES)
+	for loop: Array in loops:
+		var pts: PackedVector2Array = loop[0]
+		im.surface_set_color(loop[1])
+		for i in pts.size():
+			for q: Vector2 in [pts[i], pts[(i + 1) % pts.size()]]:
+				var w := _at3(q)
+				im.surface_add_vertex(Vector3(w.x, plane, w.z))
+	im.surface_end()
 
 
 func _at3(p: Vector2, lift: float = 0.0) -> Vector3:
@@ -924,6 +971,13 @@ var _stripped_at := -INF
 func tour_seen(what: StringName) -> bool:
 	var now := Time.get_ticks_msec() / 1000.0
 	match what:
+		# The player's blow is live with four steps of its slice left, so a
+		# `shot` (three steps on) takes it at the end of its live slice, the
+		# stroke drawn furthest across its box (swing_drawn.tour).
+		&"swing_closing":
+			var b := sim.hero.blow
+			var e := sim.now - sim.hero.blow_at
+			return b != null and e >= b.windup and e >= b.windup + b.active - 67.0 and e < b.windup + b.active
 		&"raked":
 			return now - _raked_at < 0.35
 		&"grip_failed":

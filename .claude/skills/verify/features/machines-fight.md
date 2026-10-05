@@ -18,6 +18,7 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   - Climbing: `tools/test.sh test_climb`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour` (h).
   - Vertical grapple (a face up to 8 levels): `tools/test.sh test_vertical_grapple`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/vertical_grapple.tour` (h).
   - Drop strike: `tools/test.sh test_drop_strike`, `tools/tour.sh tours/drop_strike.tour` (h).
+  - The swing's stroke is drawn on the ground its blow lands on and nowhere else (FightRules.box_hits; a swept tool's fan, Items.SWEPT, a strip for blades and thrusts): `tools/test.sh test_swing_drawn`; drawn against hit at the harvester's flank, `--hit-areas` outlining the live box: `TOUR_FIXED_FPS=60 tools/tour.sh tours/swing_drawn.tour` (h).
   - Heavy blow (swing held 300 ms; time-to-kill prints): `tools/test.sh "test_heavy,test_bouts"`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/heavy_blow.tour`.
   - Bite ground ring: `tools/test.sh test_tell_ring`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour`.
   - Thrower (Brains `throw`): `tools/test.sh test_throw`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/thrower.tour` (h).

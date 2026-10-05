@@ -1225,7 +1225,7 @@ static func warm(parent: Node, at: Vector3) -> Array[Node3D]:
 		(mi.material_override as ShaderMaterial).set_shader_parameter(&"progress", 1.0)
 		out.append(mi)
 	var arc := MeshInstance3D.new()
-	arc.mesh = swing_mesh(1.0, 1.0)
+	arc.mesh = swing_mesh(0.3, 1.0, 1.0)
 	var sm := swing_material()
 	sm.set_shader_parameter(&"head", 0.0)
 	sm.set_shader_parameter(&"tail", 0.0)
@@ -1269,34 +1269,59 @@ static func _free_after(n: Node, seconds: float) -> void:
 	tw.tween_callback(n.queue_free)
 
 
-## The swing's arc: `reach` out from the body's centre, spread to cover `width`
-## across. u runs from where the swing starts to where it ends; v from the
-## inside of the stroke to its outer edge.
-static func swing_mesh(reach: float, width: float) -> ArrayMesh:
-	# Never a narrow flag: even a fist's sweep is drawn as a crescent a body wide.
-	var spread := clampf(atan2(width * 0.5, maxf(0.3, reach)) * 1.5, 0.95, 1.5)
-	reach = maxf(reach, 0.9)
-	var inner := reach * 0.45
+## The swing's stroke: its blow's box (FightRules.box_hits), from the body's skin
+## at `skin` out to `tip` from its centre and `width` across, so the light lies
+## exactly where the blow lands and nowhere else. u runs across it from where the
+## swing starts (the right hand) to where it ends; v from the body out to the tip.
+## A fan over it painted the sides where nothing landed (a lance 1.8 tiles); a
+## swept blow (Blow.sweep) is drawn as the fan it truly covers.
+## `lands(local)`, given, says whether a blow lands on ground at `local` (along
+## the facing, then across): ground a ledge away, where no blow passes
+## (FightRules.levels_meet), is left out of the stroke, so a swing at a body
+## below a bank shows that it cannot reach it.
+static func swing_mesh(skin: float, tip: float, width: float, lands := Callable(), sweep := 0.0) -> ArrayMesh:
 	var steps := 14
+	var depth := SWING_DEPTH_STEPS if lands.is_valid() else 1
 	var verts := PackedVector3Array()
 	var uvs := PackedVector2Array()
 	for i in steps:
 		var u0 := float(i) / steps
 		var u1 := float(i + 1) / steps
-		# From the right hand across to the left.
-		var a0 := lerpf(spread, -spread, u0)
-		var a1 := lerpf(spread, -spread, u1)
-		var o0 := Vector3(cos(a0), 0.0, sin(a0))
-		var o1 := Vector3(cos(a1), 0.0, sin(a1))
-		verts.append_array([o0 * inner, o0 * reach, o1 * reach, o0 * inner, o1 * reach, o1 * inner])
-		uvs.append_array([Vector2(u0, 0), Vector2(u0, 1), Vector2(u1, 1), Vector2(u0, 0), Vector2(u1, 1), Vector2(u1, 0)])
+		for j in depth:
+			var v0 := float(j) / depth
+			var v1 := float(j + 1) / depth
+			# From the right hand across to the left: a strip, or a swept blow's fan.
+			var q := [_swing_at(u0, v0, skin, tip, width, sweep), _swing_at(u0, v1, skin, tip, width, sweep),
+				_swing_at(u1, v1, skin, tip, width, sweep), _swing_at(u1, v0, skin, tip, width, sweep)]
+			var mid: Vector3 = (q[0] + q[1] + q[2] + q[3]) * 0.25
+			if lands.is_valid() and not bool(lands.call(Vector2(mid.x, mid.z))):
+				continue
+			verts.append_array([q[0], q[1], q[2], q[0], q[2], q[3]])
+			uvs.append_array([Vector2(u0, v0), Vector2(u0, v1), Vector2(u1, v1), Vector2(u0, v0), Vector2(u1, v1), Vector2(u1, v0)])
+	var mesh := ArrayMesh.new()
+	if verts.is_empty():
+		return mesh
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
-	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
+
+
+## Cells along the stroke's reach when it is cut to the ground a blow lands on.
+const SWING_DEPTH_STEPS := 10
+
+
+## A point of the stroke: across it at `u` (the right hand at 0), out along it at
+## `v` (the skin at 0, the tip at 1). A strip `width` across, or for a swept blow
+## the fan `sweep` radians round the body.
+static func _swing_at(u: float, v: float, skin: float, tip: float, width: float, sweep: float) -> Vector3:
+	var r := lerpf(skin, tip, v)
+	if sweep > 0.0:
+		var a := lerpf(sweep * 0.5, -sweep * 0.5, u)
+		return Vector3(cos(a) * r, 0.0, sin(a) * r)
+	return Vector3(r, 0.0, lerpf(width * 0.5, -width * 0.5, u))
 
 
 static func swing_material() -> ShaderMaterial:

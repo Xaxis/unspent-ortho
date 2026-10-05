@@ -41,6 +41,14 @@ class_name Items
 ## Hardness ladder: a seam needs a tool of at least its stuff.
 const STUFF_RANK := {&"wood": 0, &"iron": 1, &"steel": 2, &"crucible": 3, &"found": 4}
 
+## Tools swung through an arc, as their figure swings them (HeldTools.CLASS: hook,
+## axe, heavy, pick, sweep): their blow is a swept box (Blow.sweep). Every other
+## tool, a blade, a point or a thrust, strikes a straight strip.
+const SWEPT: Array[StringName] = [&"stave", &"billhook", &"axe_hand", &"axe_felling", &"axe_works", &"mattock",
+	&"mattock_steel", &"pick", &"pick_steel", &"pulse_hammer", &"las_long", &"las_broad", &"sonic_wave",
+	&"axe_bog", &"axe_tide", &"bill_glass", &"bill_vane", &"mattock_bog", &"mattock_gyro", &"pick_spar",
+	&"pick_glass", &"stave_varnish", &"stave_coil", &"hammer_hafted"]
+
 ## Bare hands, for the fight package: no item, these numbers. (source)
 const FISTS := {"swing": [70, 80, 110, 180], "lockout": 440, "reach": 0.6, "width": 0.8, "dmg": 1,
 	"knock": 2.5, "knock_ms": 120, "creep": 0.35}

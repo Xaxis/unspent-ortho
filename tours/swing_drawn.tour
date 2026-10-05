@@ -1,0 +1,26 @@
+# WHAT IS DRAWN IS WHAT HITS (#76): a swing's stroke is drawn over the ground
+# its hit box covers and nowhere else (FightRules.box_hits, MobFx.swing_mesh).
+# A harvester at its work on the most open ground there is (`place open_coast`:
+# clear of every village and depot, the fewest things near), and the player
+# beside its flank facing the way it faces, so the stroke runs past its cutter
+# bar over open ground and not over its deck, close in at zoom 9. With
+# --hit-areas the frame also outlines what the fight tests: the blow box while
+# it is live (magenta) and each body's hit circle (cyan). The stroke is shot
+# at the end of its live slice, drawn furthest across its box (`until
+# swing_closing`), whatever the tool's timing. Run once per tool, on a fixed
+# step so a frame costs the world no time:
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/swing_drawn.tour --seed=4 --hour=12 --weather=clear:0 --give=stave:1 --held=stave --hit-areas
+coast calm
+wait 0.5
+place open_coast
+wait 1.2
+spawn harvester@180
+wait 0.6
+zoom 9
+near mob:harvester 1.9 along 0.6
+wait 0.4
+shot 00-beside-its-flank with mob:harvester
+tap swing
+until swing_closing 1
+shot 01-at-the-end-of-its-live-slice with mob:harvester
+end

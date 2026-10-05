@@ -43,6 +43,10 @@ var heavy := false
 ## the player stood (FightRules.drop_hits). `reach` is how far past the body's
 ## own radius the landing reaches; `width` means nothing to it.
 var area := false
+## Radians a swept blow's box fans across, centred on the facing: a sector out to
+## the reach, not a strip (FightRules.box_hits). 0 for a strip: a blade's cut, a
+## point, a thrust, and every machine's bite.
+var sweep := 0.0
 
 
 ## This blow with its tell `k` times as long (FightSim.UNSEEN_TELL), a copy: the
@@ -128,6 +132,8 @@ static func for_item(id: StringName, edge: int = 10000) -> Blow:
 	var bulk: float = d.get("bulk", 1.0)
 	b.wind_cost = 120.0 + 60.0 * bulk
 	b.wick = int(d.get("wick", 0))
+	if Items.SWEPT.has(id):
+		b.sweep = FightRules.swept(b.reach, b.width)
 	# A found weapon has no edge to lose: it is charged or it is dry.
 	b.dmg = int(d.get("dmg", 1)) if b.wick > 0 else FightRules.damage_at_edge(int(d.get("dmg", 1)), edge)
 	return b
@@ -136,7 +142,7 @@ static func for_item(id: StringName, edge: int = 10000) -> Blow:
 func copy() -> Blow:
 	var b := Blow.new()
 	for p: String in ["windup", "active", "recovery", "cooldown", "reach", "width", "dmg", "knock", "knock_ms",
-			"creep", "grip", "torn", "cuts", "verb", "wind_cost", "wick", "heavy", "area"]:
+			"creep", "grip", "torn", "cuts", "verb", "wind_cost", "wick", "heavy", "area", "sweep"]:
 		b.set(p, get(p))
 	return b
 
