@@ -36,6 +36,9 @@ rules="$rules,test_marks,test_sketch,test_tool_hint,test_arcs:test_every_word_fi
 # A new BiomeDef field must be classified TERRAIN or LOOK, or the save stamp stops
 # covering it; look/frost-props reached CI red on `leads` (2026-10-03). About 1 s.
 rules="$rules,test_world_stamp"
+# Every marked work worldgen lays has words on the reads pane, or the pane prints
+# its id; the crags' store reached batch 6's CI red on it (2026-10-05). About 2 min.
+rules="$rules,test_screens:test_every_marked_work_worldgen_makes_has_words_for_the_reads_app"
 [ -n "${1:-}" ] && rules="$rules,$1"
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-preflight.XXXXXX")"
 tools/test.sh "$rules" >"$log" 2>&1; code=$?

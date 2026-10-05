@@ -332,7 +332,7 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			if absf(side) > 0.6:
 				# Grinding round in the snow: a body kept at its flank is swept.
 				_come_round(m, sim, to, pause_ms)
-			elif to.length() <= strike_range(m, sim) and can_bite(m, now):
+			elif to.length() <= strike_range(m, sim) and sim.meets_hero(m.pos) and can_bite(m, now):
 				m.flank_since = -1.0
 				bite(m, sim)
 			return
@@ -370,7 +370,7 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 	# away, so the blow is live as the front of it gets there, not after it has
 	# gone over them.
 	var lead := speed * m.bite.windup / 1000.0 * 0.9 if m.bite != null else 0.0
-	if ahead and to.length() <= strike_range(m, sim) + lead and can_bite(m, now):
+	if ahead and to.length() <= strike_range(m, sim) + lead and sim.meets_hero(m.pos) and can_bite(m, now):
 		bite(m, sim)
 
 
@@ -380,7 +380,7 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 ## guarded keeper is then a strategy it answers, not a stalemate in which it can
 ## neither face the player to run nor be struck.
 static func _come_round(m: MobState, sim: FightSim, to: Vector2, pause_ms: float) -> void:
-	if m.come_round == null or not can_bite(m, sim.now):
+	if m.come_round == null or not can_bite(m, sim.now) or not sim.meets_hero(m.pos):
 		m.flank_since = -1.0
 		return
 	if to.length() > m.radius + sim.hero.radius + m.bite.reach + 1.0:
@@ -518,9 +518,11 @@ static func _lunge(m: MobState, sim: FightSim) -> void:
 	if cyc < LUNGE_PRESS_MS:
 		m.want = dir * m.quick if d > skin * 0.95 else Vector2.ZERO
 		# Only a bite it faces: a machine turning slowly with the player at its back
-		# does not snap at the air in front of it.
+		# does not snap at the air in front of it. Nor one across a ledge no blow
+		# passes over (FightSim.meets_hero): its tell would promise a bite that
+		# cannot land.
 		var off := absf(wrapf(to.angle() - m.facing, -PI, PI))
-		if d <= strike and (off < FACING_BITE or not m.machine) and can_bite(m, now) and sim.bite_turn(m):
+		if d <= strike and (off < FACING_BITE or not m.machine) and sim.meets_hero(m.pos) and can_bite(m, now) and sim.bite_turn(m):
 			bite(m, sim)
 	else:
 		var side := 1.0 if m.id % 2 == 0 else -1.0

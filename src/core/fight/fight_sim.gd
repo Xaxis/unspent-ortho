@@ -1732,7 +1732,7 @@ func _seal_behind(from: Vector2, to: Vector2) -> void:
 		curtains.append(c)
 		m.seal_until = c.rise_at
 		m.seal_at = g.at
-		emit(&"curtain_tell", {"id": c.id, "mob": m, "at": g.at, "from": g.from, "to": g.to, "ms": float(sealing.tell)})
+		emit(&"curtain_tell", {"id": c.id, "mob": m, "at": g.at, "from": g.from, "to": g.to, "r": float(c.r), "ms": float(sealing.tell)})
 		return
 
 

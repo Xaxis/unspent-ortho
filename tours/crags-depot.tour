@@ -1,0 +1,107 @@
+# THE CRAGS' DEPOT (#68): the plan's old store, a squat winch house cut into a
+# shelf at its lip, its cable down to the terrace below. No mast and no light of
+# its own (the crags hold no machine light); only its three housings' small
+# lamps say whether each is working, open, or dark.
+#
+#   tools/tour.sh tours/crags-depot.tour --seed=1 --hour=12 --weather=clear:0 --held=axe_felling
+#
+# What it shows, in order: the house at noon and at dusk, at the zoom the game is
+# played at and backed off; the cable from the terrace below, looking up at the
+# lip; each housing head on while it works; and each opened, the yard going dark
+# with the third, head on again.
+
+coast calm
+place works_the_crags
+wait 0.8
+await works:the_crags 12
+mark yard
+zoom 15
+wait 0.6
+shot 01-noon-z15 with works:the_crags,works_yard,works_lit
+zoom 30
+wait 0.6
+shot 02-noon-z30 with works:the_crags,works_yard
+hour 18.6
+wait 1.0
+shot 03-dusk-z30 with works:the_crags,works_yard
+zoom 15
+wait 0.6
+shot 04-dusk-z15 with works:the_crags,works_yard
+
+# FROM THE TERRACE BELOW, at noon, over the shoulder: the cable comes down off the
+# jib to where it is made fast, and the drop it hangs over is the lip.
+hour 12
+near winch_lip
+wait 0.8
+tap shoulder
+await shoulder 20
+# Turned back up at the yard once the view is over the shoulder: a body of the
+# yard's own walking near the foot draws the view to it otherwise.
+face mark:yard
+wait 1.0
+shot 05-the-cable-from-the-terrace-below with works:the_crags,works_yard,shoulder
+tap shoulder
+wait 0.8
+
+# EACH HOUSING HEAD ON, working: its own small lamp the only light in the yard.
+near feed_head
+wait 0.5
+tap shoulder
+await shoulder 20
+wait 0.8
+shot 06-feed-working with works:the_crags,works_lit,shoulder
+tap shoulder
+wait 0.6
+near breaker_head
+wait 0.5
+tap shoulder
+await shoulder 20
+wait 0.8
+shot 07-breaker-working with works:the_crags,works_lit,shoulder
+tap shoulder
+wait 0.6
+near coolant_head
+wait 0.5
+tap shoulder
+await shoulder 20
+wait 0.8
+shot 08-coolant-working with works:the_crags,works_lit,shoulder
+tap shoulder
+wait 0.6
+
+# OPENED, one walk each, and the yard dark with the third.
+place works_the_crags_feed
+wait 0.5
+press use 5.5
+await works_open:1 14
+place works_the_crags_breaker
+wait 0.5
+press use 5.5
+await works_open:2 14
+place works_the_crags_coolant
+wait 0.5
+press use 5.5
+await works_dark 14
+
+near feed_head
+wait 0.5
+tap shoulder
+await shoulder 20
+wait 0.8
+shot 09-feed-open-and-dark with works:the_crags,works_dark,shoulder
+tap shoulder
+wait 0.6
+near breaker_head
+wait 0.5
+tap shoulder
+await shoulder 20
+wait 0.8
+shot 10-breaker-open-and-dark with works:the_crags,works_dark,shoulder
+tap shoulder
+wait 0.6
+near coolant_head
+wait 0.5
+tap shoulder
+await shoulder 20
+wait 0.8
+shot 11-coolant-open-and-dark with works:the_crags,works_dark,shoulder
