@@ -130,7 +130,8 @@ static func rob_larder(tree: SceneTree, g: Game, s: SentinelState) -> Dictionary
 			# Beside the work, and out of the keeper's eye where there is a side of
 			# it that is: a player robbing its larder keeps behind its back.
 			var spot := unseen_beside(g, q, s.body)
-			g.player.place(spot, (q.pos - spot).angle())
+			var c := g.query.reach_circle(q, spot)
+			g.player.place(spot, (Vector2(c.x, c.y) - spot).angle())
 			for f in 2:
 				await tree.process_frame
 			var used := Survival.use(g)
@@ -184,11 +185,12 @@ static func unseen_beside(g: Game, q: WorldProp, m: MobState) -> Vector2:
 	var best := Vector2.INF
 	var best_off := -1.0
 	for k in 16:
-		var p := q.pos + Vector2.from_angle(TAU * k / 16.0) * (q.solid + 0.7)
+		var dir := Vector2.from_angle(TAU * k / 16.0)
+		var p := q.pos + dir * g.query.stand_off(q, dir, 0.7)
 		if not g.query.standable(floori(p.x), floori(p.y)) or not g.query.body_fits(p, Tuning.PLAYER_RADIUS, null, true, FightSim.HERO_TALL):
 			continue
 		var off := 0.0 if m == null else absf(wrapf((p - m.pos).angle() - m.facing, -PI, PI))
 		if off > best_off:
 			best_off = off
 			best = p
-	return best if best.is_finite() else q.pos + Vector2.RIGHT * (q.solid + 0.7)
+	return best if best.is_finite() else q.pos + Vector2.RIGHT * g.query.stand_off(q, Vector2.RIGHT, 0.7)

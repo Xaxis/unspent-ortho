@@ -1078,7 +1078,7 @@ func _stand_by(name: String) -> bool:
 	var station: Array = Survival.STATION_KINDS.get(kind, [])
 	for turn in 12:
 		var dir := Vector2.from_angle(TAU * turn / 12.0)
-		var spot := best.pos + dir * _out_along(best, dir, Tuning.PLAYER_RADIUS + 0.45)
+		var spot := best.pos + dir * game.query.stand_off(best, dir, Tuning.PLAYER_RADIUS + 0.45)
 		if not game.query.standable(floori(spot.x), floori(spot.y)):
 			continue
 		_teleport(spot)
@@ -1137,7 +1137,7 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 		for turn in 13:
 			# The side the player is already on first, then round.
 			var dir := away if turn == 0 else Vector2.from_angle(TAU * (turn - 1) / 12.0)
-			var spot := found.pos + dir * _out_along(found, dir, edge)
+			var spot := found.pos + dir * game.query.stand_off(found, dir, edge)
 			if turn > 0 and not game.query.standable(floori(spot.x), floori(spot.y)):
 				continue
 			_teleport(spot)
@@ -1155,18 +1155,6 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 	printerr("tour %s: stood all round the %s at %s and it never came under the hand (reach %.2f, edge %.2f)"
 		% [_name, said, found.pos, hand, edge])
 	return false
-
-
-## How far out along `dir` from `q`'s middle a body stands `gap` off its edge
-## (WorldQuery.edge_to): past its solid, or for a walled thing (PropWalls) the
-## outermost point that far off its walls.
-func _out_along(q: WorldProp, dir: Vector2, gap: float) -> float:
-	if not PropWalls.walled(q.kind):
-		return q.solid + gap
-	var d := PropWalls.kind_reach(q.kind) * q.scale + gap + 0.5
-	while d > 0.0 and game.query.edge_to(q, q.pos + dir * d) > gap:
-		d -= 0.02
-	return maxf(d, 0.0)
 
 
 ## Face the nearest edge of `q` from where the player stands (WorldQuery.reach_circle).
@@ -1363,7 +1351,7 @@ func _stand_back(kinds: String, dist: float) -> bool:
 		away = Vector2(1, 0)
 	for turn in 25:
 		var dir := away if turn == 0 else Vector2.from_angle(TAU * (turn - 1) / 24.0)
-		var out := _out_along(target, dir, 0.0)
+		var out := game.query.stand_off(target, dir, 0.0)
 		var spot := target.pos + dir * (out + dist)
 		var clear := true
 		var k := 0.0

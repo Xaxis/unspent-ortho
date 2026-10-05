@@ -355,6 +355,18 @@ func edge_to(q: WorldProp, p: Vector2) -> float:
 	return p.distance_to(Vector2(c.x, c.y)) - c.z
 
 
+## How far out along `dir` from `q`'s middle a body stands `gap` off its edge
+## (edge_to): past its solid, or for a walled thing the outermost point that far
+## off its walls. Where something stands beside a thing, as a hand reaches it.
+func stand_off(q: WorldProp, dir: Vector2, gap: float) -> float:
+	if _walled_kind[q.kind] == 0:
+		return q.solid + gap
+	var d := PropWalls.kind_reach(q.kind) * q.scale + gap + 0.5
+	while d > 0.0 and edge_to(q, q.pos + dir * d) > gap:
+		d -= 0.02
+	return maxf(d, 0.0)
+
+
 ## Every prop `props_near(p, r)` gives, and every walled one whose walls could
 ## stand within r of p though its middle stands further: what a reach measured
 ## from an edge (edge_to) searches.
