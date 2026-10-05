@@ -11,8 +11,10 @@ extends RefCounted
 ##
 ## Reached: every function named in the call or the lambda of a
 ## `WorkerThreadPool.add_task` / `add_group_task` / `Thread.start`, and everything
-## those call, followed through `func` in the same file, `ClassName.fn(` and a
-## file's `const X := preload("...gd")` aliases.
+## those call, followed through `func` in the same file, `ClassName.fn(`, a
+## file's `const X := preload("...gd")` aliases, and `(load(P) as GDScript)
+## .call(&"fn"` where P is a quoted path or a file's `const P := "res://...gd"`
+## (RealmWarm reaches the systems that way, since a core file may not preload one).
 ##
 ## Flagged, in a reached function: an index `a[...]` (chained or not) whose base
 ## is an untyped container (declared `Array`, `Dictionary` or `Variant` with no
@@ -84,6 +86,7 @@ static func reached(src: Dictionary) -> Dictionary:
 	var aliases := {}
 	var cn := _re("(?m)^class_name\\s+(\\w+)")
 	var al := _re("(?m)^const (\\w+) := preload\\(\"(res://[^\"]+\\.gd)\"\\)")
+	var named := _re("(?m)^const (\\w+) := \"(res://[^\"]+\\.gd)\"")
 	for p: String in src:
 		fns[p] = funcs(src[p])
 		var m := cn.search(src[p])
@@ -91,6 +94,8 @@ static func reached(src: Dictionary) -> Dictionary:
 			classes[m.get_string(1)] = p
 		var a := {}
 		for am in al.search_all(src[p]):
+			a[am.get_string(1)] = am.get_string(2)
+		for am in named.search_all(src[p]):
 			a[am.get_string(1)] = am.get_string(2)
 		aliases[p] = a
 	var seeds: Array[String] = []
@@ -130,6 +135,12 @@ static func _callees(p: String, body: String, fns: Dictionary, classes: Dictiona
 	for m in dotted.search_all(body):
 		var c := m.get_string(1)
 		var tp: String = classes.get(c, (aliases[p] as Dictionary).get(c, ""))
+		if tp != "" and fns.has(tp) and (fns[tp] as Dictionary).has(m.get_string(2)):
+			out.append("%s::%s" % [tp, m.get_string(2)])
+	var loaded := _re("load\\((\\w+|\"res://[^\"]+\\.gd\")\\)\\s+as\\s+GDScript\\)\\.call\\(&?\"(\\w+)\"")
+	for m in loaded.search_all(body):
+		var at := m.get_string(1)
+		var tp: String = at.trim_prefix("\"").trim_suffix("\"") if at.begins_with("\"") else str((aliases[p] as Dictionary).get(at, ""))
 		if tp != "" and fns.has(tp) and (fns[tp] as Dictionary).has(m.get_string(2)):
 			out.append("%s::%s" % [tp, m.get_string(2)])
 	return out

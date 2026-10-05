@@ -99,6 +99,37 @@ func test_a_header_that_runs_only_another_tour_is_told_so() -> void:
 	DirAccess.remove_absolute(copy)
 
 
+## A COPY ELSEWHERE IS A PROBE. Builders copy a tour into a scratchpad to trace
+## it and give it its options themselves; refused, one copy of second-keeper cost
+## a 20 min rerun. So the refusal is for tours/ alone (tour_in_tours), and a copy
+## anywhere else runs with a note.
+func test_only_a_tour_in_tours_is_refused_for_its_header() -> void:
+	var copy := ProjectSettings.globalize_path("user://june-copy.tour")
+	eq(DirAccess.copy_absolute(ProjectSettings.globalize_path("res://tours/june.tour"), copy), OK, "a copy of june.tour is made")
+	check(not _in_tours(copy), "a copy outside tours/ is not refused")
+	check(_in_tours("tours/june.tour"), "june.tour in tours/ is held to its header")
+	DirAccess.remove_absolute(copy)
+
+
+## A TOUR TOUR.SH CANNOT RUN SAYS SO. degrade_fit runs on the Compatibility
+## renderer, which tour.sh's off-screen window never draws, and its header's only
+## tour.sh run is degrade_grey's: the sweep failed it as a refusal. A `sweep: skip,
+## WHY` line is what the sweep passes it over by.
+func test_a_tour_tour_sh_cannot_run_is_skipped_by_its_header() -> void:
+	var out: Array = []
+	var cmd := ". tools/_tour_args.sh && tour_header_skip tours/degrade_fit.tour && echo -- && tour_header_skip tours/bunker.tour"
+	OS.execute("bash", PackedStringArray(["-c", "cd '%s' && %s" % [ProjectSettings.globalize_path("res://"), cmd]]), out, true)
+	var got := String(out[0] if not out.is_empty() else "").split("--")
+	check(got[0].contains("Compatibility"), "degrade_fit says why the sweep skips it (%s)" % got[0].strip_edges())
+	eq(got[1].strip_edges() if got.size() > 1 else "?", "", "a tour with no tag is run")
+
+
+func _in_tours(tour: String) -> bool:
+	var out: Array = []
+	var cmd := ". tools/_tour_args.sh && tour_in_tours '%s'" % tour
+	return OS.execute("bash", PackedStringArray(["-c", "cd '%s' && %s" % [ProjectSettings.globalize_path("res://"), cmd]]), out, true) == 0
+
+
 func _others(tour: String) -> String:
 	var out: Array = []
 	var cmd := ". tools/_tour_args.sh && tour_header_others '%s'" % tour

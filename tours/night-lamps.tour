@@ -1,0 +1,56 @@
+# WHAT THE LAMPS COST AT NIGHT (#56): the night village was the slowest web window
+# (34 ms p50, tours/web-frames.tour) though it is among the cheapest on the desktop,
+# and the Compatibility renderer the web draws with pays a pass per light per mesh.
+# Each window splits the frame by its lamps inside one run (FoliagePerf `lamps`:
+# every local light switched off what it lights; `lamp_shadows`: off what it casts),
+# against the noise of the same switch thrown off twice, with the coast by day as
+# the control. `perf stand_ins` prices 01_warm_lights' two black lights, which sit
+# on every geometry by day and night. `perf lit` counts what the lamps reach (light-geometry pairs against
+# the web renderer's lights-per-object cap), the same on any load. On the desktop's own renderer, and on the web's, on this machine:
+#   tools/tour.sh tours/night-lamps.tour --seed=7 --weather=clear:0 --stats
+#   godot --path . --fixed-fps 60 --rendering-method gl_compatibility -- --tour=tours/night-lamps.tour --seed=7 --weather=clear:0 --stats --quality=web
+coast calm
+hour 11
+place coast
+wait 2.0
+perf stats begin
+walk 1,0 2.0
+walk -1,0 2.0
+perf stats end coast_day
+perf noise 8
+perf lamps 8
+perf stand_ins 8
+shot 01-coast-day with land:coast
+
+hour 23
+near house
+wait 2.0
+perf stats begin
+walk -1,0 2.0
+walk 1,0 2.0
+perf stats end village_night
+perf lit
+perf noise 8
+perf lamps 8
+perf lamp_shadows 8
+perf stand_ins 8
+perf props 8
+perf terrain 8
+shot 02-village-night
+
+hour 19.5
+near house
+wait 1.5
+spawn runner
+spawn runner@90
+spawn harvester@180
+spawn cutter@270
+wait 1.0
+perf stats begin
+wait 3.0
+perf stats end crowd_dusk
+perf lit
+perf noise 8
+perf lamps 8
+perf lamp_shadows 8
+shot 03-crowd-dusk with mob:runner,mob:harvester,mob:cutter

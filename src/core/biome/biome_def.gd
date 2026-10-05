@@ -88,6 +88,12 @@ const LANDFALL := Vector2i(1, -1)
 var adjacency: Dictionary = {}
 ## -1 wants to be inland, +1 wants the shore, 0 does not care.
 var coastal := 0.0
+## Its keeper and works need the OPEN SEA at its edge (the coast's intake, the
+## frost sea's ice off the shore), so a run of it the sea does not reach takes the
+## landscape round it (GenCountries._dry_shores). Wanting the shore (`coastal`) is
+## not this: the drowned city lies by the sea but keeps its own water, its keeper
+## working the locks of its canals.
+var sea_bound := false
 
 # --- relief and climate ---------------------------------------------------
 
@@ -450,6 +456,10 @@ var above: Dictionary = {}
 var tip_ground := Ground.GRAVEL
 ## Hulls are hauled up on this landscape's beaches.
 var beached_wrecks := true
+## Its black water is the sheet opened in leads (the frost sea), not a body of
+## water: a lead is no pool, and a walker's tread comes down through one as it
+## does through the ice round it (GenTreads keeps off standing water only).
+var leads := false
 ## Still water: {order, cell, chance, r_min, r_max, ground}, `order` deciding
 ## which landscape's pools are laid first. Empty: no tarns or pools.
 var pools: Dictionary = {}

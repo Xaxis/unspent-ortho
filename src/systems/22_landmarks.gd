@@ -75,8 +75,8 @@ func _read_sites() -> void:
 	_stood.clear()
 	_sighted.clear()
 	reachable = null
+	Landmarks.record(game.world)
 	for s in sites:
-		_as_landmark(s)
 		_make(s)
 	_set_walls()
 
@@ -107,25 +107,6 @@ func indoors(inside: bool) -> void:
 
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	_read_sites()
-
-
-## In the world's own list of places, under the kind's own name, so the map, the
-## reads app and `place NAME` all find it without being taught what a landmark
-## is. No `mark`: a mark means the machines cut the ground here, and half of
-## these were standing long before they did.
-##
-## Recorded at its CACHE and not at its own middle, two tiles in front of it:
-## `place lighthouse` means "take me to the lighthouse", and arriving inside the
-## tower with the cache behind you is not that. On a map the difference is a
-## pixel; on arrival it is the difference between a place and a wall.
-func _as_landmark(s: LandmarkSite) -> void:
-	var at := Landmarks.cache_of(s)
-	for m: Dictionary in game.world.landmarks:
-		if m.get("kind") == s.kind and (m.get("pos") as Vector2).distance_to(at) < 0.5:
-			return
-	game.world.landmarks.append({"kind": s.kind, "pos": at,
-		"country": game.world.country_at(floori(at.x), floori(at.y)),
-		"dir": Vector2.from_angle(s.facing)})
 
 
 ## The simulation is made by 30_mobs, which sorts AFTER this system, so it cannot

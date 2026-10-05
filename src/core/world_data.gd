@@ -122,6 +122,11 @@ var recipe: PackedByteArray
 ## where its latitude suggested. `GenBodies` is its only writer
 ## (`tests/core/test_bodies.gd`).
 var continent: PackedByteArray
+## The skerries: land GenShape kept detached, under its ISLET_TILES, 1 a tile.
+## No shore work stands on one (GenWorks._shore_at), and a region whose only
+## shore is skerry has no shore for one (GenWorks.has_shore): both read
+## `islet_at`. Empty on a world built by hand.
+var islet: PackedByteArray
 ## What each body was dealt, biggest first: {id: int, tiles: int, centre: Vector2,
 ## bounds: Rect2}. `docs/DESIGN.md` §4 adds the budget, the climate band and the
 ## type set when the planning half lands.
@@ -229,6 +234,10 @@ func in_bounds(x: int, y: int) -> bool:
 
 ## Which BODY a tile is on: 0 is the void between them (`GenBodies.VOID`) — the
 ## ocean on the surface, solid rock underground, vacuum in orbit.
+func islet_at(x: int, y: int) -> bool:
+	return not islet.is_empty() and in_bounds(x, y) and islet[y * size + x] != 0
+
+
 func continent_at(x: int, y: int) -> int:
 	if not in_bounds(x, y):
 		return 0
@@ -296,6 +305,36 @@ func dress_country(x: int, y: int) -> int:
 	if level[i] == 0 and int(country2[i]) != Country.SEA:
 		return int(country2[i])
 	return Country.COAST
+
+
+## The landscape a prop was BUILT by, which every drawing of it and everything
+## that stops a body at it have to agree on. A house is its village's: GenScatter
+## deals its form and sets its `solid` from the village's own stock, and a house
+## at a border drawn in the stock of the tile under it stood as a croft walled
+## like a tower (seed 7 at 512: 10 of 97). Anything else is its tile's
+## (`dress_country`), which is what RuinWalls builds a ruin's walls from.
+func built_country(p: WorldProp) -> int:
+	if p.kind == PropKind.HOUSE or p.kind == PropKind.HOUSE_BURNT:
+		var v := village_of_house(p.pos)
+		if not v.is_empty():
+			return int(v.get("country", Country.COAST))
+	return dress_country(floori(p.pos.x), floori(p.pos.y))
+
+
+## The village a building standing at `at` belongs to: the one whose square is
+## nearest. Every house is laid round its own square (GenScatter), and squares
+## stand far enough apart that no house is nearer another's
+## (tests/render/test_built_country.gd holds that on real worlds). {} with no
+## villages.
+func village_of_house(at: Vector2) -> Dictionary:
+	var best: Dictionary = {}
+	var best_d := INF
+	for v: Dictionary in villages:
+		var d := (v.pos as Vector2).distance_squared_to(at)
+		if d < best_d:
+			best_d = d
+			best = v
+	return best
 
 
 ## The region holding a tile, or -1 out at sea and on ground too small to be a
@@ -452,6 +491,10 @@ func to_3d(p: Vector2) -> Vector3:
 ## A prop set down after generation: appended and filed in its section, so a
 ## reader asking by section sees it. Its id comes from `next_id()`.
 func add_prop(p: WorldProp) -> void:
+	# A burnt house stands on the walls its house had: the form's ground, not one
+	# circle for every form (1.6 walled a tower's shell short and a stall's long).
+	if p.kind == PropKind.HOUSE_BURNT:
+		p.solid = BiomeForms.of(built_country(p)).reach(maxi(p.variant, 0)) * p.scale
 	if not packed:
 		props.append(p)
 	table.append(p)
