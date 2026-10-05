@@ -117,12 +117,16 @@ static func launch_spot(world: WorldData, query: WorldQuery, kind: StringName, f
 
 ## Where the body steps off, or Vector2.INF when there is nowhere to stand. Only
 ## ground a body could have walked or waded to, so leaving never crosses anything.
+## Dry ground first where any is in reach, then the nearest: shallows are ground
+## a body can stand in, and nearest alone set him in the water a tile short of the
+## drowned city's port stair.
 static func step_off_spot(world: WorldData, query: WorldQuery, kind: StringName, at: Vector2) -> Vector2:
 	if world == null or query == null:
 		return Vector2.INF
 	var reach := CraftKinds.launch_reach(kind)
 	var best := Vector2.INF
 	var best_d := INF
+	var best_dry := false
 	var r := ceili(reach)
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
@@ -132,10 +136,14 @@ static func step_off_spot(world: WorldData, query: WorldQuery, kind: StringName,
 				continue
 			var p := Vector2(tx + 0.5, ty + 0.5)
 			var d := at.distance_to(p)
-			if d > reach or d >= best_d or not wadeable_line(world, query, kind, at, p):
+			var dry := not Ground.is_water(world.ground_at(tx, ty))
+			if d > reach or (best_dry and not dry) or (dry == best_dry and d >= best_d):
+				continue
+			if not wadeable_line(world, query, kind, at, p):
 				continue
 			best_d = d
 			best = p
+			best_dry = dry
 	return best
 
 

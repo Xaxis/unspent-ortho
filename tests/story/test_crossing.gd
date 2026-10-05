@@ -98,8 +98,27 @@ func test_the_raft_lands_on_the_port_stair() -> void:
 		lt(land.distance_to(port), 0.01, "seed %d: the raft lands on the port's stair" % s)
 		check(w.same_body(c.get("launch", Vector2.INF), cast[&"the_camp"].pos), "seed %d: put in from home" % s)
 		check(StoryCrossing._open_water(w, c.get("launch", Vector2.INF), land), "seed %d: over open water all the way" % s)
+		# And he steps off the raft onto the stair, not into the shallows beside it
+		# (Crafts.step_off_spot): from the water nearest the landing the raft can
+		# float on, the ground he is set down on is the port's own land.
+		var berth := _berth(w, land)
+		var off := Crafts.step_off_spot(w, WorldQuery.new(w), &"raft", berth)
+		print("  seed %d: the raft berths at %s and sets him down at %s (%s)" % [s, berth, off, BiomeRegistry.at(w, off).id if off.is_finite() else &"nowhere"])
+		check(off.is_finite() and not Ground.is_water(w.ground_at(floori(off.x), floori(off.y))), "seed %d: he steps off onto dry ground at the stair (%s)" % [s, off])
+		check(off.is_finite() and BiomeRegistry.at(w, off).id == BiomeRegistry.at(w, port).id, "seed %d: the port's own land" % s)
 	gt(float(ported), 0.0, "some seed's landfall laid a port, or nothing above was asked")
 	StoryPlan.forget()
+
+
+## The water tile nearest `land` a raft floats on: where it berths at a landing.
+func _berth(w: WorldData, land: Vector2) -> Vector2:
+	var best := Vector2.INF
+	for dy in range(-3, 4):
+		for dx in range(-3, 4):
+			var p := Vector2(floori(land.x) + dx + 0.5, floori(land.y) + dy + 0.5)
+			if Crafts.crossable(w, &"raft", p) and (not best.is_finite() or p.distance_to(land) < best.distance_to(land)):
+				best = p
+	return best
 
 
 ## THE PORT STANDS ITS SIGN (49_cast `the_port`, StoryContent.STOOD): on a world
