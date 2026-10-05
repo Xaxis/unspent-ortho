@@ -6100,8 +6100,20 @@ const REPRISAL := {
 ## `_his_to_burn` says what the hunters do at each). No `seen`: that is a
 ## village's, and only a village's burning lands holdfast_price.
 const REPRISAL_AT := {
-	&"camp": {},
-	&"holding": {},
+	&"camp": {
+		"sent": "The yard's hunters take the road to your fire, the last on this ground.",
+		"called_back": "Out on the road to your fire, the hunters stop where they stand.",
+		"met": "The hunters lie on the road. Nothing reaches your fire.",
+		"burned": "Your fire is out, and what you built by it is down. The road is empty again.",
+	},
+	&"holding": {
+		"sent": "The yard's hunters take the road to the holding, the last roofs on this ground.",
+		"called_back": "Out on the road to the holding, the hunters stop where they stand.",
+		# True because a march never warns the holding: 48_raids `_warn` answers
+		# only its own attention, and the reprisal touches none of it.
+		"met": "The hunters lie on the road. Nobody at the holding knows they were sent.",
+		"burned": "Smoke stands over the holding. Its people watch their beds burn.",
+	},
 }
 
 

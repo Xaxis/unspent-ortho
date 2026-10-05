@@ -110,3 +110,18 @@ func test_every_kind_of_march_has_its_own_words() -> void:
 			check(line != "", "a march for his %s says when it is %s" % [kind, event])
 			if kind != Reprisal.ROOF:
 				check(line != StoryContent.REPRISAL[event], "in its own words, not a village's (%s, %s)" % [kind, event])
+
+
+## AND THEY FIT THE MESSAGE LINE (Hud `_draw_bottom`): one line, centred, never
+## wrapped, so a line wider than the glass is cut off at both ends.
+func test_every_reprisal_line_fits_the_message_line() -> void:
+	var wide := UiBase.SIZE.x - Hud.MARGIN * 2
+	var lines: Array[String] = []
+	for event: StringName in StoryContent.REPRISAL:
+		lines.append(String(StoryContent.REPRISAL[event]))
+	for kind: StringName in StoryContent.REPRISAL_AT:
+		for event: StringName in StoryContent.REPRISAL_AT[kind]:
+			lines.append(String(StoryContent.REPRISAL_AT[kind][event]))
+	for l in lines:
+		check(UiFont.width(l) <= wide, "%d px of %d: %s" % [UiFont.width(l), wide, l])
+	print("reprisal lines: widest %d px of %d" % [lines.map(func(l: String) -> int: return UiFont.width(l)).max(), wide])
