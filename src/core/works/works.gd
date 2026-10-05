@@ -447,14 +447,15 @@ const PlayView := preload("res://src/core/view/play_view.gd")
 
 
 static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
-	var size := world.size
 	var cx := floori(at.x)
 	var cy := floori(at.y)
-	if cx < 1 or cy < 1 or cx >= size - 1 or cy >= size - 1:
+	# Every tile this asks: the reach, a neighbour round each foot, and the open
+	# ground run on past it.
+	var r := LIP_REACH + LIP_OPEN + 1
+	var t := TileWindow.of(world, cx - r, cy - r, cx + r + 1, cy + r + 1)
+	if not t.has(cx, cy):
 		return Vector2.INF
-	var levels := world.level
-	var grounds := world.ground
-	var top: int = levels[cy * size + cx]
+	var top: int = t.level[t.at(cx, cy)]
 	var best := Vector2.INF
 	var best_d := INF
 	var seen := Vector2.INF
@@ -462,23 +463,22 @@ static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
 	var eye := PlayView.toward_eye()
 	for dy in range(-LIP_REACH, LIP_REACH + 1):
 		var y := cy + dy
-		if y < 1 or y >= size - 1:
-			continue
 		for dx in range(-LIP_REACH, LIP_REACH + 1):
 			var x := cx + dx
-			if x < 1 or x >= size - 1:
+			if not t.has(x - 1, y - 1) or not t.has(x + 1, y + 1):
 				continue
 			var d := Vector2(dx, dy).length()
 			var faces := Vector2(dx, dy).dot(eye) > 0.0
 			if d > float(LIP_REACH) or d >= (seen_d if faces else best_d):
 				continue
-			var i := y * size + x
-			var low: int = levels[i]
-			if top - low < LIP_DROP or Ground.is_water(grounds[i]):
+			var i := t.at(x, y)
+			var low: int = t.level[i]
+			if top - low < LIP_DROP or Ground.is_water(t.ground[i]):
 				continue
 			var terrace := true
-			for j: int in [i - size - 1, i - size, i - size + 1, i - 1, i + 1, i + size - 1, i + size, i + size + 1]:
-				if absi(int(levels[j]) - low) > 1 or Ground.is_water(grounds[j]):
+			for o: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
+				var j := t.at(x + o.x, y + o.y)
+				if absi(int(t.level[j]) - low) > 1 or Ground.is_water(t.ground[j]):
 					terrace = false
 					break
 			if not terrace:
@@ -489,7 +489,7 @@ static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
 			var steps := ceili(d * 2.0)
 			for k in range(1, steps):
 				var p := at.lerp(to, float(k) / float(steps))
-				if int(levels[floori(p.y) * size + floori(p.x)]) > top:
+				if int(t.level[t.at(floori(p.x), floori(p.y))]) > top:
 					rises = true
 					break
 			if rises:
@@ -501,7 +501,7 @@ static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
 				var q := to + away * float(k)
 				var qx := floori(q.x)
 				var qy := floori(q.y)
-				if qx < 0 or qy < 0 or qx >= size or qy >= size or int(levels[qy * size + qx]) > low + 1:
+				if not t.has(qx, qy) or int(t.level[t.at(qx, qy)]) > low + 1:
 					shut = true
 					break
 			if shut:

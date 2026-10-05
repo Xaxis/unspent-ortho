@@ -342,10 +342,8 @@ static func _store_on(L: Object) -> void:
 	var c: GenContext = L.c
 	var bearing := GenWorks.bearing(w.seed_value)
 	var benches: Array[Vector2] = []
-	for k in range(L.m_region, w.landmarks.size()):
-		var m: Dictionary = w.landmarks[k]
-		if StringName(str(m.get("kind", &""))) == &"bench":
-			benches.append(m.pos as Vector2)
+	for m: Dictionary in GenWorks._rows_near(L, &"bench", (L.rects[0] as Rect2).get_center(), INF):
+		benches.append(m.pos as Vector2)
 	# Every STORE_STEP-th tile of the region, as `GenWorks.flattest` walks it: the
 	# yard's room is rare enough on the terraces that a ranking by flatness alone
 	# kept the middles of the broad shelves, which stand by no lip.

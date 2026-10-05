@@ -361,6 +361,7 @@ const TERRAIN: Array[String] = [
 ## — a new field on BiomeDef is classified here or the stamp quietly stops
 ## covering it.
 const LOOK: Array[String] = [
+	"depot_form",
 	"display_name",
 	"style_note",
 	"hatch",
