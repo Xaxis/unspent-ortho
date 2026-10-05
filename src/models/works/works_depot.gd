@@ -540,6 +540,47 @@ const CABLE_SAG := 0.07
 const CABLE_RUNS := 14
 
 
+## Where the jib's head stands: JIB_OUT out from the drum toward the lip, and
+## swung along the drum's axis, a step at a time either way, until neither it
+## nor the rope from it to `foot` hangs over a working housing
+## (Works.PART_OFFSETS). Seed 1's lip fell past the breaker, and the sheave sat
+## in its cap with the rope down through the cabinet. The first swing that
+## clears both, else straight out.
+static func _jib_head(drum: Vector3, o: Vector3, side: Vector3, foot: Vector3) -> Vector3:
+	var straight := drum + o * JIB_OUT + Vector3(0.0, JIB_HIGH, 0.0)
+	for swing: float in [0.0, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0]:
+		var head := straight + side * swing * JIB_SWING
+		if _jib_clear(head, foot):
+			return head
+	return straight
+
+
+## Whether a jib's head at `head` and its rope down to `foot` keep off every
+## housing: the head by JIB_CLEAR, and the rope by ROPE_CLEAR for as long as it is
+## over the shelf the housings stand on (it falls below the shelf's floor at the
+## lip, and a foot may come down beside a housing on the terrace under it).
+static func _jib_clear(head: Vector3, foot: Vector3) -> bool:
+	var h := Vector2(head.x, head.z)
+	var top := head.y - 0.22
+	var low := foot.y + 0.12
+	var over := clampf(top / (top - low), 0.0, 1.0) if low < 0.0 else 1.0
+	var lip := h.lerp(Vector2(foot.x, foot.z), over)
+	for p: Vector2 in Works.PART_OFFSETS:
+		if h.distance_to(p) < JIB_CLEAR or Geometry2D.get_closest_point_to_segment(p, h, lip).distance_to(p) < ROPE_CLEAR:
+			return false
+	return true
+
+
+## The jib's reach out from the drum, its head's height, the step it swings by,
+## and how far its head and the rope keep off a housing's middle (a housing's
+## mass reaches 0.6, WorksDepot.part_blocks, and its cap a little more).
+const JIB_OUT := 1.75
+const JIB_HIGH := 2.15
+const JIB_SWING := 0.55
+const JIB_CLEAR := 1.2
+const ROPE_CLEAR := 0.85
+
+
 ## THE LAY: two pale strands wound round the dark cable down its whole length,
 ## so it reads as a rope against the pale rock it hangs over AND the dark face it
 ## hangs down, where a dark line alone was lost; seen from far off the turns are
@@ -569,11 +610,14 @@ static func _lay(k: MeshKit, line: Array[Vector3]) -> void:
 
 
 ## The lay's strands: thickness, the length of road one winds round in, how
-## finely it is drawn, and its colour, the pale of weathered wire.
-const LAY_R := 0.026
-const LAY_TURN := 0.55
-const LAY_STEP := 0.11
-const LAY := Color(0.5804, 0.5686, 0.5294)
+## finely it is drawn, and its colour, the dull grey of weathered wire. A long
+## turn and a bright, thick strand read up close as a screw thread, an auger and
+## not a cable (05 from the terrace below); this lay is wire rope's, tight and
+## dull, and from above still a striped line.
+const LAY_R := 0.016
+const LAY_TURN := 0.27
+const LAY_STEP := 0.055
+const LAY := Color(0.4196, 0.4118, 0.3882)
 
 
 ## Where the drum stands, in the yard's frame: against the house's wall on the
@@ -606,8 +650,9 @@ static func _winch(k: MeshKit, made: MeshKit, foot: Vector3, seed_value: int) ->
 	k.pop()
 	k.strut(drum - side * 0.36 + Vector3(0, 0.5, 0), drum + side * 0.36 + Vector3(0, 0.5, 0), 0.2, 8, _tone(OLD_PLATE, 0.8))
 	k.strut(drum + side * 0.42 + Vector3(0, 0.5, 0), drum + side * 0.66 + o * 0.12 + Vector3(0, 0.5, 0), 0.04, 4, PLATE_DARK)
-	# The jib: two legs from either side of the drum out over the lip to one head.
-	var head := drum + o * 1.75 + Vector3(0.0, 2.15, 0.0)
+	# The jib: two legs from either side of the drum out over the lip to one head,
+	# swung aside where a housing stands under it (`_jib_head`).
+	var head := _jib_head(drum, o, side, foot)
 	for sgn: float in [-1.0, 1.0]:
 		k.strut(drum + side * 0.62 * sgn + o * 0.15, head, 0.07, 4, OLD_PLATE)
 	# A back-stay from the head to a stake in the shelf behind the drum.

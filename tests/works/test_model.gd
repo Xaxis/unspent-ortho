@@ -115,3 +115,22 @@ func test_no_part_is_wider_than_the_reach_it_is_worked_from() -> void:
 		for c: Vector3 in WorksDepot.part_blocks(i):
 			lt(Vector2(c.x, c.y).length() + c.z, Works.PART_REACH - 0.4,
 				"%s's mass reaches past the hands that open it" % Works.PART_NAMES[i])
+
+
+## THE ROPE HANGS CLEAR OF THE HOUSINGS: wherever the lip lies, the jib swings
+## until its head and the rope over the shelf keep off every working part, or the
+## sheave sits in a cabinet's cap and the rope runs down through it (seed 1's
+## breaker). Every bearing and reach of a lip finds such a swing.
+func test_the_winch_rope_hangs_clear_of_every_housing() -> void:
+	for k in 16:
+		var d := Vector2.from_angle(TAU * k / 16.0)
+		for r: float in [4.5, 5.5, 7.0]:
+			var foot := Vector3(d.x * r, -2.0, d.y * r)
+			var drum := WorksDepot._drum_at(foot)
+			var o := Vector3(drum.x, 0.0, drum.z).normalized()
+			var side := Vector3(-o.z, 0.0, o.x)
+			var head := WorksDepot._jib_head(drum, o, side, foot)
+			check(WorksDepot._jib_clear(head, foot), "a lip at %.0f degrees, %.1f off: the jib swings clear of every housing" % [rad_to_deg(d.angle()), r])
+			for i in Works.PART_NAMES.size():
+				var p: Vector2 = Works.PART_OFFSETS[i]
+				gt(Vector2(head.x, head.z).distance_to(p), WorksDepot.JIB_CLEAR - 0.01, "and its head stands off the %s" % Works.PART_NAMES[i])
