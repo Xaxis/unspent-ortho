@@ -1444,6 +1444,8 @@ float tide_under(float y) {
 // shore by less than the band is wide. Measured over 48 x 48 tiles at the same
 // share of floor under water: 890 islands under a twentieth of a tile became 13.
 const mat2 TIDE_TURN = mat2(vec2(0.857, 0.515), vec2(-0.515, 0.857));
+// The spill's glow at the shore at night, against the bloom colour below.
+const float TIDE_BLOOM = 0.6;
 float tide_field(vec3 wp) {
 	vec2 q = TIDE_TURN * wp.xz;
 	vec2 bend = vec2(ink_vnoise(q * 0.06 + 5.0), ink_vnoise(q * 0.06 + 29.0)) - 0.5;
@@ -1501,12 +1503,13 @@ vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit, out float pool) {
 		// What is in the water: whatever the port spilled, feeding a bloom
 		// that glows a sick green along the puddles' edges in the dark. Only
 		// in drifts and only at night (sky_view.y), faint: poisoned water,
-		// not a lamp.
-		// Over the whole of a puddle, faintly, and thickest where it drifts.
-		// (Measured: on the puddles' edges alone it was under a pixel wide and
-		// the frame did not move.)
+		// not a lamp. A sheen in the band inside the shore, most of a tile
+		// wide (the shore line alone is under a pixel and never shows), well
+		// under a lit window and lighting nothing: laid over whole puddles
+		// it read from above as a field of neon.
+		float shore = 1.0 - smoothstep(0.58, 0.62, f);
 		float bloom = 0.3 + 0.7 * smoothstep(0.5, 0.75, ink_vnoise(wp.xz * 0.2 + 33.0));
-		emit += vec3(0.10, 0.34, 0.24) * 3.5 * bloom * pool * sky_view.y * (0.75 + 0.25 * sin(TIME * 0.7 + wp.x));
+		emit += vec3(0.10, 0.34, 0.24) * TIDE_BLOOM * bloom * shore * pool * sky_view.y * (0.75 + 0.25 * sin(TIME * 0.7 + wp.x));
 	} else if (rim > 0.0) {
 		c = mix(c, MOSS2, rim * 0.6);
 	}
