@@ -89,10 +89,12 @@ shot 07-burning with land:burning
 # (GEN 24): two cities meeting, the home continent's moss running into its
 # pinewood, and the fire meeting the jungle. The pinewood no longer meets the
 # slums, the snowfield or the burning on this seed -- they are on other
-# continents -- so those three frames could not be staged any more.
-place slums-machine_city
+# continents -- so those three frames could not be staged any more. The two
+# cities are asked as a kind, whichever city border the seed holds, so a
+# reworked worldgen moves the frame and does not strand it.
+place slums-machine_city|slums-ruined_metropolis|drowned_city-machine_city|machine_city-ruined_metropolis
 wait 0.8
-shot 08-eco-slums-machine_city with border:slums-machine_city
+shot 08-eco-two-cities with border:slums-machine_city|slums-ruined_metropolis|drowned_city-machine_city|machine_city-ruined_metropolis
 place moss-pinewood
 wait 0.8
 shot 09-eco-moss-pinewood with border:moss-pinewood

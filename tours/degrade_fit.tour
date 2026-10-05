@@ -52,9 +52,9 @@ wait 0.8
 perf match shots/degrade/desktop/07-burning.png
 # Follows the canon: the borders seed 7 holds once a landscape stands on one
 # continent. See tours/canon.tour.
-place slums-machine_city
+place slums-machine_city|slums-ruined_metropolis|drowned_city-machine_city|machine_city-ruined_metropolis
 wait 0.8
-perf match shots/degrade/desktop/08-eco-slums-machine_city.png
+perf match shots/degrade/desktop/08-eco-two-cities.png
 place moss-pinewood
 wait 0.8
 perf match shots/degrade/desktop/09-eco-moss-pinewood.png

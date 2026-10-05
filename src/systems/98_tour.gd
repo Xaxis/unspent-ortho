@@ -1871,6 +1871,13 @@ func _body_in_frame(want: String, life: int) -> bool:
 ## either type is the answer, so "coast-moss" declaring `land:coast` would pass
 ## or fail on which side of one tile the walk happened to stop.
 func _on_border(pair: String) -> bool:
+	# `border:a-b|c-d`: on any of those borders, as `land:a|b`, for a frame staged
+	# at a place asked by alternatives (GenPlaces "a|b").
+	if pair.contains("|"):
+		for one: String in pair.split("|", false):
+			if _on_border(one):
+				return true
+		return false
 	var ids := pair.split("-", false)
 	if ids.size() != 2:
 		printerr("tour %s: border:%s wants two landscape ids joined by a dash" % [_name, pair])
