@@ -118,7 +118,7 @@ const BEATS := {
 	&"long_quiet": {"short": "the quiet after", "arc": &"the_war", "says": "After the war came the quiet. It has lasted sixty years."},
 	&"war_relay": {"short": "one relay", "arc": &"the_war", "says": "Every forged order passed through one relay, under the ground where the first machine was built. A shaft goes down to it."},
 	&"the_climb": {"short": "the empty cars", "arc": &"the_colonies", "says": "The Tether's cars go up empty every dawn and come down empty at dusk. Nobody has ever asked to ride one."},
-	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. It is kept across the water, at the Covenant's seat."},
+	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. The Covenant keeps it."},
 	&"counted": {"short": "counted, but not you", "arc": &"the_machines", "says": "The machines count everything on the land. They do not count people."},
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
 	&"not_home": {"short": "not home", "arc": &"the_machines", "says": "Somebody you walked out of a yard did not get home."},
@@ -5785,7 +5785,7 @@ const LEAD := {
 	# The crossing (slice 3): a raft, then the narrows, then the archive.
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
-	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	&"archive": "The war's archive, for how it started: the survey marks where it is kept.",
 	# The archive (slice 3 step 4) and back at the camp (step 8).
 	&"orders": "The war's orders, for who sent them: ask the archivist to show you one.",
 	&"camp_back": "The old soldier, with what the archive showed you: at the crew's camp.",
@@ -5811,7 +5811,7 @@ const LEAD := {
 	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
 	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
 	# The slice's last hop, held into slice 4: said only while no keeper has a lead.
-	&"relay": "The relay below, for what is down there: its shaft is across the water.",
+	&"relay": "The relay below, for what is down there: the survey marks its shaft.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
 	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,
