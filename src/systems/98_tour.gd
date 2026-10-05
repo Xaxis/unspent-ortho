@@ -33,6 +33,9 @@ extends GameSystem
 ##                          facing it: a frame of a keeper whole at eye level, or
 ##                          one it can come for; fails when no such body is about
 ##                          or no such ground is
+##   near mob:KIND DIST along FWD  beside it instead: DIST off its middle across
+##                          its facing, on the side he is on, and FWD along it,
+##                          facing the way it faces (a stroke past its flank)
 ##   ground KIND[,KIND]     stand on the nearest tile of a ground (Ground.NAMES, a
 ##                          space written as _), so a tour that needs heather or
 ##                          moss under it says so instead of pinning a coordinate
@@ -428,6 +431,8 @@ func _run() -> void:
 				else:
 					var p := parts[1].split(",")
 					_teleport(Vector2(p[0].to_float(), p[1].to_float()))
+			"near" when parts[1].begins_with("mob:") and parts.size() > 3 and parts[3] == "along":
+				ok = await _stand_along_mob(parts[1].substr(4), parts[2].to_float(), parts[4].to_float() if parts.size() > 4 else 0.0)
 			"near" when parts[1].begins_with("mob:"):
 				ok = await _stand_off_mob(parts[1].substr(4), parts[2].to_float() if parts.size() > 2 else 5.0)
 			"near":
@@ -1359,6 +1364,33 @@ func _stand_back(kinds: String, dist: float) -> bool:
 
 
 ## `near mob:KIND DIST`: DIST off the nearest live body of KIND, on its level.
+## `near mob:KIND DIST along FWD`: beside the nearest body of that kind, DIST off
+## its middle across its facing on the side the player is on and FWD along it,
+## facing the way it faces: a stroke thrown from there runs past its flank.
+func _stand_along_mob(token: String, dist: float, fwd: float) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	var best: MobState = null
+	if sim != null:
+		for m: MobState in sim.mobs:
+			if m.alive and not m.removed and m.kind == id and (best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos)):
+				best = m
+	if best == null:
+		printerr("tour %s: no %s about to stand beside" % [_name, token])
+		return false
+	var side := Vector2.from_angle(best.facing).orthogonal()
+	if side.dot(game.player.pos - best.pos) < 0.0:
+		side = -side
+	var spot := best.pos + side * dist + Vector2.from_angle(best.facing) * fwd
+	if not game.query.standable(floori(spot.x), floori(spot.y)):
+		printerr("tour %s: no ground beside the %s at %s" % [_name, token, spot])
+		return false
+	_teleport(spot)
+	Survival.face(game, best.facing)
+	await get_tree().physics_frame
+	return true
+
+
 func _stand_off_mob(token: String, dist: float) -> bool:
 	var id := Roster.resolve(token)
 	var sim: FightSim = game.player.sim

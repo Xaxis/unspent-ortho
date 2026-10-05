@@ -1,9 +1,9 @@
-# EVERY BITE HAS A GROUND RING (mechanics pass, slice 1d; FightRules.tell_ring).
-# A machine's windup pose is small over the shoulder; a pale ring on the ground
+# EVERY BITE HAS A GROUND TELL (mechanics pass, slice 1d; FightRules.tell_box, the ground its box hits).
+# A machine's windup pose is small over the shoulder; a pale mark on the ground
 # where the bite will land, for as long as it winds up, reads from above, from
 # behind and under a lock alike. A runner is let come in and bite, and each
 # frame is taken while its tell is up. A harvester's wide bite shows a wide one.
-# Run at a fixed rate, so a frame costs the world no time and the ring is still
+# Run at a fixed rate, so a frame costs the world no time and the mark is still
 # up when it is taken:
 #   TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour --seed=4 --hour=11 --weather=clear:0 --give=knife:1 --held=knife
 coast calm

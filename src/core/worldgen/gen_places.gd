@@ -9,7 +9,10 @@ class_name GenPlaces
 ##                             its index, its name (`oyster_row`) or a landscape
 ##   "square:WHO"              that village's square, the middle of its day
 ##   "tip", "wreck2", ...      the Nth landmark of a kind (1-based, default 1)
-##   "works", "works_breaker"  the Nth depot of the plan, or one of its housings
+##   "works", "works_breaker"  the Nth depot of the plan, or one of its housings;
+##   "works_the_crags_feed"    of that landscape's depots; "works_the_crags_lip"
+##                             the terrace under a winch house's lip, where its
+##                             cable comes down (Works.lip_foot)
 ##   "lighthouse", "firewatch" the Nth landmark worth the walk of that kind
 ##   "river"                   a bank beside the longest river's middle reach
 ##   "cliff"                   a tile at the foot of the tallest nearby face
@@ -147,14 +150,32 @@ static func _out_of_the_yard(w: WorldData, marks: Array[Vector2], nth: int) -> V
 ## rather than made a worldgen stage: adding a stage would move every seed.
 static func _placed_after(w: WorldData, key: String, nth: int) -> Vector2:
 	if key.begins_with("works"):
-		var works := Works.sites(w)
-		if nth > works.size():
-			return Vector2(-1, -1)
 		# "works" is the yard; "works_feed", "works_breaker", "works_coolant" are
 		# its three working parts, which is how a tour walks to the next one
 		# without a coordinate (they lie along the survey bearing, so nothing
-		# written in a tour file could name where they are).
-		var part := Works.PART_NAMES.find(StringName(key.trim_prefix("works_")))
+		# written in a tour file could name where they are). A landscape's id
+		# between them keeps to that landscape's depots, and `lip` is where a
+		# winch house's cable comes down.
+		var rest := key.trim_prefix("works").trim_prefix("_")
+		var part := -1
+		var lip := false
+		for i in Works.PART_NAMES.size():
+			var pn := String(Works.PART_NAMES[i])
+			if rest == pn or rest.ends_with("_" + pn):
+				part = i
+				rest = rest.trim_suffix(pn).trim_suffix("_")
+		if rest == "lip" or rest.ends_with("_lip"):
+			lip = true
+			rest = rest.trim_suffix("lip").trim_suffix("_")
+		var works: Array[WorksSite] = []
+		for site: WorksSite in Works.sites(w):
+			if rest == "" or String(site.land) == rest:
+				works.append(site)
+		if nth > works.size():
+			return Vector2(-1, -1)
+		if lip:
+			var foot := Works.lip_foot(w, works[nth - 1].pos)
+			return _stand_near(w, foot) if foot.is_finite() else Vector2(-1, -1)
 		return _stand_near(w, works[nth - 1].part(maxi(0, part)))
 	if Landmarks.by_id(StringName(key)) == null:
 		return Vector2(-1, -1)

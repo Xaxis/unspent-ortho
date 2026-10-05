@@ -90,9 +90,13 @@ Proof tour: `tours/across.tour`, from slice 2's end.
 4. [x] **The archive** (A). Otto: `forged_order`, `tradecraft`; `war_relay` is slice
    4's lead (the relay below, a shaft down), with a survey pin and a goal.
 5. [x] **Mended gear** (B). The slice's make, with its reason said at the Covenant.
-6. [ ] **The drowned city** (C). The third landscape, on the leg-1 body. Worldgen: prove
-   the home coast and its keeper don't move (the salt flats lesson).
-7. [ ] **The climb and the first enclave** (A+B+C). The slice's set piece: a foot of the
+6. [x] **The drowned city** (C). The third landscape, on the leg-1 body. Worldgen: prove
+   the home coast and its keeper don't move (the salt flats lesson). The city is the
+   landfall, dealt to the body the shortest water from home reaches, and the raft comes in
+   at its port stair (tests/biome/test_landfall.gd). Home's tiles, spawn, yard, camp and
+   keepers hold when a landscape is traded on another body
+   (tests/biome/test_body_independence.gd). `tours/across.tour` frames 03-04.
+7. [x] **The climb and the first enclave** (A+B+C). The slice's set piece: a foot of the
    half-broken walker comes down in the region; he climbs it (grips, stamina, falls,
    the gait moving under him) to its cut-off crown, where the first enclave lives
    (`enclave_met`, a machine talk, one fragment; his cadence, faintly). Tread-folk in
@@ -102,16 +106,19 @@ Proof tour: `tours/across.tour`, from slice 2's end.
    talk and panel, and the climb's words (e); the limp gait (f); the warden's lead to it
    (`walker_told`, the survey pinning the crater); Tull, who farms its craters (colour,
    never load). `tours/colossi_climb.tour` plays it by real keys from a staged landing,
-   `tours/across.tour` by the goal line. The lame leg's tread comes down on the leg-1
-   body wherever it fits there (GEN 48: seeds 1, 3 and 90210 of five); on 7 (water
-   under the strata) and 42 (no room) the lead goes home. Open: the tread-folk's holding
-   drawn in the craters (a GEN), and siting the treads before the keeps if more worlds
-   lack the climb.
+   `tours/across.tour` by the goal line (frames 24-31; on seed 1 the crater lies in the
+   frost sea). Where the lame leg's tread comes down off leg 1's body, the walker lead
+   follows it across a second crossing, so all twelve measured seeds pin a crater the
+   goal reaches (tests/story/test_walker_reach.gd). The tread-folk's holding stands at
+   the folk tread's lip (GEN 51, tests/story/test_tull.gd). Siting the treads before the
+   keeps was measured, and the keeps were not the cause.
 8. [x] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
 9. [x] **Fix** (A). `hale_log` locked until `war_relay`.
 10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★ On main:
-    `tours/across.tour` plays steps 1-5 and 8 by the goal line, frames 01-29. Open: 6 and 7
-    (TODO stages in it), then the owner's playtest.
+    `tours/across.tour` plays steps 1-8 by the goal line, frames 01-38 (seed 1, 2026-10-05).
+    Open: the owner's playtest. Seen in that run, for it: the cable's hand-on to the drum
+    came on the 18th of the 20 tries the tour allows, and the climb took 23 hours on the
+    world's clock, so he reaches the crown with the hunger goal on the glass (frames 28-31).
 
 ## Tools track — the story map and the dev slate (alongside slice 1)
 

@@ -35,12 +35,12 @@ func test_its_bite_is_a_lane_told_as_one() -> void:
 	var b := Roster.bite(&"sorter")
 	check(FightRules.throws(b), "the sorter's bite reaches %.1f tiles: it throws" % b.reach)
 	check(not FightRules.throws(Roster.bite(&"harvester")), "a harvester's does not")
-	var lane := FightRules.tell_lane(Vector2(10, 10), 0.55, b, 0.3)
-	eq(Vector2(lane.x, lane.y), Vector2(10, 10), "the lane starts at the thrower")
+	var lane := FightRules.tell_box(Vector2(10, 10), 0.0, 0.55, b, 0.3)
+	near(lane.z * 2.0, 0.55 + b.reach + 0.6, 1e-4, "the lane runs from behind the thrower to its reach, a body's width either end")
 	# Every point just inside the drawn lane is hit, and just outside is not.
-	for along: float in [0.5, 2.5, lane.z - 0.35]:
-		var inside := Vector2(10.0 + along, 10.0 + lane.w * 0.5 - 0.35)
-		var outside := Vector2(10.0 + along, 10.0 + lane.w * 0.5 + 0.05)
+	for along: float in [0.5, 2.5, 0.55 + b.reach - 0.1]:
+		var inside := Vector2(10.0 + along, 10.0 + lane.w - 0.05)
+		var outside := Vector2(10.0 + along, 10.0 + lane.w + 0.05)
 		check(FightRules.box_hits(Vector2(10, 10), 0.0, 0.55, b, inside, 0.3), "inside the lane at %.1f is hit" % along)
 		check(not FightRules.box_hits(Vector2(10, 10), 0.0, 0.55, b, outside, 0.3), "outside it at %.1f is not" % along)
 

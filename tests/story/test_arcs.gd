@@ -141,6 +141,13 @@ func test_every_word_fits_the_glass_it_is_shown_on() -> void:
 			check(UiFont.width(l) <= pane, "%s wraps badly in the journal: %s" % [id, l])
 	for b: StringName in StoryContent.BEATS:
 		check(str(StoryContent.BEATS[b].get("short", "")) != "", "%s has a short name for the journal's list" % b)
+	# A beat lands on the glass as one message line (Hud._draw_bottom), centred and
+	# never wrapped: a line wider than the screen inside the HUD's margins loses
+	# both its ends.
+	var line_wide := UiBase.SIZE.x - Hud.MARGIN * 2
+	for b: StringName in StoryContent.BEATS:
+		var said := StoryContent.beat_says(b)
+		check(UiFont.width(said) <= line_wide, "%s lands on the glass in one line (%d px of %d): %s" % [b, UiFont.width(said), line_wide, said])
 	# The read panel is narrow glass: a machine's testimony must say it in its width.
 	var read_wide := UiTargetView.PANEL.size.x - 10
 	for role: StringName in StoryContent.TESTIMONY:

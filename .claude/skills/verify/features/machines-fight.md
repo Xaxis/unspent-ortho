@@ -12,14 +12,18 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 - 32_disposition `src/systems/32_disposition.gd`: `tools/tour.sh tours/disposition.tour`.
   - Relic heat (GEAR.md G9): `tools/test.sh test_relic_heat`, `tools/tour.sh tours/relic_heat.tour` (h).
 - 34_works `src/systems/34_works.gd`: `tools/tour.sh tours/works.tour`.
+  - The crags' depot, a winch house at a shelf's lip (BiomeDef.depot_form `winch`):
+    `tools/test.sh test_siting`, `tools/test.sh test_model`,
+    `tools/tour.sh tours/crags-depot.tour --seed=1 --hour=12 --weather=clear:0 --held=axe_felling` (h).
 - 36_machine_parade `src/systems/36_machine_parade.gd`: `tools/tour.sh tours/machines-day.tour`.
 - 40_fight `src/systems/40_fight.gd`: `tools/tour.sh tours/fight.tour`.
   - Height (a 2-level ledge stands bodies out of each other's blows): `tools/test.sh test_height`.
   - Climbing: `tools/test.sh test_climb`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour` (h).
   - Vertical grapple (a face up to 8 levels): `tools/test.sh test_vertical_grapple`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/vertical_grapple.tour` (h).
   - Drop strike: `tools/test.sh test_drop_strike`, `tools/tour.sh tours/drop_strike.tour` (h).
+  - The swing's stroke is drawn on the ground its blow lands on and nowhere else (FightRules.box_hits; a swept tool's fan, Items.SWEPT, a strip for blades and thrusts): `tools/test.sh test_swing_drawn`; drawn against hit at the harvester's flank, `--hit-areas` outlining the live box: `TOUR_FIXED_FPS=60 tools/tour.sh tours/swing_drawn.tour` (h).
   - Heavy blow (swing held 300 ms; time-to-kill prints): `tools/test.sh "test_heavy,test_bouts"`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/heavy_blow.tour`.
-  - Bite ground ring: `tools/test.sh test_tell_ring`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour`.
+  - Bite and throw ground tell (the box's footprint grown by the player's radius, exactly the ground hit): `tools/test.sh test_tell_ring`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour`.
   - Thrower (Brains `throw`): `tools/test.sh test_throw`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/thrower.tour` (h).
   - Dropper (Brains `drop`, told by its shadow): `tools/test.sh test_dropper`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (both views; `over KIND` stages a body on a lip).
   - Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.

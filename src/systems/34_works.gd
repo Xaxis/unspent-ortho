@@ -146,7 +146,7 @@ func _set_walls() -> void:
 	for s in sites:
 		var along := Vector2.from_angle(s.facing)
 		var across := Vector2(-along.y, along.x)
-		for c: Vector3 in WorksDepot.yard_blocks():
+		for c: Vector3 in WorksDepot.yard_blocks(_form(s), _cable(s)):
 			var at := s.pos + along * c.x + across * c.y
 			walls.append(Vector3(at.x, at.y, c.z))
 		for i in Works.PART_NAMES.size():
@@ -249,7 +249,7 @@ func _make(s: WorksSite) -> void:
 	var mat := game.view.world_material() if game.view != null else null
 	var st: WorksState = _states.get(s.region, null)
 	var stage := stage_of(s)
-	var yard := WorksDepot.yard(s, stage, mat)
+	var yard := WorksDepot.yard(s, stage, mat, _form(s), _cable(s))
 	yard.rotation.y = -s.facing
 	yard.visible = false
 	_layer.add_child(yard)
@@ -267,6 +267,26 @@ func _make(s: WorksSite) -> void:
 			WorksDepot.set_broken(node, true)
 		elif st != null and st.broken():
 			WorksDepot.set_dark(node, true)
+
+
+## What a yard is drawn as: its landscape's own depot form (BiomeDef.depot_form).
+func _form(s: WorksSite) -> StringName:
+	var def := BiomeRegistry.get_def(s.land)
+	return def.depot_form if def != null else WorksDepot.DECK
+
+
+## Where a winch house's cable comes down (Works.lip_foot), in the yard's own
+## frame as WorksDepot draws it: along the bearing, up, across. INF where there
+## is no lip by it, and for every other form.
+func _cable(s: WorksSite) -> Vector3:
+	if _form(s) != WorksDepot.WINCH or game.world == null:
+		return Vector3.INF
+	var foot := Works.lip_foot(game.world, s.pos)
+	if not foot.is_finite():
+		return Vector3.INF
+	var along := Vector2.from_angle(s.facing)
+	var v := foot - s.pos
+	return Vector3(v.dot(along), game.world.height_at(foot) - game.world.height_at(s.pos), v.dot(Vector2(-along.y, along.x)))
 
 
 func _drop(s: WorksSite) -> void:
@@ -767,8 +787,16 @@ func _load(v: Variant) -> void:
 
 ## `keeper_yard`: at the edge of the nearest yard its keeper's fall put dark (or
 ## is about to), facing its mast. None stands where no keeper has fallen.
+## `winch_lip`: on the terrace under the nearest winch house's lip, where its
+## cable comes down (Works.lip_foot), facing up at the house. `feed_head`,
+## `breaker_head`, `coolant_head`: in front of that housing of the nearest yard,
+## in its reach and on its outer side, facing it: a frame of it head on.
 func tour_place(what: String) -> Vector2:
-	if what != "keeper_yard" or game.world == null:
+	if game.world == null:
+		return Vector2.INF
+	if what == "winch_lip" or what.ends_with("_head"):
+		return _tour_at_yard(what)
+	if what != "keeper_yard":
 		return Vector2.INF
 	var here: Vector2 = game.player.pos
 	var yard: WorksSite = null
@@ -790,11 +818,52 @@ func tour_place(what: String) -> Vector2:
 	return Vector2.INF
 
 
+func _tour_at_yard(what: String) -> Vector2:
+	var here: Vector2 = game.player.pos
+	var yard: WorksSite = null
+	for s in sites:
+		if yard == null or s.pos.distance_to(here) < yard.pos.distance_to(here):
+			yard = s
+	if yard == null:
+		return Vector2.INF
+	if what == "winch_lip":
+		var foot := Works.lip_foot(game.world, yard.pos)
+		if _form(yard) != WorksDepot.WINCH or not foot.is_finite():
+			return Vector2.INF
+		# Back from the foot on the terrace, so the eye over his shoulder has the
+		# drop and the cable in front of it rather than the face of the lip.
+		var away := (foot - yard.pos).normalized()
+		var at := foot
+		for back: float in [TOUR_BACK, TOUR_BACK * 0.5]:
+			var p := foot + away * back
+			if game.query.standable(floori(p.x), floori(p.y)):
+				at = p
+				break
+		_tour_facing = (yard.pos - at).angle()
+		return at
+	var i := Works.PART_NAMES.find(StringName(what.trim_suffix("_head")))
+	if i < 0:
+		return Vector2.INF
+	var part := yard.part(i)
+	var out := (part - yard.pos).angle()
+	for k in 12:
+		var a := out + float((k + 1) / 2) * (TAU / 12.0) * (1.0 if k % 2 == 0 else -1.0)
+		var p := part + Vector2.from_angle(a) * TOUR_HEAD
+		if game.query.standable(floori(p.x), floori(p.y)) and Works.part_near(yard, p) == i:
+			_tour_facing = (part - p).angle()
+			return p
+	return Vector2.INF
+
+
 func tour_face(what: String) -> float:
-	return _tour_facing if what == "keeper_yard" else NAN
+	return _tour_facing if what == "keeper_yard" or what == "winch_lip" or what.ends_with("_head") else NAN
 
 
-const TOUR_PLACES := ["keeper_yard"]
+const TOUR_PLACES := ["keeper_yard", "winch_lip", "feed_head", "breaker_head", "coolant_head"]
+## How far in front of a housing a head-on frame stands: in its reach.
+const TOUR_HEAD := 1.7
+## How far back on the terrace below from a winch's foot `winch_lip` stands.
+const TOUR_BACK := 4.0
 ## Tiles past the yard's edge a tour stands to see the whole of it.
 const TOUR_OFF := 1.0
 var _tour_facing := NAN
