@@ -2129,9 +2129,16 @@ func _burn_his(at: Vector2, kind: StringName) -> int:
 		return 0
 	var n := 0
 	for st: Settlement in h.call(&"all", Realm.SURFACE):
+		var here := 0
 		for p in _his_to_burn(st, at, kind):
 			if bool(h.call(&"damage", st.id, p.id, p.health + 1.0)):
-				n += 1
+				here += 1
+		# What he comes home to (49_story, holding_burned): a march's burning of
+		# beds his people slept in, never a camp wrecked or any other damage.
+		if here > 0 and kind == Reprisal.HOLDING:
+			@warning_ignore("return_value_discarded")
+			Story.hear(Holding.marched_on(st.id))
+		n += here
 	return n
 
 

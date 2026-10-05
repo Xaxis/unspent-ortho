@@ -72,6 +72,10 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
     (`Reprisal`): on the road, the burned shells, holdfast_price, met on the road:
     `TOUR_FIXED_FPS=60 tools/tour.sh tours/reprisal.tour --seed=1 --hour=9 --weather=clear:0 --held=axe_felling`;
     `tools/test.sh test_reprisal`. A light after dark filed (`seen_light`): `tools/test.sh test_seen_light`.
+  - His holding's beds are a roof like a village's, ranked with them by distance; a camp only last; his own
+    holding's burned beds known when he comes home to them (`holding_burned`), once, after a save too:
+    `tools/test.sh test_reprisal_in_game,test_holding_burned`. A body let go under his holding is drawn again:
+    `tools/test.sh test_people_drawn`; no offer of beds where none stand: `tools/test.sh test_holding_move`.
   - A live probe against a walled yard, held: `tools/tour.sh tours/raids_live.tour --walled` (h); graded outcomes, prepared vs open: `tools/test.sh test_raid_live`; hits from several sources in one window: `tools/test.sh test_hits_stack`.
   - Pacing, played on real frames over the days (seed 1, wild coast): a lit, staffed lean-to and hearth is surveyed about hour 15 and warned past a survey about hour 20; a dark, shuttered one is never read. A worker notices a light as anyone does (the floor gates the raw reading), a filed record is worth NOTICE_FULL by its reader's role, only a quiet holding (dark, masked, spoofed) cools, and creatures hold at most 3 of the coast's 6 places (Spawner.MAX_CREATURES): `TEST_FIXED_FPS=60 tools/heavy.sh tools/test.sh test_raid_pacing` (~13 min), `tools/test.sh test_spawner,test_attention`.
 

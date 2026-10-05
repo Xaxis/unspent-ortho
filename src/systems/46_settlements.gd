@@ -998,7 +998,9 @@ func holding_offer(row: Dictionary) -> Dictionary:
 	if v < 0 or folk == null or not (folk.get("seen_by") as Dictionary).has(v):
 		return {}
 	var s := _holding_for(row.get("pos", game.player.pos) as Vector2)
-	if s == null:
+	# Its offer is beds and a roof over them: with no bed standing there (none
+	# built yet, or a march burned them, 48_raids `_burn_his`) it is not made.
+	if s == null or s.beds() == 0:
 		return {}
 	var n: int = folk.call(&"people_of", v)
 	if n <= 0:
