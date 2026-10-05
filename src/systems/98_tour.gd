@@ -775,6 +775,36 @@ func _listen() -> void:
 			_seen["slept"] = true)
 
 
+## AN AWAIT'S BUDGET IS RUN OUT BY BOTH CLOCKS: the wall's (SECS stretched by
+## machine_slack) and the world's (its physics steps). A stepped run
+## (TOUR_FIXED_FPS) moves the world one step a drawn frame, so its world keeps
+## the frame rate's time, not the wall's: home-coast at 24-47 fps on the GPU
+## wrapper had about 21 seconds of world in an await's 45, and forty minutes on
+## the fire could never come. A free run's world keeps the wall's time, and work
+## on a thread (a raise) only ever has the wall's. So a budget is out only once
+## both have passed it, never sooner than the wall alone said, and never later
+## than WALL_CEILING times the wall's. `wall_ms` and `steps` are what has passed
+## since the await began.
+static func budget_left(wall_ms: int, steps: int, secs: float, slack: float, ticks: int) -> bool:
+	var wall := int(secs * 1000.0 * slack)
+	if float(wall_ms) >= float(wall) * WALL_CEILING:
+		return false
+	return wall_ms < wall or float(steps) / float(maxi(1, ticks)) < secs
+
+
+## How many of its wall budgets an await may run while the world still owes it
+## steps. A stalled stepped world (a hang, a wedged raise) takes none, so without
+## a ceiling it would wait for TOUR_TIMEOUT and fail with no line; the slowest
+## stepped run measured drew 24 fps against its 60 steps, 2.5 times the wall, so
+## four leaves room for it and still fails a stall at its own line.
+const WALL_CEILING := 4.0
+
+
+func _in_budget(began_ms: int, began_steps: int, secs: float) -> bool:
+	return budget_left(Time.get_ticks_msec() - began_ms, Engine.get_physics_frames() - began_steps, secs,
+		machine_slack(), Engine.physics_ticks_per_second)
+
+
 ## How much slower this machine is than an idle one, 1.0 to 8.0.
 ##
 ## A tour's budgets bound "it never came" — they are not a measure of how fast
@@ -821,16 +851,18 @@ static var _slack := 0.0
 ## about its own subject. A watch that ends when the thing being watched changes
 ## is what a player does, and it is what a tour should write.
 func _until(what: String, secs: float) -> void:
-	var stop := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
-	while not _answered(what) and Time.get_ticks_msec() < stop:
+	var began := Time.get_ticks_msec()
+	var stepped := Engine.get_physics_frames()
+	while not _answered(what) and _in_budget(began, stepped, secs):
 		await get_tree().physics_frame
 	_forget(what)
 
 
 func _await(what: String, secs: float) -> bool:
-	var until := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
+	var began := Time.get_ticks_msec()
+	var stepped := Engine.get_physics_frames()
 	var ok := _answered(what)
-	while not ok and Time.get_ticks_msec() < until:
+	while not ok and _in_budget(began, stepped, secs):
 		await get_tree().physics_frame
 		ok = _answered(what)
 	_forget(what)
