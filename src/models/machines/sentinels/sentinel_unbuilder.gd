@@ -26,7 +26,10 @@ extends MachineModel
 ##        to a person's height and the tines open
 ## windup the cable pays out — the grab sinks, wide open, and the whole pendulum
 ##        is drawn back along the street
-## strike the grab slams to the ground and the tines snap shut
+## strike the pendulum swings through and out along the street and the grab
+##        comes down where the blow lands (the bite box's front, MachineModel.
+##        strike_front), the tines snapping shut: the frame never leaves its
+##        rails, the grab on its cable is what reaches a person
 ## hurt   the grab swings off sideways on its cable; nothing flinches
 ## dead   the legs on one side fold, the girder comes down across the street
 ##        and the grab is flung out on its cable: the doorway is gone
@@ -49,6 +52,18 @@ const WHEEL_R := 0.17
 ## cable, thicker, so the grab can drop up to this much and the line stays whole
 ## (a pose cannot lengthen a cable; two coaxial runs can overlap).
 const OVERLAP := 1.6
+## The strike: the frame dips on its bogies, the trolley runs out over the
+## street's middle and the grab drops nearly the whole overlap; the tines shut
+## to TINES_SHUT. The grab's front is its hub's rim or a shut tine's knee or
+## point, whichever the swing carries farthest ahead above a person's ankle
+## (a point dragged along the ground hits nobody standing).
+const STRIKE_FRAME := Vector3(0.06, -0.08, 0)
+const STRIKE_TROLLEY := Vector3(0, 0, 0.7)
+const STRIKE_DROP := OVERLAP - 0.2
+const TINES_SHUT := -0.2
+const HUB_RIM: Array[Vector3] = [Vector3(0.42, 0.3, 0.0), Vector3(0.42, -0.36, 0.0)]
+const TINE: Array[Vector3] = [Vector3(0.34, -0.55, 0), Vector3(0.24, -1.05, 0), Vector3(-0.06, -1.3, 0)]
+const ANKLE := 0.12
 
 var _travel := 0.0
 var _winch_t := 0.0
@@ -354,21 +369,22 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			# The cable pays out: the grab sinks, wide open, and the pendulum is
 			# drawn back along the street, so the thing about to come down is the
 			# thing in plain sight.
-			d[&"trolley"] = pr(Vector3(0, 0, 0.7))
-			d[&"hang"] = r(Vector3(0, 0, 0.34))
+			d[&"trolley"] = pr(STRIKE_TROLLEY)
+			d[&"hang"] = r(Vector3(0, 0, -0.34))
 			d[&"grab"] = pr(Vector3(0, -0.8, 0))
 			d[&"bridge"] = r(Vector3(0, 0, 0.012))
 			d[&"cab"] = r(Vector3(0, 0, -0.16))
 			_tines(d, 0.9)
 		&"strike":
-			# And slams to the ground, the tines snapping shut, the whole frame
-			# dipping on its bogies as the load comes off the cable.
-			d[&"trolley"] = pr(Vector3(0, 0, 0.7))
-			d[&"hang"] = r(Vector3(0, 0, -0.3))
-			d[&"grab"] = pr(Vector3(0, -OVERLAP + 0.2, 0))
-			d[&"frame"] = pr(Vector3(0.06, -0.08, 0))
+			# And swings through and out along the street, slamming down where the
+			# blow lands, the tines snapping shut, the whole frame dipping on its
+			# bogies as the load comes off the cable.
+			d[&"trolley"] = pr(STRIKE_TROLLEY)
+			d[&"hang"] = r(Vector3(0, 0, _strike_swing() if strike_front > 0.0 else 0.3))
+			d[&"grab"] = pr(Vector3(0, -STRIKE_DROP, 0))
+			d[&"frame"] = pr(STRIKE_FRAME)
 			d[&"cab"] = r(Vector3(0, 0, -0.06))
-			_tines(d, -0.2)
+			_tines(d, TINES_SHUT)
 		&"hurt":
 			d[&"hang"] = r(Vector3(0.28, 0, 0))
 			d[&"cab"] = r(Vector3(0, 0, 0.08))
@@ -387,6 +403,41 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"winch"] = r(Vector3(0, 0, -0.4))
 			_tines(d, 0.7)
 	return d
+
+
+## The pendulum's swing at the strike (radians on `hang`'s Z): forward until
+## the grab's front lands at strike_front, found by halving.
+func _strike_swing() -> float:
+	var pivot := STRIKE_FRAME + Vector3(0, BRIDGE_Y - 0.36 - 1.05, 0)
+	var drop := Vector3(0, -HANG - STRIKE_DROP, 0)
+	var lo := 0.0
+	var hi := 1.2
+	for i in 24:
+		var a := (lo + hi) * 0.5
+		var b := Basis.from_euler(Vector3(0, 0, a))
+		var ahead := -INF
+		for p: Vector3 in _grab_points():
+			var at := pivot + b * (drop + p)
+			if at.y >= ANKLE:
+				ahead = maxf(ahead, at.x)
+		if ahead < strike_reach():
+			lo = a
+		else:
+			hi = a
+	return lo
+
+
+## The grab's front-runners in its own frame at the strike: the hub's rim and
+## each shut tine's knee, bend and point.
+func _grab_points() -> Array[Vector3]:
+	var out: Array[Vector3] = HUB_RIM.duplicate()
+	for i in 4:
+		var a := i * TAU / 4.0 + PI * 0.25
+		var hinge := Vector3(cos(a) * 0.36, -0.42, sin(a) * 0.36)
+		var turn := Basis.from_euler(Vector3(0, -a, TINES_SHUT))
+		for q in TINE:
+			out.append(hinge + turn * q)
+	return out
 
 
 func _tines(d: Dictionary, open: float) -> void:

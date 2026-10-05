@@ -29,7 +29,10 @@ extends MachineModel
 ##        while it works, and hangs DEAD STILL the moment it has you (locked)
 ## alert  the legs plant wider and the head cants down to sight
 ## windup the weight swings out wide to one side, high
-## strike it comes through in an arc: the sweep
+## strike it comes through in an arc and on out toward you, swung forward on its
+##        chain until the bob is where the blow lands (the bite box's front,
+##        MachineModel.strike_front): the legs never reach a person, the weight
+##        on the end of the chain is what does
 ## hurt   the chain judders; nothing else moves
 ## dead   the back leg buckles, the tripod goes over forwards and the head comes
 ##        down on the peat with the legs behind it and the weight thrown out to
@@ -55,6 +58,11 @@ const BOB := 0.9
 ## person's height on a six-unit leg.
 const REGISTER_AT := 0.8
 const WINCH_AT := 0.73
+
+## The bob's shoulder and point, in the weight's frame: whichever reaches
+## farther ahead when the chain swings forward is the strike's front.
+const BOB_SHOULDER := Vector3(0.3, -0.5, 0)
+const BOB_POINT := Vector3(0, -BOB, 0)
 
 var _t := 0.0
 
@@ -250,8 +258,9 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"head"] = pr(Vector3(0.0, -0.1, 0.0), Vector3(0.06, 0.0, 0.0))
 			d[&"leg_r"] = r(Vector3(-0.12, 0.0, 0.0))
 		&"strike":
-			# And comes through: the sweep.
-			d[&"pend"] = r(Vector3(-0.6, 0.0, 0.0))
+			# And comes through: the sweep, out onto the line it was told on
+			# (_routine swings it forward to where the blow lands).
+			d[&"pend"] = r(Vector3(-0.08, 0.0, 0.0))
 			d[&"head"] = r(Vector3(-0.05, 0.0, 0.0))
 		&"hurt":
 			d[&"pend"] = r(Vector3(0.1, 0.0, 0.0))
@@ -267,6 +276,24 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"pend"] = r(Vector3(0.9, 0.0, 0.0))
 			d[&"weight"] = r(Vector3(0.4, 0.0, 0.0))
 	return d
+
+
+## How far forward the chain swings at the strike (radians on `pend`'s Z), so
+## the bob's front lands at strike_front: the swing that carries the farthest
+## of its shoulder and point there, found by halving.
+func _strike_swing() -> float:
+	var want := strike_reach()
+	var lo := 0.0
+	var hi := 1.3
+	for i in 24:
+		var a := (lo + hi) * 0.5
+		var b := Basis.from_euler(Vector3(0, 0, a))
+		var ahead := maxf((b * (Vector3(0, -CHAIN, 0) + BOB_SHOULDER)).x, (b * (Vector3(0, -CHAIN, 0) + BOB_POINT)).x)
+		if ahead < want:
+			lo = a
+		else:
+			hi = a
+	return lo
 
 
 func _timing(p: StringName, j: StringName) -> Vector2:
@@ -298,7 +325,11 @@ func _routine(delta: float, on: bool) -> void:
 		return
 	_t += delta
 	# The weight swings on its own exact period while it works, and hangs dead
-	# still the moment it has the player: a plumb is a thing that stops.
+	# still the moment it has the player: a plumb is a thing that stops. In the
+	# strike it is flung forward on its chain to where the blow lands.
 	var pend := joints[&"pend"] as Node3D
-	pend.rotation.z = 0.0 if locked() else sin(_t * 0.8) * 0.16
+	if pose == &"strike" and strike_front > 0.0:
+		pend.rotation.z = _strike_swing()
+	else:
+		pend.rotation.z = 0.0 if locked() else sin(_t * 0.8) * 0.16
 	(joints[&"register"] as Node3D).rotation.z = _t * 1.4
