@@ -1481,12 +1481,26 @@ func _swap_props(key: Vector2i, baked: Array, mid: Array = []) -> void:
 ## it (`BiomeDef.decks_grounded`). Dressed for the slums drawn at its foot, a
 ## machine city's deck at the border stood on sea legs with a rail across the
 ## street. So a deck goes by its tile, as the shoulder view dresses everything.
-func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
-	if ch != null and p.kind != PropKind.PLATFORM:
+##
+## And a building goes by whoever built it (`WorldData.built_country`), because
+## its form is what stops a body: a house dressed at its foot in the next
+## landscape's stock drew a croft round a tower's wall, and a ruin a croft
+## round a metropolis stump's.
+static func prop_country_of(w: WorldData, p: WorldProp, ch: TerrainMesher.Chunk) -> int:
+	if ch != null and p.kind != PropKind.PLATFORM and not BUILT.has(p.kind):
 		var c := ch.country_at(p.pos.x, p.pos.y)
 		if c != Country.SEA:
 			return c
-	return world.dress_country(floori(p.pos.x), floori(p.pos.y))
+	return w.built_country(p)
+
+
+## Kinds whose drawn form is what stops a body (their walls or their `solid`
+## come from it), so they are never dressed across an ecotone.
+const BUILT: Array[int] = [PropKind.HOUSE, PropKind.HOUSE_BURNT, PropKind.RUIN, PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF]
+
+
+func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
+	return prop_country_of(world, p, ch)
 
 
 ## What a chunk's props bake from, taken on the main thread: [standing props,

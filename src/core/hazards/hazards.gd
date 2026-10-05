@@ -107,6 +107,11 @@ class Place:
 	## and every place in the game with nothing standing in it.
 	var pos := Vector2.ZERO
 	var near_props: Array = []
+	## The ground under the body, and each ground near enough to press it
+	## (`GroundHazards.near`: ground -> tiles to its nearest tile): 52_hazards
+	## fills both, and a Place built by hand has neither.
+	var ground := -1
+	var near_grounds: Dictionary = {}
 
 
 ## Raw strengths where the body stands, before any gear: hazard id -> 0..1.
@@ -278,9 +283,11 @@ static func _weather_shift(out: Dictionary, place: Place) -> void:
 ## a cluster is one source (see the table's header for why), and so on a clear
 ## still noon nothing here can carry a pressure past declared + add. Distance
 ## is from the prop's centre; the widest kind in the table stands 0.4 of a tile
-## wide, which is not worth a second rule.
+## wide, which is not worth a second rule. The ground round the body
+## (`GroundHazards`, `Place.near_grounds`) adds the same way, one source with
+## the things: distance is to its nearest tile's edge.
 static func _prop_shift(out: Dictionary, place: Place) -> void:
-	if place.near_props.is_empty():
+	if place.near_props.is_empty() and place.near_grounds.is_empty():
 		return
 	var family := Weather.family(place.weather)
 	var strength := clampf(place.weather_strength, 0.0, 1.0)
@@ -304,6 +311,18 @@ static func _prop_shift(out: Dictionary, place: Place) -> void:
 			var id: StringName = row.id
 			var add := float(row.add)
 			sum[id] = float(sum.get(id, 0.0)) + add * share * (1.0 - d / reach)
+			most[id] = maxf(float(most.get(id, 0.0)), add)
+	# The ground round the body (GroundHazards) is one source with the things:
+	# a seal's hole at a lead's edge is thin ice once, not twice.
+	for g: int in place.near_grounds:
+		var d := float(place.near_grounds[g])
+		for row: Dictionary in GroundHazards.rows(g):
+			var reach := float(row.reach)
+			if d >= reach or (int(row.on) >= 0 and int(row.on) != place.ground):
+				continue
+			var id: StringName = row.id
+			var add := float(row.add)
+			sum[id] = float(sum.get(id, 0.0)) + add * (1.0 - d / reach)
 			most[id] = maxf(float(most.get(id, 0.0)), add)
 	for id: StringName in sum:
 		_add(out, id, minf(float(sum[id]), float(most[id])))

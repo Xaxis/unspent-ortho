@@ -2048,8 +2048,11 @@ func tour_seen(what: StringName) -> bool:
 			return true
 		&"warden_down":
 			return pocket != null and not _swapping and not _warden_stands()
+		# A press now would go in or out: not only a door in reach, but the row
+		# naming it. Under a first sight's stage the keys are held and the press
+		# is swallowed (every-room at the frozen hold's mast).
 		&"door":
-			return door_near != null
+			return door_near != null and use_line() != ""
 		&"inside":
 			return pocket != null and not _swapping
 		&"outside":

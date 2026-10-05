@@ -73,6 +73,8 @@ extends GameSystem
 ##   hour H [+D]            set the world clock hour (same day, or D days on)
 ##   hour treadN[+M]        on to M world minutes after the walker's foot next comes
 ##                          down in tread N (as --colossus=W@treadN counts them)
+##   hour snatch            on to when the plan comes for the village that saw him
+##                          first (SnatchNight), which a seed moves by up to a day
 ##   weather KIND:S[:bolt][:wind=W]  force the sky as --weather does (`weather rules`
 ##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
@@ -174,7 +176,14 @@ extends GameSystem
 ##   perf fore SECS DRAWS MS    rendered cost of the foreground layer hanging over
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
 ##   perf foliage SECS [MS]  rendered cost of every leaf card in the loaded chunks,
-##                          shown and hidden in turn (foliage_perf.gd)
+##                          shown and hidden in turn (foliage_perf.gd); `props`,
+##                          `terrain`, `water`, `shadow` and the rest of its LAYERS
+##                          the same for that layer
+##   perf census [N]        the N biggest kinds of shown geometry by triangles
+##                          (tour/census_perf.gd)
+##   perf lit               every shown local light and the geometry it reaches,
+##                          counted against the web's lights-per-object cap
+##                          (tour/lit_perf.gd)
 ##   perf decor SECS [MS]    the same for every chunk's baked decor: grass, stones, litter
 ##   perf grass SECS [MS]    the same for only what sways in it (grass.gdshader)
 ##   perf meadow SECS [MS]   the same for the eye-level meadow ring (18_meadow), and
@@ -269,7 +278,10 @@ extends GameSystem
 ## to a loaded game, the runner stays at the tree's root and follows the next game.
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
 ## started since the last action), saved (a save was written), fire_asked (`use` has
-## asked where a fire would go and wants a second press); and station:NAME
+## asked where a fire would go and wants a second press), fed (the next press
+## would eat nothing he carries), hunger:N (his hunger is at N or under: 0 fed, 1
+## peckish, 2 hungry, 3 starving), hint:VERB (the key row names VERB, asked or
+## not: `hint:sleep` is "village - sleep?" too); and station:NAME
 ## (a station of that name, e.g. fire, is in reach of the player).
 ##   await title SECS       the title's slate has woken over its coast (a tour booted
 ##                          with --scene=title, or one whose game gave way to the title)
@@ -520,10 +532,11 @@ func _run() -> void:
 			"hour":
 				# `hour H +D`: D days on, at H (a night the plan comes, a day later).
 				# `hour treadN[+M]`: on to when the walker's foot next comes down
-				# there (19_colossi tour_hour).
-				if parts[1].begins_with("tread"):
-					var colossi := _system("19_colossi")
-					var at: float = float(colossi.call(&"tour_hour", parts[1])) if colossi != null else NAN
+				# there (19_colossi tour_hour). `hour snatch`: on to when the plan
+				# comes for the village that saw him first (48_raids tour_hour).
+				if parts[1].begins_with("tread") or parts[1] == "snatch":
+					var by := _system("48_raids" if parts[1] == "snatch" else "19_colossi")
+					var at: float = float(by.call(&"tour_hour", parts[1])) if by != null else NAN
 					ok = not is_nan(at)
 					if ok:
 						game.clock.minutes = at
@@ -660,6 +673,10 @@ func _run() -> void:
 					ok = await ForePerf.perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "stats":
 					ok = (preload("res://src/systems/tour/stats_perf.gd")).perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "census":
+					ok = (preload("res://src/systems/tour/census_perf.gd")).perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "lit":
+					ok = (preload("res://src/systems/tour/lit_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "lens":
 					ok = await (preload("res://src/systems/tour/lens_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "front":
@@ -883,6 +900,18 @@ func _now_true(what: String) -> bool:
 	# key working correctly, and nothing in the tour could tell.
 	if what == "fire_asked":
 		return Survival.build_asked(game).is_finite()
+	# Nothing the next press would eat: a hungry body eats what it carries before
+	# it lies down (Survival._fallback), so a tour that sleeps feeds him to this.
+	if what == "fed":
+		return game.body.hunger_level(game.clock.minutes) < 1 or Survival.best_food(game) == &""
+	if what.begins_with("hunger:"):
+		return game.body.hunger_level(game.clock.minutes) <= what.substr(7).to_int()
+	# What the key row says the press does now (UiLink.use_hint). In a street of
+	# thirty somebody is in front of him most seconds and the press is theirs
+	# (49_story), so a tour waits, as a player does, for the row to name its verb.
+	if what.begins_with("hint:"):
+		var row := UiLink.use_hint(game).trim_suffix("?")
+		return row.ends_with(" - " + what.substr(5))
 	if what == "mob" or what.begins_with("mob:"):
 		return _body_in_frame(what.substr(4), 1)
 	# What a body in frame has made of the player, which is the difference between
