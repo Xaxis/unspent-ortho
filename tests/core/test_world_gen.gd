@@ -1056,6 +1056,12 @@ func test_places_resolve() -> void:
 		if at.x >= 0.0:
 			eq(w.country_at(floori(at.x), floori(at.y)), cc, "%s sample country" % BiomeRegistry.name_of(cc))
 	eq(GenPlaces.find(w, "nowhere"), Vector2(-1, -1), "unknown place")
+	# "a|b": the first of them this world has, so a tour asks for a kind of place
+	# and not one border a reworked seed may no longer hold.
+	if widest >= 0:
+		var border := "%s-%s" % [BiomeRegistry.by_index(widest / 256).id, BiomeRegistry.by_index(widest % 256).id]
+		eq(GenPlaces.find(w, "nowhere|" + border), GenPlaces.find(w, border), "a missing place gives way to the next")
+	eq(GenPlaces.find(w, "nowhere|nowhere_else"), Vector2(-1, -1), "and none of them is no place")
 
 
 ## EVERY PLACE WORTH WALKING TO SAYS WHICH PLACE IT IS IN.

@@ -43,7 +43,7 @@ src/core/landmarks/landmarks.gd::has_row::list
 src/core/landmarks/landmarks.gd::sited::list
 src/core/mobs/coast.gd::_first_due::builder Spawner.green_distance
 src/core/mobs/coast.gd::_first_meeting::builder Spawner.green_distance
-src/core/mobs/nav_field.gd::update::raw
+src/core/mobs/nav_field.gd::_fill::raw
 src/core/mobs/spawner.gd::green_distance::list
 src/core/realm/portals.gd::_lay::builder GenPlaces.solid_mask
 src/core/realm/portals.gd::_lay::list

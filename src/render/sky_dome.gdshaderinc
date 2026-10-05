@@ -149,6 +149,11 @@ vec3 dome_procedural_join(vec3 d, vec3 sky) {
 #include "res://src/render/orbit/orbit_sky.gdshaderinc"
 #endif
 
+// How high over the horizon (the sine of it) the radiance pass keeps the sun:
+// up to the first, all of it; gone by the second.
+const float SUN_AIR_LOW = 0.05;
+const float SUN_AIR_TOP = 0.2;
+
 // The seen dome in direction `d` (world space, unit), before `dome_energy`.
 // `cubemap` is the radiance pass: no moon and no stars, which is exactly what
 // the depth fog's aerial perspective samples, so a caller asking with `true` is
@@ -198,6 +203,18 @@ vec3 dome_seen_col(vec3 d, bool cubemap) {
 	float sd = dot(d, normalize(dome_sun_dir));
 	float disc = smoothstep(0.99990, 0.99995, sd);
 	float halo = pow(max(sd, 0.0), 900.0) * 0.8 + pow(max(sd, 0.0), 60.0) * 0.18;
+	// THE SUN IN THE WATER IS THE LIGHT'S, NOT THE SKY'S. The radiance pass held the
+	// sun too, disc and halo, and every rough surface blurred it: from up a leg
+	// it lay on the sea as a white blob kilometres across round the light's own
+	// highlight, which is what the sea's band is drawn from (water.gdshader,
+	// glint_band; #33). So that pass keeps only the sun the air near the horizon
+	// is seen through (the depth fog's aerial perspective samples it, and a low
+	// sun's glow is in every eye-level air), and lets it go above SUN_AIR_TOP.
+	if (cubemap) {
+		float air = 1.0 - smoothstep(SUN_AIR_LOW, SUN_AIR_TOP, d.y);
+		disc *= air;
+		halo *= air;
+	}
 	float up = smoothstep(-0.03, 0.02, dome_sun_dir.y);
 	// A low sun is seen through the most air: it reddens into the glow and dims.
 	vec3 disc_col = mix(dome_sun_color, dome_glow_color * 1.4, dome_glow * 0.8);

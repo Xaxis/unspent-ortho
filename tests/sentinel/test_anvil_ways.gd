@@ -15,14 +15,6 @@ const PR := preload("res://tests/fight/plate_reader.gd")
 ## the edge of its plates and never steps off them; out to where it still sees
 ## him from its den (Sentinels.lure_reach, 18 for the anvil).
 const LURE_AT: Array[float] = [10.0, 12.0, 8.0, 14.0, 16.0, 18.0]
-## How far into the sand the lure stands: a run at him stops where its bite
-## reaches (Brains.strike_range: its middle the two radii and four fifths of the
-## reach off), and its middle there has to be on the sand with LURE_SPARE to
-## spare. A flat three tiles was under the anvil's 3.12: on seed 7 its run ended
-## a fifth of a tile short of the sand and it bit from its own ground, four
-## tries (9d5d9919). Stood at the sand's very edge it never foundered at all
-## (the drowned city's world, seeds 1 and 7).
-const LURE_SPARE := 1.0
 ## The hour the force fights start: after the sun is down. By day the glass's
 ## glare (0.7), heat and thirst press a body past Hazards.BITE and his run falls
 ## to 59-71% at the strike field's den on seed 7, and no opening of the skating
@@ -43,14 +35,6 @@ func _anvil(g: Game) -> SentinelState:
 		if s.design == &"anvil" and (best == null or s.lair.distance_to(g.player.pos) < best.lair.distance_to(g.player.pos)):
 			best = s
 	return best
-
-
-## Where a run at a player on the lure stops, plus the spare: the keeper's
-## first-phase strike range (Brains.strike_range) and LURE_SPARE.
-static func _lure_depth(s: SentinelState) -> float:
-	var def := Sentinels.by_id(s.design)
-	var reach := float(def.phase(0).bite.get("reach", 0.6))
-	return float(Roster.row(def.kind).get("radius", 0.5)) + Tuning.PLAYER_RADIUS + reach * 0.8 + LURE_SPARE
 
 
 ## The fight on `seed_value`, `way` force or founder. Returns the tally, or {}
@@ -79,7 +63,7 @@ func _take(seed_value: int, way: int) -> Dictionary:
 	else:
 		var lure := Vector2.INF
 		for dist: float in LURE_AT:
-			lure = KF.stand(g, s, dist, sand, true, _lure_depth(s))
+			lure = KF.stand(g, s, dist, sand, true, Sentinels.lure_depth(Sentinels.by_id(s.design)))
 			if lure.is_finite():
 				break
 		check(lure.is_finite(), "sand to draw it onto on seed %d" % seed_value)
