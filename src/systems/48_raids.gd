@@ -1847,21 +1847,104 @@ const ROAD_PARTY := 2
 var _road: Dictionary = {}
 
 
-## A housing opened on a live yard: its hunters take the road to the nearest roof.
+## A housing opened on a live yard: its hunters take the road (`_target_for`).
 func _on_works_part_broken(region: int, yard: Vector2) -> void:
 	if game.clock == null:
 		return
-	var near := game.query.props_near(yard, Reprisal.REACH)
+	var target := _target_for(yard)
+	if reprisal.send(region, target.at, game.clock.minutes, yard, target.kind):
+		_seen["reprisal_sent"] = true
+		Events.sfx.emit(&"alert", game.world.to_3d(yard))
+		_say(&"sent", target.kind)
+
+
+## WHAT A BROKEN YARD'S HUNTERS GO FOR, {"at", "kind"}. A breaking that costs
+## nobody breaks the rule the whole of Vera's warning stands on, and six first
+## yards across seeds 1, 7 and 42 had no roof in REACH (the burning's slag, the
+## frost sea's soundings, a snowfield stack, a scrapwood breaking yard; #67). So:
+## the nearest roof in REACH; else the nearest roof on the yard's own body, at any
+## distance, the march longer by the road (Reprisal.march_minutes); else his own
+## fire on that body (`_his_on_body`), his CAMP or his HOLDING; else NONE, and
+## nobody is sent. Villages hold the far roofs, so the far search asks round each
+## village on the body (its houses stand within GenSettle.HOUSE_REACH of its
+## square), never the whole prop table.
+func _target_for(yard: Vector2) -> Dictionary:
+	var roof := _nearest_roof_round(yard, yard, Reprisal.REACH)
+	if roof.is_finite():
+		return {"at": roof, "kind": Reprisal.ROOF}
+	var w := game.world
+	var villages: Array[Vector2] = []
+	for v: Dictionary in w.villages:
+		var vp: Vector2 = v.get("pos", Vector2.INF)
+		if vp.is_finite() and w.same_body(yard, vp):
+			villages.append(vp)
+	villages.sort_custom(func(a: Vector2, b: Vector2) -> bool:
+		return a.distance_squared_to(yard) < b.distance_squared_to(yard))
+	for vp in villages:
+		# No roof of this village or any farther one can beat the one in hand.
+		if roof.is_finite() and vp.distance_to(yard) - GenSettle.HOUSE_REACH >= roof.distance_to(yard):
+			break
+		var here := _nearest_roof_round(vp, yard, GenSettle.HOUSE_REACH)
+		if here.is_finite() and (not roof.is_finite() or here.distance_to(yard) < roof.distance_to(yard)):
+			roof = here
+	if roof.is_finite():
+		return {"at": roof, "kind": Reprisal.ROOF}
+	var home := _his_on_body(yard)
+	if home == null:
+		return {"at": Vector2.INF, "kind": Reprisal.NONE}
+	return {"at": home.centre, "kind": _kind_of(home)}
+
+
+## The nearest unburned house to `yard` within `r` of `at`.
+func _nearest_roof_round(at: Vector2, yard: Vector2, r: float) -> Vector2:
+	var near := game.query.props_near(at, r)
 	# Which of those have burned already, asked of each, never the whole table.
 	var gone := {}
 	for q in near:
 		if game.world.depleted.has(q.id):
 			gone[q.id] = true
-	var roof := Reprisal.nearest_roof(near, yard, gone)
-	if reprisal.send(region, roof, game.clock.minutes, yard):
-		_seen["reprisal_sent"] = true
-		Events.sfx.emit(&"alert", game.world.to_3d(yard))
-		Events.message.emit(StoryContent.REPRISAL[&"sent"])
+	return Reprisal.nearest_roof(near, yard, gone)
+
+
+## His own place nearest `yard` on the same body with something there the
+## hunters would burn (`_his_to_burn`), or null.
+func _his_on_body(yard: Vector2) -> Settlement:
+	var h := holdings()
+	if h == null:
+		return null
+	var best: Settlement = null
+	for st: Settlement in h.call(&"all", Realm.SURFACE):
+		if not game.world.same_body(yard, st.centre) or _his_to_burn(st, st.centre, _kind_of(st)).is_empty():
+			continue
+		if best == null or st.centre.distance_to(yard) < best.centre.distance_to(yard):
+			best = st
+	return best
+
+
+## A place of his is a CAMP while nobody else lives there, and a HOLDING once the
+## people he brought do (Holding).
+static func _kind_of(s: Settlement) -> StringName:
+	return Reprisal.CAMP if s.people.is_empty() else Reprisal.HOLDING
+
+
+## WHAT THE HUNTERS DO AT HIS OWN FIRE, the counterpart of a village's roofs, and
+## within BURN_REACH of where they were sent as those are. At a CAMP, which is
+## nobody's but his, everything he built is wrecked and the fire put out
+## (46_settlements `damage` douses a hearth). At a HOLDING the roofs his people
+## sleep under burn (every piece with beds, StructureKind.sleeps), and its walls,
+## guns, stores and plots stand: nobody is lost, and the beds are his to mend.
+static func _his_to_burn(s: Settlement, at: Vector2, kind: StringName) -> Array[Structure]:
+	var out: Array[Structure] = []
+	for p: Structure in s.pieces:
+		if not p.ruined and p.pos.distance_to(at) <= BURN_REACH and (kind == Reprisal.CAMP or StructureKind.sleeps(p.kind) > 0):
+			out.append(p)
+	return out
+
+
+## Says on the glass what a march has come to, in the words for what it was sent
+## for (StoryContent.reprisal_says).
+func _say(event: StringName, kind: StringName) -> void:
+	Events.message.emit(StoryContent.reprisal_says(event, kind))
 
 
 ## OUT ON THE ROAD (Reprisal.on_road): a march he is near walks there as bodies,
@@ -1884,11 +1967,12 @@ func _show_the_road() -> void:
 			_off_the_road(region)
 		elif standing == 0:
 			# Every one of them down on the road: nobody reaches the roof.
+			var kind := reprisal.kind_of(region)
 			reprisal.call_off(region)
 			@warning_ignore("return_value_discarded")
 			_road.erase(region)
 			_seen["reprisal_met"] = true
-			Events.message.emit(StoryContent.REPRISAL[&"met"])
+			_say(&"met", kind)
 		else:
 			var at := reprisal.on_road(region, now)
 			if at.distance_to(game.player.pos) > ROAD_SEEN * 1.5:
@@ -1985,14 +2069,24 @@ func _off_the_road(region: int) -> void:
 func _called_back(region: int) -> void:
 	if not reprisal.marching.has(region):
 		return
+	var kind := reprisal.kind_of(region)
 	reprisal.call_off(region)
-	Events.message.emit(StoryContent.REPRISAL[&"called_back"])
+	_say(&"called_back", kind)
 
 
 func _burn_what_is_due() -> void:
 	if game.clock == null:
 		return
-	for roof: Vector2 in reprisal.burning_now(game.clock.minutes):
+	for due: Dictionary in reprisal.burning_now(game.clock.minutes):
+		var roof: Vector2 = due.roof
+		var kind: StringName = due.kind
+		# His own fire is no village: nothing burned there is a village's to the
+		# story (`village_burned`, holdfast_price, Holding.SEEN_BURNED).
+		if kind != Reprisal.ROOF:
+			if _burn_his(roof, kind) > 0:
+				_seen[StringName("burned_%s" % kind)] = true
+				_say(&"burned", kind)
+			continue
 		var n := 0
 		for q in game.query.props_near(roof, BURN_REACH):
 			# `props_near` answers by the index's rows, a little past `r`: the roof's
@@ -2004,7 +2098,21 @@ func _burn_what_is_due() -> void:
 		if n > 0:
 			_seen["burned"] = true
 			Events.village_burned.emit(roof)
-			Events.message.emit(StoryContent.REPRISAL[&"burned"])
+			_say(&"burned", kind)
+
+
+## His own place at `at` burns as `kind` says (`_his_to_burn`), through
+## 46_settlements `damage` so its events and drawing follow; how many pieces went.
+func _burn_his(at: Vector2, kind: StringName) -> int:
+	var h := holdings()
+	if h == null:
+		return 0
+	var n := 0
+	for st: Settlement in h.call(&"all", Realm.SURFACE):
+		for p in _his_to_burn(st, at, kind):
+			if bool(h.call(&"damage", st.id, p.id, p.health + 1.0)):
+				n += 1
+	return n
 
 
 ## The house goes and its burnt shell stands in its place, the same form of the

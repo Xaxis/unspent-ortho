@@ -6095,6 +6095,21 @@ const REPRISAL := {
 	# He comes to the roofs a broken yard's hunters burned (holdfast_price).
 	"seen": "The houses are black to the ground. Somebody left a pot on the fire.",
 }
+## The same lines for a march sent for his own fire and not a village's roofs:
+## his camp, where nobody else lives, or the holding his people live in (48_raids
+## `_his_to_burn` says what the hunters do at each). No `seen`: that is a
+## village's, and only a village's burning lands holdfast_price.
+const REPRISAL_AT := {
+	&"camp": {},
+	&"holding": {},
+}
+
+
+## The glass line for `event` of a march sent for `kind` (Reprisal.ROOF, CAMP or
+## HOLDING): what the hunters were sent for is what the line names.
+static func reprisal_says(event: StringName, kind: StringName) -> String:
+	var lines: Dictionary = REPRISAL if kind == Reprisal.ROOF else REPRISAL_AT.get(kind, {})
+	return String(lines.get(event, ""))
 
 # DEFEND THE HOLDING (slice 2 step 4; 48_raids, Settlement.inside/barred): the
 # glass lines for the warning sending his people in behind the shutters and for
