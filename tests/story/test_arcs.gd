@@ -102,6 +102,18 @@ func test_one_conversation_per_trade_so_nobody_is_silently_unreachable() -> void
 		by[who] = talk
 
 
+## EVERY LEAD FITS THE GOAL GLASS (Hud.goal_clip): the goal line's window holds
+## the whole lead, on the screen and to the left of it, as the HUD's own test asks
+## of the one line it sets. A lead is read on the move, so one that runs off is
+## one a player never finishes.
+func test_every_lead_fits_the_goal_glass() -> void:
+	for key: StringName in StoryContent.LEAD:
+		var line := str(StoryContent.LEAD[key])
+		var r := Hud.goal_clip(line)
+		check(UiBase.screen().encloses(r), "LEAD %s stands on the screen: %s" % [key, line])
+		lt(r.end.x, UiBase.SIZE.x * 0.7, "LEAD %s keeps to the left (%d px): %s" % [key, UiFont.width(line), line])
+
+
 func test_every_word_fits_the_glass_it_is_shown_on() -> void:
 	var wide := UiTalkView.PANEL.size.x - UiTalkView.MARGIN * 2 - 8
 	for id: StringName in StoryFragments.all():

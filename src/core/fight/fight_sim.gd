@@ -83,10 +83,28 @@ var moment: Moment
 var mobs: Array[MobState] = []
 ## Steps to the player over the ground, for chasers that meet a cliff.
 var nav: NavField
-## A body's own way round (NavField.for_body), by mob id: laid by its own move's
-## rules to wherever that body is going, the player or where it last knew them
-## (`route`).
-var _wide_nav: Dictionary = {}
+## The bodies' own ways round (NavField.for_body), by their move's rules (its
+## climb, headroom, move radius and what it breaks: `_rules`) and kept for the
+## last few tiles they were laid to. A field is the same for every body with the
+## same rules going to the same tile, so a pack chasing the player builds it
+## once and not once a body: each was 6 ms of the main thread in a city, and
+## they all came due on the frame the player crossed a tile.
+var _wide_nav: Dictionary = {}  # rules -> Array[NavField], most recently used last
+var _rules_of: Dictionary = {}  # mob id -> its rules
+## Fields kept per rule set: the player and the few other places bodies of one
+## kind go at once (where they last knew him, a flight).
+const NAV_KEPT := 4
+## FIELDS ARE LAID A SLICE AT A TIME (NavField.request / advance): a build in
+## hand gets NAV_CELLS of every slice, oldest asked first, and its field answers
+## from the old build until the new one is in. Counted in cells, so a fixed-step
+## fight lays its fields on the same slices every run. At 600 a slice a city
+## field is in within 4-7 frames, and a slice spends at most about 1 ms on them.
+const NAV_CELLS := 600
+var _nav_due: Array[NavField] = []
+var _nav_asked: Dictionary = {}  # NavField -> sim ms it was asked
+## The longest a field has answered from its old build while the new one was laid
+## (sim ms), for whoever reads what that costs a chase.
+var nav_lag_most := 0.0
 ## Simulation milliseconds.
 var now := 0.0
 ## Real seconds that `now` corresponds to (Body stores real-time seconds).
@@ -218,6 +236,7 @@ func _slice() -> void:
 	now += FightRules.SLICE_MS
 	var dt := FightRules.SLICE_MS / 1000.0
 	_presses()
+	_lay_fields()
 	if fmod(now, FightRules.THINK_MS) < FightRules.SLICE_MS:
 		for m in mobs:
 			Brains.think(m, self)
@@ -2583,9 +2602,7 @@ func refresh_nav() -> void:
 		return
 	if nav.builds > 0 and now - _nav_at < NAV_EVERY_MS:
 		return
-	var before := nav.builds
-	nav.update(hero.pos)
-	if nav.builds != before:
+	if _ask(nav, hero.pos):
 		_nav_at = now
 
 
@@ -2599,20 +2616,80 @@ func route(m: MobState, target: Vector2) -> Vector2:
 
 ## Steps from `from` to `target` over the ground `m`'s own move can take
 ## (NavField.FAR where it cannot get there within the field).
-func route_steps(m: MobState, target: Vector2, from: Vector2) -> int:
-	var field := _field_for(m, target)
+## Laid now unless `laid` is false: a chaser asking on its think takes the field
+## as it stands (`route`); a body choosing between places, a test or a tour wants
+## the answer for the place it names.
+func route_steps(m: MobState, target: Vector2, from: Vector2, laid := true) -> int:
+	var field := _field_for(m, target, laid)
 	return field.steps_from(from) if field != null else NavField.FAR
 
 
-func _field_for(m: MobState, target: Vector2) -> NavField:
+func _field_for(m: MobState, target: Vector2, laid := false) -> NavField:
 	if world == null or query == null:
 		return null
-	var field: NavField = _wide_nav.get(m.id)
+	var rules: String = _rules_of.get(m.id, "")
+	if rules == "":
+		rules = "%s|%s|%.3f|%s" % [m.row.get("climbs", 1), m.row.get("height", 1.0), move_radius(m), str(NavField.breaks_of(m.row))]
+		_rules_of[m.id] = rules
+	var kept: Array = _wide_nav.get(rules, [])
+	var tile := Vector2i(floori(target.x), floori(target.y))
+	var field: NavField = null
+	for f: NavField in kept:
+		if f.laid_to(tile):
+			field = f
+			break
 	if field == null:
-		field = NavField.for_body(world, query, m.row, move_radius(m))
-		_wide_nav[m.id] = field
-	field.update(target)
-	return field
+		if kept.size() < NAV_KEPT:
+			field = NavField.for_body(world, query, m.row, move_radius(m))
+		else:
+			# The one laid nearest: while the new build is laid it answers from
+			# there, and a target that moved a tile is as good as reached.
+			for f: NavField in kept:
+				if field == null or _off(f, tile) < _off(field, tile):
+					field = f
+	kept.erase(field)
+	kept.append(field)
+	_wide_nav[rules] = kept
+	if laid:
+		field.update(target)
+		_nav_due.erase(field)
+		@warning_ignore("return_value_discarded")
+		_nav_asked.erase(field)
+		return field
+	@warning_ignore("return_value_discarded")
+	_ask(field, target)
+	# A field laid more than a tile from where this body goes leads it nowhere
+	# useful until its new build is in: the body walks straight meanwhile.
+	return field if _off(field, tile) <= 1 else null
+
+
+## How far (tiles, either axis) the field's present build is laid from `tile`.
+static func _off(f: NavField, tile: Vector2i) -> int:
+	return maxi(absi(f.centre.x - tile.x), absi(f.centre.y - tile.y))
+
+
+## Ask `field` to be laid to `target`; true when that starts a build.
+func _ask(field: NavField, target: Vector2) -> bool:
+	if not field.request(target):
+		return false
+	if not _nav_due.has(field):
+		_nav_due.append(field)
+	_nav_asked[field] = now
+	return true
+
+
+## This slice's share of the builds in hand, oldest asked first.
+func _lay_fields() -> void:
+	var left := NAV_CELLS
+	while left > 0 and not _nav_due.is_empty():
+		var f: NavField = _nav_due[0]
+		left -= f.advance(left)
+		if f.pending():
+			break
+		_nav_due.remove_at(0)
+		nav_lag_most = maxf(nav_lag_most, now - float(_nav_asked.get(f, now)))
+		@warning_ignore("return_value_discarded")
+		_nav_asked.erase(f)
 
 
 ## Tiles to the player over the ground (the way round a cliff, not through it),

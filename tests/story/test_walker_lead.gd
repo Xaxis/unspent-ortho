@@ -39,27 +39,46 @@ func test_the_goal_is_the_walkers_crater_until_the_enclave() -> void:
 ## until he has stood on the walker's body; then the crater there; home once the
 ## enclave is met.
 func test_no_crater_on_the_covenants_body_and_the_goal_crosses_the_ditch() -> void:
-	var g := await _told(HOME_SHORE_SEED)
+	await _crosses_the_ditch(HOME_SHORE_SEED, false)
+
+
+## COVENANT_SHORE_SEED's lame foot comes down on another body too, but open water
+## joins it to the Covenant's own shore, where Solis has just said the road up:
+## the raft puts in there (StoryCrossing.to_walker asks the Covenant's shore
+## first), and the rest is the same.
+func test_the_ditch_is_crossed_from_the_covenants_shore_where_open_water_joins_them() -> void:
+	await _crosses_the_ditch(COVENANT_SHORE_SEED, true)
+
+
+## The raft over the ditch on `seed_value`, put in from the Covenant's shore or
+## from home's, until the enclave is met.
+func _crosses_the_ditch(seed_value: int, from_covenant: bool) -> void:
+	var g := await _told(seed_value)
 	for m: Dictionary in g.world.landmarks:
 		if StringName(m.get("kind", &"")) == &"tread":
-			check(not g.world.same_body(m.pos, _placed(g, &"the_covenant")), "a crater at %s is on another body" % [m.pos])
-	# The seed is this test's premise, and a world laid differently moves it: GEN 53
-	# put seed 42's lame foot on a body the Covenant's shore reaches, and the raft
-	# put in there, as to_walker says it should. Asked first, so a world that no
-	# longer has the premise says so instead of failing on the shore.
+			check(not g.world.same_body(m.pos, _placed(g, &"the_covenant")), "seed %d: a crater at %s is on another body" % [seed_value, m.pos])
+	# The seed is the premise, and a world laid differently moves it: GEN 53 put
+	# seed 42's lame foot on a body the Covenant's shore reaches, and the raft put
+	# in there, as to_walker says it should, where the test still asked for home's.
+	# Asked first, so a world that has lost the premise says so instead of failing
+	# on the shore.
 	var cov := _placed(g, &"the_covenant")
 	var tread := _placed(g, &"the_tread")
-	check(StoryCrossing.find(g.world, cov, tread).is_empty()
-		and StoryCrossing.find_within(g.world, cov, tread, StoryCrossing.WALKER_REACH).is_empty(),
-		"seed %d's premise: no open water joins the Covenant's shore to the walker's body (pick another seed)" % HOME_SHORE_SEED)
+	var joined := not StoryCrossing.find(g.world, cov, tread).is_empty() \
+		or not StoryCrossing.find_within(g.world, cov, tread, StoryCrossing.WALKER_REACH).is_empty()
+	check(joined == from_covenant, "seed %d's premise: open water %s the Covenant's shore to the walker's body (pick another seed)"
+		% [seed_value, "joins" if from_covenant else "never joins"])
 	var launch := _placed(g, StoryCrossing.WALKER_LAUNCH)
 	var landing := _placed(g, StoryCrossing.WALKER_LANDING)
-	check(launch.is_finite() and landing.is_finite(), "a raft over the ditch is placed")
+	check(launch.is_finite() and landing.is_finite(), "seed %d: a raft over the ditch is placed" % seed_value)
 	if not landing.is_finite():
 		Sx.end(g)
 		Story.forget()
 		return
-	check(g.world.same_body(launch, _placed(g, &"the_camp")), "put in from home's shore")
+	if from_covenant:
+		check(g.world.same_body(launch, cov), "seed %d: put in from the Covenant's shore" % seed_value)
+	else:
+		check(g.world.same_body(launch, _placed(g, &"the_camp")), "seed %d: put in from home's shore" % seed_value)
 	await _next_day(g)
 	_hop(g, &"walker_crossing", "told and settled, with no crater on this shore: the raft over the ditch")
 	check(_marked_as(g, "the ditch", launch), "the survey marks where to put in (%s)" % [UiMapScreen.told(g)])
@@ -106,10 +125,12 @@ func _pick(t: StoryTalk, text: String) -> bool:
 	return false
 
 
-## A world whose walker's body only home's shore reaches by open water: at GEN 56,
-## seed 12 of 1-17, 41, 42 and 90210 (home's raft is 702 tiles of water; seeds 7,
-## 9, 10, 11, 13, 15, 17, 41 and 42 put in from the Covenant's shore).
+## A world whose walker's body only home's shore reaches by open water, and one
+## the Covenant's shore reaches. At GEN 56, of seeds 1-17, 41, 42 and 90210, 12
+## is the only one of the first kind (home's raft is 702 tiles of water); 7, 9,
+## 10, 11, 13, 15, 17, 41 and 42 are of the second (42's raft is 292 tiles).
 const HOME_SHORE_SEED := 12
+const COVENANT_SHORE_SEED := 42
 
 
 ## Slice 2 done, the far shore's threads behind him long ago, and Solis has just
