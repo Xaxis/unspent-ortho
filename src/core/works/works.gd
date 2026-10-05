@@ -438,6 +438,12 @@ static func _room_at(world: WorldData, x: int, y: int) -> bool:
 const LIP_REACH := 9
 const LIP_DROP := 2
 const LIP_OPEN := 5
+## THE SIDE THE PLAY CAMERA SEES A DROP FROM (PlayView.toward_eye): a face
+## falling toward the eye is turned to it and the cable reads down it from jib to
+## foot; one falling away is hidden behind its own lip, and seed 1's first cable
+## stopped at the edge. A foot on that side is taken over a nearer one on the far
+## side.
+const PlayView := preload("res://src/core/view/play_view.gd")
 
 
 static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
@@ -451,6 +457,9 @@ static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
 	var top: int = levels[cy * size + cx]
 	var best := Vector2.INF
 	var best_d := INF
+	var seen := Vector2.INF
+	var seen_d := INF
+	var eye := PlayView.toward_eye()
 	for dy in range(-LIP_REACH, LIP_REACH + 1):
 		var y := cy + dy
 		if y < 1 or y >= size - 1:
@@ -460,7 +469,8 @@ static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
 			if x < 1 or x >= size - 1:
 				continue
 			var d := Vector2(dx, dy).length()
-			if d > float(LIP_REACH) or d >= best_d:
+			var faces := Vector2(dx, dy).dot(eye) > 0.0
+			if d > float(LIP_REACH) or d >= (seen_d if faces else best_d):
 				continue
 			var i := y * size + x
 			var low: int = levels[i]
@@ -496,9 +506,13 @@ static func lip_foot(world: WorldData, at: Vector2) -> Vector2:
 					break
 			if shut:
 				continue
-			best = to
-			best_d = d
-	return best
+			if faces:
+				seen = to
+				seen_d = d
+			else:
+				best = to
+				best_d = d
+	return seen if seen.is_finite() else best
 
 
 ## The round the depot's own walk: out along the survey bearing and back, which

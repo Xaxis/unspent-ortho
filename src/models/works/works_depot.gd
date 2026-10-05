@@ -531,6 +531,51 @@ static func _house(k: MeshKit, made: MeshKit, seed_value: int) -> void:
 		made.rock(cos(a) * r, 0.0, sin(a) * r * 0.75, 0.18 + Rng.hash01(seed_value, i, 0x3E) * 0.16, 0.13, seed_value + i, SPOIL, 5)
 
 
+## The winch's cable: its thickness and round, its colour (dark against the
+## crags' pale rock), how far it sags for its length, and how many runs draw it.
+const CABLE_R := 0.085
+const CABLE_SIDES := 6
+const CABLE := Color(0.0980, 0.1020, 0.1098)
+const CABLE_SAG := 0.07
+const CABLE_RUNS := 14
+
+
+## THE LAY: two pale strands wound round the dark cable down its whole length,
+## so it reads as a rope against the pale rock it hangs over AND the dark face it
+## hangs down, where a dark line alone was lost; seen from far off the turns are
+## a zip of chevrons, as on the climb's rope (#32). Unlit: nothing of the plan
+## burns in the crags.
+static func _lay(k: MeshKit, line: Array[Vector3]) -> void:
+	var run := 0.0
+	for strand in 2:
+		var last := Vector3.INF
+		run = 0.0
+		for i in range(1, line.size()):
+			var a := line[i - 1]
+			var b := line[i]
+			var along := (b - a).normalized()
+			var n1 := along.cross(Vector3.UP if absf(along.y) < 0.95 else Vector3.RIGHT).normalized()
+			var n2 := along.cross(n1)
+			var length := a.distance_to(b)
+			var steps := maxi(1, ceili(length / LAY_STEP))
+			for j in range(0, steps + 1):
+				var s := run + length * float(j) / float(steps)
+				var turn := s / LAY_TURN * TAU + float(strand) * PI
+				var p := a.lerp(b, float(j) / float(steps)) + (n1 * cos(turn) + n2 * sin(turn)) * (CABLE_R + LAY_R * 0.5)
+				if last.is_finite():
+					k.strut(last, p, LAY_R, 3, LAY)
+				last = p
+			run += length
+
+
+## The lay's strands: thickness, the length of road one winds round in, how
+## finely it is drawn, and its colour, the pale of weathered wire.
+const LAY_R := 0.026
+const LAY_TURN := 0.55
+const LAY_STEP := 0.11
+const LAY := Color(0.5804, 0.5686, 0.5294)
+
+
 ## Where the drum stands, in the yard's frame: against the house's wall on the
 ## side the cable goes down, a little out from it.
 static func _drum_at(foot: Vector3) -> Vector3:
@@ -570,19 +615,22 @@ static func _winch(k: MeshKit, made: MeshKit, foot: Vector3, seed_value: int) ->
 	k.strut(head, stay + Vector3(0, 0.05, 0), 0.025, 3, PLATE_DARK)
 	k.block(stay.x, 0.0, stay.z, 0.12, 0.3, 0.12, PLATE_DARK)
 	# The sheave at the head, turned across the jib.
-	k.strut(head - side * 0.09, head + side * 0.09, 0.2, 8, PLATE_DARK)
-	# The cable: drum to sheave, then down to the foot, sagging.
-	var cable := Color(0.1294, 0.1333, 0.1412)
-	k.strut(drum + Vector3(0, 0.7, 0) + o * 0.1, head + Vector3(0, 0.18, 0), 0.03, 3, cable)
-	var drop := head - Vector3(0, 0.2, 0)
-	var sag := 0.05 * drop.distance_to(foot)
-	var n := 8
-	var prev := drop
-	for i in range(1, n + 1):
-		var t := float(i) / float(n)
-		var p := drop.lerp(foot + Vector3(0, 0.12, 0), t) - Vector3(0, sag * 4.0 * t * (1.0 - t), 0)
-		k.strut(prev, p, 0.03, 3, cable)
-		prev = p
+	k.strut(head - side * 0.12, head + side * 0.12, 0.24, 8, PLATE_DARK)
+	# The cable: drum to sheave, then down to the foot, sagging. It is what makes
+	# the house a winch house, so it is drawn as the climb's rope is (#32): thick
+	# enough to read as a rope at the zoom the game is played at, round, and
+	# dark against the pale rock it hangs over, its sag a curve of short runs
+	# rather than a chord.
+	k.strut(drum + Vector3(0, 0.7, 0) + o * 0.1, head + Vector3(0, 0.2, 0), CABLE_R, CABLE_SIDES, CABLE)
+	var drop := head - Vector3(0, 0.22, 0)
+	var sag := CABLE_SAG * drop.distance_to(foot)
+	var line: Array[Vector3] = [drop]
+	for i in range(1, CABLE_RUNS + 1):
+		var t := float(i) / float(CABLE_RUNS)
+		line.append(drop.lerp(foot + Vector3(0, 0.12, 0), t) - Vector3(0, sag * 4.0 * t * (1.0 - t), 0))
+		k.strut(line[i - 1], line[i], CABLE_R, CABLE_SIDES, CABLE)
+	_lay(k, line)
+	var cable := CABLE
 	# The deadman below: a plate driven into the lower terrace, the cable's eye on
 	# it, and the sling of cores it last let down, left lying.
 	var sling := foot + side * 0.65

@@ -330,9 +330,11 @@ static func _works(L: Object) -> void:
 ## `Works._room_at` holds, its three parts are in the region, it keeps clear of
 ## villages and of home, a lip its cable can come down stands by it
 ## (Works.lip_foot), and the station rule holds of its ground (`_store`).
-## Nearest a bench first, so where the ground allows, the yard and its racks are
-## in the plumb's larder and breaking it is a bite out of what the plumb eats. A
-## region with none of these keeps no depot.
+## A lip the play camera sees the drop of first (Works.lip_foot), so the cable
+## reads from the jib down to the terrace; then nearest a bench, so where the
+## ground allows, the yard and its racks are in the plumb's larder and breaking it
+## is a bite out of what the plumb eats. A region with none of these keeps no
+## depot.
 static func _store_on(L: Object) -> void:
 	if L.region < 0 or L.sizes.is_empty() or L.sizes[0] < float(Works.MIN_TILES):
 		return
@@ -357,11 +359,17 @@ static func _store_on(L: Object) -> void:
 			var at := Vector2(x + 0.5, y + 0.5)
 			if L.here(x, y) and L.base[i] == 0 and c.water[i] == 0 and c.road[i] == 0 and Works._room_at(w, x, y) \
 					and Works._keeps_clear(w, at) and Works._inside(w, at, bearing, L.region) \
-					and not GenWorks._crowded(L, at, STORE_APART) and Works.lip_foot(w, at).is_finite():
-				var near := INF
-				for b: Vector2 in benches:
-					near = minf(near, at.distance_to(b))
-				found.append(Vector3(at.x, at.y, near))
+					and not GenWorks._crowded(L, at, STORE_APART):
+				var foot := Works.lip_foot(w, at)
+				if foot.is_finite():
+					var near := INF
+					for b: Vector2 in benches:
+						near = minf(near, at.distance_to(b))
+					# A lip the play camera sees the drop of (PlayView.toward_eye)
+					# before any it would see only the edge of.
+					if (foot - at).dot(Works.PlayView.toward_eye()) <= 0.0:
+						near += STORE_UNSEEN
+					found.append(Vector3(at.x, at.y, near))
 			x += STORE_STEP
 		y += STORE_STEP
 	# Nearest a bench first, ties in scan order.
@@ -391,6 +399,9 @@ const STORE_TRIES := 4
 ## How far a store keeps from the region's bench: its yard and parts clear of the
 ## bench's masts and racks.
 const STORE_APART := 14.0
+## What a lip whose drop falls away from the play camera costs in the order, in
+## tiles from the bench: past every lip it sees.
+const STORE_UNSEEN := 10000.0
 ## The store's racks, in the yard's frame (along the survey bearing, across it):
 ## by the house and clear of its three parts (Works.PART_OFFSETS) and of where a
 ## player stands to work them. Its cores, and the plumb's larder where a bench is

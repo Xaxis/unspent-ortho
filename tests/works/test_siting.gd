@@ -100,6 +100,13 @@ func test_a_lip_is_a_shelf_falling_to_open_ground() -> void:
 	var pit := _shelf(func(w: WorldData) -> void: _cut(w, 24, 24, 26, 26, 2))
 	eq(Works.lip_foot(pit, YARD), Vector2.INF, "nor is a pit")
 	eq(Works.lip_foot(_shelf(func(_w: WorldData) -> void: pass), YARD), Vector2.INF, "nor a shelf with no drop")
+	# Falling both ways, the drop the play camera faces is taken though it is
+	# farther: one falling away is hidden behind its own lip (PlayView.toward_eye).
+	var both := _shelf(func(w: WorldData) -> void:
+		_cut(w, 0, 0, 40, 14, 2)
+		_cut(w, 0, 28, 40, 40, 2))
+	var seen := Works.lip_foot(both, YARD)
+	check(seen.is_finite() and seen.y > YARD.y, "the drop the camera faces is the lip (%s)" % seen)
 
 
 ## THE CRAGS KEEP A DEPOT: a survey bench is no yard's heart, so the plan's old
