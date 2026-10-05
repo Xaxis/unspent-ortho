@@ -46,8 +46,11 @@ rm -f "$log"
 # Every shader compiled and drawn by the real renderer. The gate's tests run on
 # the dummy renderer, which compiles none: an include that broke every sky_apply
 # shader passed every gate and showed only in the frames (2026-10-01). It draws,
-# so it waits for a heavy slot.
-tools/heavy.sh tools/shaders.sh || fail=1
+# so it waits for a heavy slot -- unless this preflight was itself run under
+# tools/heavy.sh: its tests are done by now, so the shaders take the slot it holds.
+# Asking for a second one left that slot idle for 20 minutes on a busy box
+# (2026-10-05, two builders' preflights at once).
+if [ -n "${HEAVY_HELD:-}" ]; then tools/shaders.sh || fail=1; else tools/heavy.sh tools/shaders.sh || fail=1; fi
 
 if [ $fail -ne 0 ]; then echo "PREFLIGHT FAILED"; exit 1; fi
 echo "PREFLIGHT OK"
