@@ -359,6 +359,17 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 		# landscape is still the city's water, and cut at the border it left a
 		# two-tile scrap of it in the salt flats to be measured as a pool.
 		var streets := BiomeRegistry.get_def(&"drowned_city").index
+		# Nor are a frost sea's leads pools, wherever its rules laid them (the
+		# tile's recipe, its blend band too): they are lines through its ice
+		# (BiomeDef.leads), held to that by tests/biome/test_frost_leads.gd, and
+		# read side to side they are scraps of one to twenty tiles. A patch there
+		# that holds a pool's middle (black water two tiles out every way, which no
+		# lead a line three wide does) is still held to being a pool: 1, 1 and 2
+		# of them on seeds 1, 42 and 90210.
+		var leads := {}
+		for def: BiomeDef in BiomeRegistry.all():
+			if def.leads:
+				leads[def.index] = true
 		var not_pool := PackedByteArray()
 		not_pool.resize(n)
 		for i in n:
@@ -366,9 +377,19 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 		var sizes := PackedInt32Array()
 		var label := GenFields.patches(w.ground, not_pool, size, sizes)
 		var citys := {}
+		var middles := {}
 		for i in n:
-			if label[i] >= 0 and w.country[i] == streets:
+			if label[i] < 0:
+				continue
+			if w.country[i] == streets:
 				citys[label[i]] = true
+			elif leads.has(w.recipe[i]):
+				if _pool_middle(w, i % size, i / size):
+					middles[label[i]] = true
+				else:
+					citys[label[i]] = true
+		for k: int in middles:
+			citys.erase(k)
 		var pool := func(j: int) -> bool: return label[j] >= 0 and not citys.has(label[j])
 		var pools := 0
 		for i in n:
@@ -935,3 +956,13 @@ func test_every_land_with_a_material_holds_its_raw() -> void:
 		drips += 1 if int(under.table.kind[r]) == PropKind.DRIPSTONE else 0
 	print("  raws, the caves under seed 1: %d dripstone" % drips)
 	gt(float(drips), 5.0, "the limestone caves hold their dripstone")
+
+
+## Black water at every tile within two steps of (x, y): the middle of a pool,
+## never of a lead (a line one to three tiles wide).
+static func _pool_middle(w: WorldData, x: int, y: int) -> bool:
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			if absi(dx) + absi(dy) <= 2 and (not w.in_bounds(x + dx, y + dy) or w.ground_at(x + dx, y + dy) != Ground.BLACKWATER):
+				return false
+	return true

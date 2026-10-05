@@ -86,7 +86,7 @@ func test_the_walker_lead_pins_a_crater_the_goal_line_reaches_on_every_world() -
 		# goals after leg 1's: the walker's crater (the_tread), and the enclave up
 		# the leg that stands in it (the world's own `folk` tread, the lame leg's).
 		# Each is on a body never home's and no nearer home by water than leg 1's,
-		# the Covenant's. A put-in is a route, not a stop: on seed 42 the raft
+		# the Covenant's. A put-in is a route, not a stop: on seed 12 the raft
 		# puts in from home's own shore, and that is never asked here.
 		if at.is_finite() and cov.is_finite():
 			var home := w.continent_at(floori(w.spawn.x), floori(w.spawn.y))

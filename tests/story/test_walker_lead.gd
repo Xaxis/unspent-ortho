@@ -33,16 +33,25 @@ func test_the_goal_is_the_walkers_crater_until_the_enclave() -> void:
 	Story.forget()
 
 
-## Seed 42 has no crater on the Covenant's body: the lame foot comes down on a
-## body that open water never joins to the Covenant's, since home's lies between.
-## The goal is the raft over the ditch first, put in from home's shore, until he
-## has stood on the walker's body; then the crater there; home once the enclave
-## is met.
+## HOME_SHORE_SEED has no crater on the Covenant's body: the lame foot comes down
+## on a body that open water never joins to the Covenant's, since home's lies
+## between. The goal is the raft over the ditch first, put in from home's shore,
+## until he has stood on the walker's body; then the crater there; home once the
+## enclave is met.
 func test_no_crater_on_the_covenants_body_and_the_goal_crosses_the_ditch() -> void:
-	var g := await _told(42)
+	var g := await _told(HOME_SHORE_SEED)
 	for m: Dictionary in g.world.landmarks:
 		if StringName(m.get("kind", &"")) == &"tread":
 			check(not g.world.same_body(m.pos, _placed(g, &"the_covenant")), "a crater at %s is on another body" % [m.pos])
+	# The seed is this test's premise, and a world laid differently moves it: GEN 53
+	# put seed 42's lame foot on a body the Covenant's shore reaches, and the raft
+	# put in there, as to_walker says it should. Asked first, so a world that no
+	# longer has the premise says so instead of failing on the shore.
+	var cov := _placed(g, &"the_covenant")
+	var tread := _placed(g, &"the_tread")
+	check(StoryCrossing.find(g.world, cov, tread).is_empty()
+		and StoryCrossing.find_within(g.world, cov, tread, StoryCrossing.WALKER_REACH).is_empty(),
+		"seed %d's premise: no open water joins the Covenant's shore to the walker's body (pick another seed)" % HOME_SHORE_SEED)
 	var launch := _placed(g, StoryCrossing.WALKER_LAUNCH)
 	var landing := _placed(g, StoryCrossing.WALKER_LANDING)
 	check(launch.is_finite() and landing.is_finite(), "a raft over the ditch is placed")
@@ -95,6 +104,12 @@ func _pick(t: StoryTalk, text: String) -> bool:
 			t.pick(i)
 			return true
 	return false
+
+
+## A world whose walker's body only home's shore reaches by open water: at GEN 56,
+## seed 12 of 1-17, 41, 42 and 90210 (home's raft is 702 tiles of water; seeds 7,
+## 9, 10, 11, 13, 15, 17, 41 and 42 put in from the Covenant's shore).
+const HOME_SHORE_SEED := 12
 
 
 ## Slice 2 done, the far shore's threads behind him long ago, and Solis has just

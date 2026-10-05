@@ -31,7 +31,10 @@ static func make() -> SentinelDef:
 	d.note = "An arch on two tracks: the one silhouette on the coast with daylight through it."
 	d.kind = &"sentinel.coast"
 	d.reach = 26.0
-	d.stations = [&"intake", &"sea_wall", &"hulk", &"turf_rows"]
+	# The intake alone. A hulk, a sea wall or a row of turf has none of its
+	# larder by it, and a den there kept its ways at 3 of 30 on four worlds;
+	# every region big enough to keep it gets an intake (GenWorks._n_station).
+	d.stations = [&"intake"]
 	d.feeds = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.RELAY]
 	d.come_round = "The gantry slews on its tracks and the reaper's arm sweeps the side you keep to."
 	d.drops = &"sentinel_tide_reaper"

@@ -28,6 +28,8 @@ extends RefCounted
 ## What a chapter SAYS is the story's. This answers one question — is this place
 ## answered, and what is it still asking — and nothing else.
 
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
+
 ## The share of a region's landmarks that must be FOUND. Not all of them: a
 ## chapter is answered by having been through the place, and one site that
 ## happened to land behind a cliff must not hold a landscape shut. A region with
@@ -121,20 +123,65 @@ static func _standing_counts(world: WorldData) -> Dictionary:
 	return world.ore_standing
 
 
-## Taken, off the depleted set — which is small, so this is cheap enough to ask
-## whenever something is taken rather than every frame.
+## Taken, off the depleted set, and only what he took: the props a walker's pads
+## crushed before he arrived are in that set too (6,902 on seed 7 at 1840) and
+## are no take of his (Treads.crushed, which `ore_standing` leaves out as well).
+## Read off the prop table, with no prop made per id.
 static func ore_taken(world: WorldData, region_id: int) -> int:
 	var kinds := ore_kinds(world, region_id)
 	if kinds.is_empty():
 		return 0
+	var crushed := Treads.crushed(world)
+	world.sync_table()
+	var t := world.table
 	var n := 0
 	for id: Variant in world.depleted:
-		var p := world.prop(int(id))
-		if p == null:
+		if crushed.has(int(id)):
 			continue
-		if kinds.has(p.kind) and world.region_at(floori(p.pos.x), floori(p.pos.y)) == region_id:
+		var row := world.row_of_id(int(id))
+		if row < 0:
+			var p := world.prop(int(id))
+			if p != null and kinds.has(p.kind) and world.region_at(floori(p.pos.x), floori(p.pos.y)) == region_id:
+				n += 1
+			continue
+		var at: Vector2 = t.pos[row]
+		if kinds.has(int(t.kind[row])) and world.region_at(floori(at.x), floori(at.y)) == region_id:
 			n += 1
 	return n
+
+
+## Taken, for every region at once: one walk of the depleted set, read off the
+## prop table rather than a prop made per id. Asked a region at a time it was
+## the whole set walked per region, and a prop made for every entry each time
+## (45 regions with ore on seed 7: 310k props, a second of the start).
+static func ore_taken_by_region(world: WorldData) -> Dictionary:
+	var out := {}
+	var kinds := {}
+	var crushed := Treads.crushed(world)
+	world.sync_table()
+	var t := world.table
+	for id: Variant in world.depleted:
+		if crushed.has(int(id)):
+			continue
+		var row := world.row_of_id(int(id))
+		var kind := -1
+		var at := Vector2.INF
+		if row >= 0:
+			kind = t.kind[row]
+			at = t.pos[row]
+		else:
+			# Set down after generation and outside the table.
+			var p := world.prop(int(id))
+			if p == null:
+				continue
+			kind = p.kind
+			at = p.pos
+		var rid := world.region_at(floori(at.x), floori(at.y))
+		if not kinds.has(rid):
+			kinds[rid] = ore_kinds(world, rid)
+		if (kinds[rid] as Array[int]).has(kind):
+			out[rid] = int(out.get(rid, 0)) + 1
+	return out
 
 
 ## How many this chapter asks for: a share of what stands there, held between the
@@ -152,8 +199,10 @@ static func ore_wanted(standing: int) -> int:
 ##
 ## `answered` is the only field anything should gate on. The rest is what a place
 ## is still asking, which somebody has to be able to say out loud.
+## `taken_by_region`, when given, is `ore_taken_by_region`'s answer, walked once
+## for every region a caller reads (Chapters.for_regions).
 static func read(world: WorldData, region_id: int, found: Dictionary,
-		keeper_down: bool, yard_broken: bool) -> Dictionary:
+		keeper_down: bool, yard_broken: bool, taken_by_region: Variant = null) -> Dictionary:
 	if world == null:
 		return {"region": region_id, "explored": false, "seen": 0, "landmarks": 0, "want_seen": 0,
 			"mined": false, "taken": 0, "ore": 0, "want_ore": 0,
@@ -168,7 +217,8 @@ static func read(world: WorldData, region_id: int, found: Dictionary,
 	var want_seen := ceili(float(ids.size()) * EXPLORE_SHARE)
 	var explored := ids.is_empty() or seen >= want_seen
 	var standing := ore_standing(world, region_id)
-	var taken := ore_taken(world, region_id)
+	var taken := ore_taken(world, region_id) if taken_by_region == null \
+		else (0 if ore_kinds(world, region_id).is_empty() else int((taken_by_region as Dictionary).get(region_id, 0)))
 	var want_ore := ore_wanted(standing)
 	var mined := want_ore <= 0 or taken >= want_ore
 	var defended := keeper_down or yard_broken

@@ -192,3 +192,75 @@ static func over(def: RefCounted, route: RefCounted, minutes: float) -> Array:
 			continue
 		out.append({"leg": k, "tread": tread, "height": at.y - tread.y, "planted": s < 0.0, "at": at})
 	return out
+
+
+## Every tread's pads, each as (x, y, rim radius): what a landing presses.
+static func pressed(w: WorldData) -> Array[Array]:
+	var out: Array[Array] = []
+	for m: Dictionary in w.landmarks:
+		if StringName(m.get("kind", &"")) != &"tread":
+			continue
+		var pads: Array[Vector3] = []
+		for p: Vector3 in (m.pads as Array):
+			pads.append(Vector3(p.x, p.y, rim_r(p)))
+		out.append(pads)
+	return out
+
+
+## The ids of every prop the tread stage laid round its own craters: what a
+## landing leaves standing.
+static func owned(w: WorldData) -> Dictionary:
+	var out := {}
+	for m: Dictionary in w.landmarks:
+		if StringName(m.get("kind", &"")) == &"tread" and m.has("props"):
+			for id: int in PackedInt32Array(m.props):
+				out[id] = true
+	return out
+
+
+## EVERYTHING THE WORLD LAID WHERE A PAD COMES DOWN, crushed for good before he
+## ever arrives: within a pad's rim and its own mass, of the props whose tile is
+## within the rim and four (the search 19_colossi crushes with), save the ones
+## the tread stage laid round its own craters. Pure over the world, read off its
+## table; held per world, because the crush, the ore a chapter counts as
+## standing and the ore it counts as taken all ask it (none of it was ever there
+## for him to take).
+static var _crushed: Dictionary = {}
+static var _crushed_lock := Mutex.new()
+
+
+static func crushed(w: WorldData) -> Dictionary:
+	_crushed_lock.lock()
+	var held: Array = _crushed.get(w.get_instance_id(), [])
+	_crushed_lock.unlock()
+	if not held.is_empty() and (held[0] as WeakRef).get_ref() == w:
+		return held[1]
+	var out := {}
+	var mine := owned(w)
+	w.sync_table()
+	var t := w.table
+	for pads: Array[Vector3] in pressed(w):
+		for pad: Vector3 in pads:
+			var at := Vector2(pad.x, pad.y)
+			var reach := pad.z + 4.0
+			var x0 := maxi(0, floori(at.x - reach))
+			var x1 := mini(w.size - 1, floori(at.x + reach))
+			var y0 := maxi(0, floori(at.y - reach))
+			var y1 := mini(w.size - 1, floori(at.y + reach))
+			for row in t.size():
+				var p: Vector2 = t.pos[row]
+				var tx := floori(p.x)
+				var ty := floori(p.y)
+				if tx < x0 or tx > x1 or ty < y0 or ty > y1:
+					continue
+				var id: int = t.id[row]
+				if mine.has(id) or p.distance_to(at) > pad.z + float(t.solid[row]):
+					continue
+				out[id] = true
+	_crushed_lock.lock()
+	for k: int in _crushed.keys():
+		if ((_crushed[k] as Array)[0] as WeakRef).get_ref() == null:
+			_crushed.erase(k)
+	_crushed[w.get_instance_id()] = [weakref(w), out]
+	_crushed_lock.unlock()
+	return out

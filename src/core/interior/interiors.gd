@@ -68,7 +68,7 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 			if w.table.kind[i] != PropKind.HOUSE:
 				continue
 			var p := w.prop_at(i)
-			var land := w.country_at(floori(p.pos.x), floori(p.pos.y))
+			var land := w.built_country(p)
 			var d := BiomeRegistry.by_index(land)
 			if d == null:
 				continue

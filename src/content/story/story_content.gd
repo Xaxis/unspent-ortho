@@ -118,7 +118,7 @@ const BEATS := {
 	&"long_quiet": {"short": "the quiet after", "arc": &"the_war", "says": "After the war came the quiet. It has lasted sixty years."},
 	&"war_relay": {"short": "one relay", "arc": &"the_war", "says": "Every forged order passed through one relay, under the ground where the first machine was built. A shaft goes down to it."},
 	&"the_climb": {"short": "the empty cars", "arc": &"the_colonies", "says": "The Tether's cars go up empty every dawn and come down empty at dusk. Nobody has ever asked to ride one."},
-	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. It is kept across the water, at the Covenant's seat."},
+	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. The Covenant keeps it."},
 	&"counted": {"short": "counted, but not you", "arc": &"the_machines", "says": "The machines count everything on the land. They do not count people."},
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
 	&"not_home": {"short": "not home", "arc": &"the_machines", "says": "Somebody you walked out of a yard did not get home."},
@@ -473,6 +473,24 @@ const FRAGMENTS := {
 			"has been.",
 		],
 		"beats": [&"covenant_fed"],
+	},
+	# The drowned city's port stair, where every raft comes in (StoryCrossing rule 1,
+	# 49_cast `the_port`): read on `use` only. It files boats, not people, which is
+	# why a raft passes the lockkeeper; it names nobody and nothing that drowned it.
+	&"port_arrivals": {
+		"kind": &"sign", "title": "a sign at the stair", "lands": [],
+		"lines": [
+			"An enamel sign at the head of the stair:",
+			"  ARRIVALS. PASSENGERS ARE TO REMAIN",
+			"  ABOARD UNTIL THE VESSEL IS SECURED.",
+			"",
+			"Stencilled across it, newer:",
+			"  PASSENGERS: NOT APPLICABLE.",
+			"",
+			"Under that, a clock face in chalk, its",
+			"hands at a quarter past.",
+		],
+		"beats": [&"counted"],
 	},
 	&"broadcast": {
 		"kind": &"terminal", "title": "a radio, still on", "lands": [],
@@ -3577,6 +3595,9 @@ const PLACED := {
 	# The Covenant's own notice, at its seat (slice 3 step 2): read where it is
 	# posted, not on any sign in any landscape.
 	&"the_covenant": [&"covenant_notice"],
+	# The drowned city's port, where the raft comes in, only on a world whose
+	# crossing lands on its stair (49_cast `the_port`).
+	&"the_port": [&"port_arrivals"],
 	# At the channel, when the orbital realm is grown: until then it stands nowhere.
 	&"the_channel": [&"channel_console"],
 	# Ring Four, when the orbital realm is grown: the case Calloway sent up.
@@ -3591,6 +3612,7 @@ const STOOD := {
 	&"the_yard": PropKind.CONSOLE,
 	&"the_camp": PropKind.DOC_BOX,
 	&"the_covenant": PropKind.SIGN,
+	&"the_port": PropKind.SIGN,
 }
 
 # --- words that belong to a kind of room ---------------------------------------
@@ -5220,8 +5242,15 @@ const TALKS := {
 				"replies": [
 					{"text": "Who set the timetable?", "pick": &"asked_table", "to": &"table"},
 					{"text": "Where do they go?", "pick": &"asked_where", "to": &"where"},
+					{"text": "Who lives in the hulls?", "pick": &"asked_hulls", "to": &"hulls"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			# The barge families, from her side of the water: no beat, no `when`. Her
+			# "either" answers her own "Nobody drives them".
+			&"hulls": {
+				"says": ["Families. Their grans came in the war, on the barges.", "Nobody was steering those either, to hear them tell it."],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"table": {
 				"says": ["That's the thing. It's ours. The city's own, from before the water.", "Same stops, same hours. The stops are twenty feet under now.", "They're still running a service for a city that isn't there."],
@@ -5756,7 +5785,7 @@ const LEAD := {
 	# The crossing (slice 3): a raft, then the narrows, then the archive.
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
-	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	&"archive": "The war's archive, for how it started: the survey marks where it is kept.",
 	# The archive (slice 3 step 4) and back at the camp (step 8).
 	&"orders": "The war's orders, for who sent them: ask the archivist to show you one.",
 	&"camp_back": "The old soldier, with what the archive showed you: at the crew's camp.",
@@ -5782,7 +5811,7 @@ const LEAD := {
 	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
 	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
 	# The slice's last hop, held into slice 4: said only while no keeper has a lead.
-	&"relay": "The relay below, for what is down there: its shaft is across the water.",
+	&"relay": "The relay below, for what is down there: the survey marks its shaft.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
 	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,
@@ -6177,7 +6206,6 @@ const KEEPER_FELL := {
 	&"anvil": {
 		&"force": "The mast comes apart, and its crown rings down onto the glass.",
 		&"founder": "The mast skates into the drift and stops. The sand closes over its core.",
-		# Kept though the way waits on a strike field no world lays yet.
 		&"starve": "The crown calls and nothing answers. The mast stands on its skates, and goes quiet.",
 	},
 }

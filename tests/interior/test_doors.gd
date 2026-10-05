@@ -53,6 +53,39 @@ func _at_door(g: Game, d: Node) -> Threshold:
 	return best
 
 
+## `await door` IS A PRESS THAT WOULD GO IN (21_doors tour_seen): every-room
+## stood him at the frozen hold on his first sight of its mast, pressed on `door`
+## while the stage held the keys (game.staged), and the one press was swallowed;
+## it waited 30 s at line 147 for a room it would never enter. At a door he faces,
+## the claim waits while the keys are held and answers when they are free.
+func test_the_door_claim_waits_for_a_press_that_would_go_in() -> void:
+	var g := Sx.game(tree, ["--seed=4", "--village=0", "--hour=11", "--weather=clear:0"])
+	await _frames(3)
+	var d := _doors(g)
+	var t := _at_door(g, d)
+	check(t != null, "a cottage door to stand at")
+	if t == null:
+		Sx.end(g)
+		return
+	g.player.hero.facing = d.call(&"tour_face", "door:house")
+	var free := false
+	for i in 120:
+		await _frames(1)
+		free = bool(d.call(&"tour_seen", &"door"))
+		if free:
+			break
+	check(free, "facing the door with the keys free, a press would go in")
+	g.staged = true
+	await _frames(2)
+	check(d.get("door_near") != null, "held by a stage, he still stands at the door")
+	check(not bool(d.call(&"tour_seen", &"door")), "but `door` waits: a press now would be swallowed")
+	g.staged = false
+	await _frames(2)
+	check(bool(d.call(&"tour_seen", &"door")), "and answers once the keys are his again")
+	Sx.end(g)
+	await _frames(1)
+
+
 func test_in_through_a_cottage_door_and_out_onto_the_same_coast() -> void:
 	Sx.use_root("doors-in-out")
 	var g := Sx.game(tree, ["--seed=4", "--village=0", "--hour=11", "--weather=clear:0"])

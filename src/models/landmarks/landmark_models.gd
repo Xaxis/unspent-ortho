@@ -222,15 +222,40 @@ static func _cache(kind: StringName, seed_value: int, made_material: Material) -
 	var root := Node3D.new()
 	root.name = "cache"
 	root.position = Vector3(Landmarks.CACHE_OUT, 0.0, 0.0)
+	var made := MeshKit.new()
+	made.style = Ink.HAND
+	made.style2 = Ink.HAND
+	made.rock(-0.5, 0.0, 0.34, 0.16, 0.12, seed_value + 3, P.STONE[2], 5)
+	made.rock(0.52, 0.0, -0.3, 0.13, 0.1, seed_value + 5, P.STONE[1], 5)
+	var locker := _locker_meshes()
+	for i in 2:
+		var m := MeshInstance3D.new()
+		m.name = "shut" if i == 0 else "open"
+		m.mesh = locker[i]
+		m.material_override = PropModels.found_material()
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		m.visible = i == 0
+		root.add_child(m)
+	root.add_child(_mesh("made", made, made_material))
+	# The kind is stamped on the face as that many bars, which is a machine's
+	# mark: a shape and never a glyph at 640x360.
+	return root
+
+
+## The locker, shut and opened, is the same at every landmark: built once and
+## shared, where it was built again for each of two hundred at load.
+static var _locker: Array[Mesh] = []
+
+
+static func _locker_meshes() -> Array[Mesh]:
+	if not _locker.is_empty():
+		return _locker
 	var shut := MeshKit.new()
 	shut.style = Ink.NONE
 	shut.style2 = Ink.NONE
 	var open := MeshKit.new()
 	open.style = Ink.NONE
 	open.style2 = Ink.NONE
-	var made := MeshKit.new()
-	made.style = Ink.HAND
-	made.style2 = Ink.HAND
 	for m: MeshKit in [shut, open]:
 		m.box(Vector3(-0.42, 0.0, -0.34), Vector3(0.42, 0.62, 0.34), ENAMEL, ENAMEL_TOP)
 		m.box(Vector3(-0.46, 0.0, -0.38), Vector3(0.46, 0.1, 0.38), PLATE_DARK, PLATE)
@@ -242,17 +267,8 @@ static func _cache(kind: StringName, seed_value: int, made_material: Material) -
 	open.box(Vector3(0.0, -0.05, -0.37), Vector3(0.9, 0.05, 0.37), PLATE_DARK, PLATE)
 	open.pop()
 	open.box(Vector3(-0.34, 0.5, -0.26), Vector3(0.34, 0.62, 0.26), SHADOW, SHADOW)
-	made.rock(-0.5, 0.0, 0.34, 0.16, 0.12, seed_value + 3, P.STONE[2], 5)
-	made.rock(0.52, 0.0, -0.3, 0.13, 0.1, seed_value + 5, P.STONE[1], 5)
-	var a := _mesh("shut", shut, PropModels.found_material())
-	var b := _mesh("open", open, PropModels.found_material())
-	b.visible = false
-	root.add_child(a)
-	root.add_child(b)
-	root.add_child(_mesh("made", made, made_material))
-	# The kind is stamped on the face as that many bars, which is a machine's
-	# mark: a shape and never a glyph at 640x360.
-	return root
+	_locker = [shut.build(), open.build()]
+	return _locker
 
 
 # --- the eight ------------------------------------------------------------------
