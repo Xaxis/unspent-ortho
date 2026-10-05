@@ -164,7 +164,7 @@ static func _clear(world: WorldData, query: WorldQuery, from: Vector2, to: Vecto
 	# the world records says how tall a boulder or a wall is, and a jump that went
 	# through a house because nobody wrote its height down would be a worse lie
 	# than one that stops at it.
-	for q in query.props_near(to, 2.0):
+	for q in query.solid_props_near(to, radius):
 		if q.solid <= 0.0 or world.depleted.has(q.id):
 			continue
 		var rr := q.solid + radius
@@ -285,7 +285,7 @@ static func _stands_clear(world: WorldData, query: WorldQuery, at: Vector2) -> b
 	for c: Vector2 in [at + Vector2(-r, -r), at + Vector2(r, -r), at + Vector2(-r, r), at + Vector2(r, r)]:
 		if world.level_at(floori(c.x), floori(c.y)) != level:
 			return false
-	for q in query.props_near(at, 1.5):
+	for q in query.solid_props_near(at, r):
 		if q.solid > 0.0 and not world.depleted.has(q.id) and q.pos.distance_to(at) < q.solid + r:
 			return false
 	return query.blocks_at(at).is_empty()

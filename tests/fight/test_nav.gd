@@ -3,6 +3,7 @@ extends TestCase
 ## over ground a body can climb, used when the straight line meets a cliff.
 
 const F := preload("res://tests/fight/fixture.gd")
+const Worlds := preload("res://tests/core/test_world_gen.gd")
 
 
 ## A cliff wall across x = 30 from y = 5 to 40, with a way round below it.
@@ -68,3 +69,104 @@ func test_a_runner_comes_round_the_wall() -> void:
 			reached = true
 			break
 	check(reached, "it got to the player, at %s" % r.pos)
+
+
+## A BODY'S FIELD SHUTS THE CELLS ITS OWN MOVE CANNOT STAND IN, WIDE SOLIDS AND
+## ALL. The wide ones (over WorldQuery.ORDINARY: city buildings, the big houses)
+## are stamped into the field once per rebuild by footprint, the ordinary ones
+## asked cell by cell; together they must shut exactly the cells
+## `prop_stands_in` shuts one at a time. Solids of 0.4 to 3.22 strewn across
+## wide-cell corners, the field's edge and its centre, one of a kind the body
+## breaks and one taken.
+func test_a_bodys_field_shuts_what_its_move_cannot_stand_in() -> void:
+	var w := F.flat_world(96)
+	var props: Array[WorldProp] = []
+	for k in 40:
+		var at := Vector2(20.0 + Rng.hash01(5, k, 0, 1) * 56.0, 20.0 + Rng.hash01(5, k, 0, 2) * 56.0)
+		var solid := 0.4 + Rng.hash01(5, k, 0, 3) * 2.82
+		var kind := PropKind.BARRICADE if k == 7 else PropKind.HOUSE
+		var p := WorldProp.new(w.next_id(), kind, at, 0.0, solid / PropKind.SOLID[kind])
+		w.add_prop(p)
+		props.append(p)
+	w.depleted[props[11].id] = INF
+	var q := WorldQuery.new(w)
+	check(not q._wide.is_empty(), "some of them are wide")
+	var row := {"breaks": ["barricade"]}
+	for target: Vector2 in [Vector2(48.5, 48.5), Vector2(40.2, 55.7), Vector2(63.9, 32.1)]:
+		var field := NavField.for_body(w, q, row, 0.45)
+		field.update(target)
+		var c := Vector2i(floori(target.x), floori(target.y))
+		var wrong := 0
+		for ly in field._side:
+			for lx in field._side:
+				if absi(lx - NavField.RADIUS) <= 1 and absi(ly - NavField.RADIUS) <= 1:
+					continue
+				var x := c.x - NavField.RADIUS + lx
+				var y := c.y - NavField.RADIUS + ly
+				if x < 0 or y < 0 or x >= w.size or y >= w.size:
+					continue
+				var shut := field._level[ly * field._side + lx] == NavField.NOT_GROUND
+				if shut != NavField.prop_stands_in(q, Vector2(x + 0.5, y + 0.5), 0.45, field.breaks):
+					wrong += 1
+		eq(wrong, 0, "the field to %s shuts the cells its move cannot stand in" % target)
+
+
+## And on a real city: seed 1's machine city at full size, a harvester's field
+## to the six streets with the most wide solids round them (ranked by how many
+## over WorldQuery.ORDINARY stand within the field), stamped against
+## `prop_stands_in` cell by cell.
+func test_a_city_field_shuts_what_its_move_cannot_stand_in() -> void:
+	var w := Worlds.world(1)
+	var q := WorldQuery.new(w)
+	var row := Roster.row(&"harvester")
+	var t := w.table
+	var city: Array[Vector2] = []
+	for r in t.size():
+		var at: Vector2 = t.pos[r]
+		if t.solid[r] > WorldQuery.ORDINARY and BiomeRegistry.at(w, at).id == &"machine_city":
+			city.append(at)
+	print("  info seed 1 machine city: %d wide solids" % city.size())
+	check(city.size() > 20, "seed 1's machine city stands wide solids (%d)" % city.size())
+	var ranked: Array = []
+	for at: Vector2 in city:
+		var n := 0
+		for o: Vector2 in city:
+			if maxf(absf(o.x - at.x), absf(o.y - at.y)) <= float(NavField.RADIUS):
+				n += 1
+		ranked.append([n, at])
+	ranked.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	var centres: Array[Vector2] = []
+	for e: Array in ranked:
+		var at: Vector2 = e[1]
+		var apart := true
+		for c0: Vector2 in centres:
+			if c0.distance_to(at) < 12.0:
+				apart = false
+		if apart:
+			centres.append(at)
+		if centres.size() >= 6:
+			break
+	var wide := 0
+	for centre: Vector2 in centres:
+		var target := Sentinels.stand_near(w, centre, 0.45)
+		var field := NavField.for_body(w, q, row, 0.45)
+		field.update(target)
+		var c := Vector2i(floori(target.x), floori(target.y))
+		wide += q.wide_rows_in(Vector2(c) - Vector2.ONE * NavField.RADIUS, Vector2(c) + Vector2.ONE * NavField.RADIUS, 0.45).size()
+		var wrong := 0
+		for ly in field._side:
+			for lx in field._side:
+				if absi(lx - NavField.RADIUS) <= 1 and absi(ly - NavField.RADIUS) <= 1:
+					continue
+				var x := c.x - NavField.RADIUS + lx
+				var y := c.y - NavField.RADIUS + ly
+				if x < 0 or y < 0 or x >= w.size or y >= w.size or w.level_at(x, y) < 0 or w.ground_at(x, y) == Ground.DEEP_WATER:
+					continue
+				if field.tall > 0 and w.headroom_at(x, y) < field.tall:
+					continue
+				var shut := field._level[ly * field._side + lx] == NavField.NOT_GROUND
+				if shut != NavField.prop_stands_in(q, Vector2(x + 0.5, y + 0.5), 0.45, field.breaks):
+					wrong += 1
+		eq(wrong, 0, "the field to %s shuts the cells its move cannot stand in" % target)
+	print("  info its six fields met %d wide solids" % wide)
+	gt(float(wide), 10.0, "the city's fields met wide solids (%d)" % wide)
