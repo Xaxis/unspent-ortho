@@ -346,7 +346,7 @@ func _already_read(prop: WorldProp) -> bool:
 
 
 func _edge_to(q: WorldProp) -> float:
-	return q.pos.distance_to(game.player.pos) - q.solid
+	return game.query.edge_to(q, game.player.pos)
 
 
 func _person_in_front() -> Dictionary:
@@ -420,12 +420,13 @@ func _readable_in_front() -> WorldProp:
 	var ahead := Vector2.from_angle(game.player.facing)
 	var best: WorldProp = null
 	var best_d := REACH + 1.0
-	for q: WorldProp in game.query.props_near(from, REACH + 2.0):
+	for q: WorldProp in game.query.reach_near(from, REACH + 2.0):
 		# Gone from the world (crushed in a crater, burned) is nothing to read.
 		if StoryProps.kind_of(q.kind) == &"" or game.world.depleted.has(q.id):
 			continue
-		var to := q.pos - from
-		var d := to.length() - q.solid
+		var c := game.query.reach_circle(q, from)
+		var to := Vector2(c.x, c.y) - from
+		var d := to.length() - c.z
 		if d > REACH or d > best_d:
 			continue
 		if d > CLOSE and to.length() > 0.01 and ahead.dot(to.normalized()) < AHEAD:

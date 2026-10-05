@@ -329,6 +329,49 @@ func walls_at(p: Vector2) -> Array:
 	return _walls_made.get(key, [])
 
 
+## WHAT A HAND REACHES A THING ACROSS IS WHAT STOPS THE BODY THERE. The circle
+## of `q` whose edge `p` stands nearest, (x, y, r): a walled prop's nearest wall,
+## any other's own (pos, solid). Measured from its `solid`, an intake whose walls
+## held a body further off than that could never be taken from in the dark.
+func reach_circle(q: WorldProp, p: Vector2) -> Vector3:
+	var best := Vector3(q.pos.x, q.pos.y, q.solid)
+	if _walled_kind[q.kind] == 0:
+		return best
+	var row := world.row_of_id(q.id)
+	if row < 0:
+		return best
+	var best_e := INF
+	for c: Vector3 in walls_of(row):
+		var e := p.distance_to(Vector2(c.x, c.y)) - c.z
+		if e < best_e:
+			best_e = e
+			best = c
+	return best
+
+
+## How far `p` stands off `q`'s edge (reach_circle), less than 0 inside it.
+func edge_to(q: WorldProp, p: Vector2) -> float:
+	var c := reach_circle(q, p)
+	return p.distance_to(Vector2(c.x, c.y)) - c.z
+
+
+## Every prop `props_near(p, r)` gives, and every walled one whose walls could
+## stand within r of p though its middle stands further: what a reach measured
+## from an edge (edge_to) searches.
+func reach_near(p: Vector2, r: float) -> Array[WorldProp]:
+	var out := props_near(p, r)
+	var lo := Vector2i(maxi(0, floori(p.x - r)), maxi(0, floori(p.y - r)))
+	var hi := Vector2i(mini(world.size - 1, floori(p.x + r)), mini(world.size - 1, floori(p.y + r)))
+	var pos := world.table.pos
+	for row in wall_rows_in(p, p, r):
+		var at: Vector2 = pos[row]
+		var tx := floori(at.x)
+		var ty := floori(at.y)
+		if tx < lo.x or tx > hi.x or ty < lo.y or ty > hi.y:
+			out.append(world.prop_at(row))
+	return out
+
+
 func _cells_wide() -> int:
 	return (world.size + BLOCK_CELL - 1) / BLOCK_CELL
 

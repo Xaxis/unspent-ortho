@@ -188,10 +188,10 @@ func _near_grounds(pos: Vector2) -> Dictionary:
 func _spring() -> float:
 	var pos := game.player.pos
 	var best := 0.0
-	for p: WorldProp in game.query.props_near(pos, SPRING_REACH + 1.0):
+	for p: WorldProp in game.query.reach_near(pos, SPRING_REACH + 1.0):
 		if not SPRINGS.has(p.kind) or game.world.depleted.has(p.id):
 			continue
-		var d := maxf(0.0, pos.distance_to(p.pos) - p.solid)
+		var d := maxf(0.0, game.query.edge_to(p, pos))
 		best = maxf(best, clampf(1.0 - d / SPRING_REACH, 0.0, 1.0))
 	return best
 
