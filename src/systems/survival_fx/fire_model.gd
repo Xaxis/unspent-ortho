@@ -123,37 +123,11 @@ func build(world_mat: Material, seed_value: int, hearth: bool = true) -> void:
 	_seed = seed_value
 	_t = Rng.hash01(seed_value, 3) * 10.0
 	var glow := glow_material()
+	var m := FireModel.meshes(seed_value)
 	if hearth:
-		var ring := MeshKit.new()
-		ring.style = Ink.CONTOUR
-		ring.style2 = Ink.CONTOUR
-		# The ash floor inside the ring, then the stones, each its own size and lean.
-		ring.prism(0, -0.03, 0, HEARTH_RADIUS - 0.02, 0.012, HEARTH_RADIUS - 0.04, 10, Palette.ASH[1], Palette.ASH[1], 0.2)
-		for i in 9:
-			var a := float(i) / 9.0 * TAU + (Rng.hash01(seed_value, i, 21) - 0.5) * 0.3
-			var r := HEARTH_RADIUS + (Rng.hash01(seed_value, i, 22) - 0.5) * 0.06
-			var sz := 0.09 + Rng.hash01(seed_value, i, 23) * 0.04
-			var col := Palette.STONE[3] if i % 3 == 0 else (Palette.STONE[2] if i % 3 == 1 else Palette.SLATE[3])
-			ring.rock(cos(a) * r, -0.04, sin(a) * r, sz, HEARTH_HEIGHT * (0.7 + Rng.hash01(seed_value, i, 24) * 0.4), seed_value * 11 + i, col, 5)
-		_add(self, ring, world_mat)
-	# Fire is light: embers and flames are never hatched.
-	var bed := MeshKit.new()
-	bed.style = Ink.NONE
-	bed.style2 = Ink.NONE
-	bed.rock(0, -0.02, 0, 0.25, 0.08, seed_value, Palette.EMBER[2], 8)
-	for i in 7:
-		var a := float(i) * 2.39996 + Rng.hash01(seed_value, i, 31)
-		var r := 0.07 + Rng.hash01(seed_value, i, 32) * 0.14
-		bed.rock(cos(a) * r, 0.01, sin(a) * r, 0.045, 0.06, seed_value + 40 + i, Palette.EMBER[4] if i % 2 else Palette.EMBER[3], 4)
-	_add(self, bed, glow)
-	# Charred sticks leant together over the embers.
-	var sticks := MeshKit.new()
-	for i in 4:
-		var a := float(i) / 4.0 * TAU + 0.35 + (Rng.hash01(seed_value, i, 33) - 0.5) * 0.4
-		var foot := Vector3(cos(a) * 0.32, 0.01, sin(a) * 0.32)
-		var top := Vector3(cos(a + 2.2) * 0.04, 0.3 + Rng.hash01(seed_value, i, 34) * 0.06, sin(a + 2.2) * 0.04)
-		sticks.strut(foot, top, 0.036, 4, Palette.EARTH[1] if i % 2 else Palette.INK[2])
-	_add(self, sticks, world_mat)
+		_add(self, m[0], world_mat)
+	_add(self, m[1], glow)
+	_add(self, m[2], world_mat)
 	# The flame is drawn, not modelled: a flat silhouette of licking tongues held
 	# square to the page, in FRAMES hand-drawn frames that the fire flips between.
 	_flame = MeshInstance3D.new()
@@ -161,8 +135,7 @@ func build(world_mat: Material, seed_value: int, hearth: bool = true) -> void:
 	_flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_flame.position = Vector3(0, 0.05, 0)
 	add_child(_flame)
-	for f in FRAMES:
-		_frames.append(_flame_frame(seed_value, f))
+	_frames.assign(m[3])
 	_flame.mesh = _frames[0]
 	_light = OmniLight3D.new()
 	_light.light_color = LIGHT_COLOR
@@ -175,6 +148,56 @@ func build(world_mat: Material, seed_value: int, hearth: bool = true) -> void:
 	_sparks = SurvivalMarks.Pool.new(smoke_mesh(), SPARKS, spark_material(), self)
 	scale = Vector3.ONE * SIZE
 	_draw()
+
+
+## A fire's meshes by its seed, built once: [hearth, bed, sticks, flame frames].
+## `52_survival_fx` builds a FireModel each time a fire comes within reach, and
+## a fire walked away from and back to was built from nothing every time. Kept
+## as PropModels keeps its meshes, the oldest let go past MESHES_KEPT.
+static var _meshes: Dictionary = {}
+const MESHES_KEPT := 64
+
+
+static func meshes(seed_value: int) -> Array:
+	if not _meshes.has(seed_value):
+		if _meshes.size() >= MESHES_KEPT:
+			_meshes.erase(_meshes.keys()[0])
+		_meshes[seed_value] = _build_meshes(seed_value)
+	return _meshes[seed_value]
+
+
+static func _build_meshes(seed_value: int) -> Array:
+	var ring := MeshKit.new()
+	ring.style = Ink.CONTOUR
+	ring.style2 = Ink.CONTOUR
+	# The ash floor inside the ring, then the stones, each its own size and lean.
+	ring.prism(0, -0.03, 0, HEARTH_RADIUS - 0.02, 0.012, HEARTH_RADIUS - 0.04, 10, Palette.ASH[1], Palette.ASH[1], 0.2)
+	for i in 9:
+		var a := float(i) / 9.0 * TAU + (Rng.hash01(seed_value, i, 21) - 0.5) * 0.3
+		var r := HEARTH_RADIUS + (Rng.hash01(seed_value, i, 22) - 0.5) * 0.06
+		var sz := 0.09 + Rng.hash01(seed_value, i, 23) * 0.04
+		var col := Palette.STONE[3] if i % 3 == 0 else (Palette.STONE[2] if i % 3 == 1 else Palette.SLATE[3])
+		ring.rock(cos(a) * r, -0.04, sin(a) * r, sz, HEARTH_HEIGHT * (0.7 + Rng.hash01(seed_value, i, 24) * 0.4), seed_value * 11 + i, col, 5)
+	# Fire is light: embers and flames are never hatched.
+	var bed := MeshKit.new()
+	bed.style = Ink.NONE
+	bed.style2 = Ink.NONE
+	bed.rock(0, -0.02, 0, 0.25, 0.08, seed_value, Palette.EMBER[2], 8)
+	for i in 7:
+		var a := float(i) * 2.39996 + Rng.hash01(seed_value, i, 31)
+		var r := 0.07 + Rng.hash01(seed_value, i, 32) * 0.14
+		bed.rock(cos(a) * r, 0.01, sin(a) * r, 0.045, 0.06, seed_value + 40 + i, Palette.EMBER[4] if i % 2 else Palette.EMBER[3], 4)
+	# Charred sticks leant together over the embers.
+	var sticks := MeshKit.new()
+	for i in 4:
+		var a := float(i) / 4.0 * TAU + 0.35 + (Rng.hash01(seed_value, i, 33) - 0.5) * 0.4
+		var foot := Vector3(cos(a) * 0.32, 0.01, sin(a) * 0.32)
+		var top := Vector3(cos(a + 2.2) * 0.04, 0.3 + Rng.hash01(seed_value, i, 34) * 0.06, sin(a + 2.2) * 0.04)
+		sticks.strut(foot, top, 0.036, 4, Palette.EARTH[1] if i % 2 else Palette.INK[2])
+	var frames: Array[ArrayMesh] = []
+	for f in FRAMES:
+		frames.append(_flame_frame(seed_value, f))
+	return [ring.build(), bed.build(), sticks.build(), frames]
 
 
 ## One drawn frame of the flame, in the XY plane facing +Z: an outer tongue shape
@@ -290,9 +313,9 @@ func _draw() -> void:
 		_sparks.put(i, pos, SPARK_SIZE, Color(col.r, col.g, col.b, 1.0 - age / 0.45))
 
 
-func _add(parent: Node3D, k: MeshKit, mat: Material) -> void:
+func _add(parent: Node3D, mesh: ArrayMesh, mat: Material) -> void:
 	var mi := MeshInstance3D.new()
-	mi.mesh = k.build()
+	mi.mesh = mesh
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)

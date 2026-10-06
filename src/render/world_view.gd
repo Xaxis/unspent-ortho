@@ -95,6 +95,9 @@ var _rb_task := -1
 var _rb_key := Vector2i.ZERO
 var _rb_mesher: TerrainMesher
 var _rb_out: Array = []
+## The chunk baking was drawn again on the main thread since its bake took its
+## props (`refresh_props`), so the bake is older than what is drawn: dropped.
+var _rb_stale := false
 ## The longest a rebaked chunk's props took to swap in on the main thread, usec.
 var rebake_swap_usec_max := 0
 var _task_chunk: TerrainMesher.Chunk
@@ -1396,14 +1399,20 @@ func refresh_props(prop: WorldProp) -> void:
 		return
 	if not _chunks.has(key):
 		return
+	# Drawn as it is now: a rebake under way took its props before this, and one
+	# waiting would only draw this again.
+	if _rb_task >= 0 and _rb_key == key:
+		_rb_stale = true
+	_rb_wanted.erase(key)
 	var snap := _snapshot(key)
 	_swap_props(key, bake_props(_data.get(key), mesher, snap[0], snap[1]))
 
 
 ## The same, off the main thread: the chunk's props are rebaked on a worker and
-## swapped in when done, the old ones drawn until then. For a change nobody is
-## watching happen (23_hush turns a stone while it is off screen): a chunk's
-## props rebaked on the main thread cost 10 to 20 ms, a dropped frame each.
+## swapped in when done, the old ones drawn until then, a frame or a few. For a
+## change that can be drawn that late: a stone 23_hush turns off screen, and
+## every prop set down in play (Survival.add_prop). A chunk's props rebaked on
+## the main thread cost 10 to 20 ms, and three bakes once its mid models are in.
 func refresh_props_soon(prop: WorldProp) -> void:
 	if not threaded:
 		refresh_props(prop)
@@ -1428,8 +1437,9 @@ func _rebake_step() -> void:
 			return
 		WorkerThreadPool.wait_for_task_completion(_rb_task)
 		_rb_task = -1
-		# Wanted again while it baked: the next bake has the newer props.
-		if _chunks.has(_rb_key) and not _rb_wanted.has(_rb_key):
+		# Wanted again while it baked: the next bake has the newer props. Drawn
+		# again in place while it baked: what is drawn is newer than it.
+		if _chunks.has(_rb_key) and not _rb_wanted.has(_rb_key) and not _rb_stale:
 			var t0 := Time.get_ticks_usec()
 			_swap_props(_rb_key, _rb_out[0], _rb_out[1])
 			rebake_swap_usec_max = maxi(rebake_swap_usec_max, Time.get_ticks_usec() - t0)
@@ -1444,6 +1454,7 @@ func _rebake_step() -> void:
 		_rb_mesher = TerrainMesher.new(world)
 	var snap := _snapshot(key)
 	_rb_key = key
+	_rb_stale = false
 	_rb_task = WorkerThreadPool.add_task(_rebake_worker.bind(_data.get(key), snap[0], snap[1]), false, "props")
 
 

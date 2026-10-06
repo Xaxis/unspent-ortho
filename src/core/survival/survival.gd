@@ -712,6 +712,11 @@ static func build(game: Game, station: StringName, free: bool = false, charge: b
 ## A new prop in the world: data, collision and view. `rot` NAN = turned by its id.
 ## `variant` is given here, not set after: the world keeps a prop as its row, and
 ## a field changed on the returned object afterwards is not on the row.
+##
+## Data and collision now; drawn a frame or a few later, its chunk rebaked on a
+## worker (WorldView.refresh_props_soon). Nothing reads a prop's drawing the
+## frame it is set down, and a chunk rebaked here cost every drop and every
+## build 10 to 60 ms on the main thread.
 static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scale: float = 1.0, variant: int = -1) -> WorldProp:
 	var w := game.world
 	var id := w.next_id()
@@ -720,7 +725,7 @@ static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scal
 	w.add_prop(prop)
 	game.query.add_prop(prop)
 	if game.view != null:
-		game.view.refresh_props(prop)
+		game.view.refresh_props_soon(prop)
 	return prop
 
 
