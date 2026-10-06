@@ -66,14 +66,16 @@ static func _tap_index() -> int:
 	return 0
 
 
-## Every mark the remnants drew, as "layer x z", sorted.
+## Every mark the remnants would draw here, as "layer x z", sorted. Read off
+## `remnants_near`, which `_refresh_remnants` draws: headless, the dummy
+## renderer keeps no multimesh transforms to read back.
 static func _drawn(f: GameSystem) -> Array:
+	var g: Game = f.game
 	var out := []
-	var mms: Dictionary = f.get("_remnant_mm")
-	for name: StringName in mms:
-		var mm: MultiMesh = mms[name]
-		for i in mm.instance_count:
-			var o := mm.get_instance_transform(i).origin
+	var lists: Dictionary = f.call("remnants_near", g.player.pos)
+	for name: StringName in lists:
+		for p: WorldProp in lists[name]:
+			var o := g.world.to_3d(p.pos)
 			out.append("%s %.2f %.2f" % [name, o.x, o.z])
 	out.sort()
 	return out
@@ -111,13 +113,30 @@ static func _marks_by_walking(g: Game, reach: float) -> Array:
 func test_the_marks_are_the_ones_a_walk_of_every_take_would_draw() -> void:
 	var g := _field(160, 3.0)
 	var f := _fx(g)
+	var reach := float(f.get("REMNANT_RADIUS"))
 	# Taken near and far, felled and tapped.
 	_take(g, g.player.pos, 70.0, false, 5)
 	_take(g, g.player.pos, 70.0, true, 7)
 	f.call("_refresh_remnants")
-	var want := _marks_by_walking(g, float(f.get("REMNANT_RADIUS")))
+	var want := _marks_by_walking(g, reach)
 	gt(float(want.size()), 100.0, "a good many marks in reach (%d)" % want.size())
 	eq(_drawn(f), want, "every mark in reach, and none beyond it")
+	var mms: Dictionary = f.get("_remnant_mm")
+	eq((mms[&"stump"] as MultiMesh).instance_count, want.filter(func(m: String) -> bool: return m.begins_with("stump ")).size(), "and as many stumps drawn")
+	# A step on, inside the reach the rows were taken for, a pine felled there
+	# and one set down and felled since: the rows in hand still hold them.
+	g.player.pos += Vector2(7.0, 4.0)
+	var late := WorldProp.new(g.world.next_id(), PropKind.PINE, g.player.pos + Vector2(-46.0, 0.5), 0.0, 1.0)
+	g.world.add_prop(late)
+	g.query.add_prop(late)
+	g.world.depleted[late.id] = INF
+	for row in g.query.rows_near(g.player.pos + Vector2(40.0, 0.0), 2.0):
+		g.world.depleted[g.world.table.id[row]] = INF
+	eq(_drawn(f), _marks_by_walking(g, reach), "a step on, the same marks a walk would find")
+	check(_drawn(f).has("stump %.2f %.2f" % [g.world.to_3d(late.pos).x, g.world.to_3d(late.pos).z]), "the one set down since among them")
+	# And far on, where the rows are taken again.
+	g.player.pos += Vector2(-35.0, 20.0)
+	eq(_drawn(f), _marks_by_walking(g, reach), "far on, the same again")
 	_free(g, f)
 
 
@@ -134,7 +153,12 @@ func test_what_was_taken_far_off_costs_nothing_here() -> void:
 	_take(g, g.player.pos, 120.0, true, 9)
 	print("  taken far off: %d depleted, %d spent" % [g.world.depleted.size(), SurvivalState.of(g).spent.size()])
 	var beside := TestCase.best_of(5, refresh)
-	print("  the remnants refreshed in %.0f us, %.0f us with the island's takes" % [alone, beside])
+	# The refresh that takes the rows again, once the player has walked on.
+	var walk_on := func() -> void:
+		f.set("_rows_of", 0)
+		refresh.call()
+	var walked := TestCase.best_of(3, walk_on)
+	print("  the remnants refreshed in %.0f us, %.0f us with the island's takes, %.0f us walked on" % [alone, beside, walked])
 	ratio_lt(beside / maxf(alone, 1.0), 1.5, "the remnants' refresh beside the island's takes, as a share of it alone")
 	_free(g, f)
 

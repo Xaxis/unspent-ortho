@@ -95,6 +95,17 @@ var _killed_time := -10.0
 var _remnant_mm: Dictionary = {} # StringName -> MultiMesh
 var _remnant_sig := ""
 var _remnant_at := Vector2(-1e9, -1e9)
+## The table rows within REMNANT_RADIUS + REMNANT_STEP of `_rows_at` in the
+## world `_rows_of`, and the table's size when they were taken: what a refresh
+## reads while the player is within REMNANT_STEP of there. A walker's stride
+## moves the signature every half second without the player moving at all, and
+## asking the query again each time was most of a refresh.
+var _rows := PackedInt32Array()
+var _rows_at := Vector2(-1e9, -1e9)
+var _rows_of := 0
+var _rows_n := 0
+## Tiles walked before the remnants are drawn again for where the player is.
+const REMNANT_STEP := 12.0
 var _fires: Dictionary = {} # prop id -> FireModel
 var _scan_in := 0.0
 ## The dashes of the ring drawn round an asked-for fire.
@@ -777,45 +788,11 @@ func _refresh_remnants() -> void:
 	var here := game.player.pos
 	var spent := SurvivalState.of(game).spent
 	var sig := "%d:%d:%d" % [w.depleted.size(), w.prop_count(), spent.size()]
-	if sig == _remnant_sig and here.distance_to(_remnant_at) < 12.0:
+	if sig == _remnant_sig and here.distance_to(_remnant_at) < REMNANT_STEP:
 		return
 	_remnant_sig = sig
 	_remnant_at = here
-	var lists := {}
-	for name: StringName in _remnant_mm:
-		lists[name] = []
-	# THE PROPS NEAR, NOT EVERYTHING EVER TAKEN. The signature moves with any take
-	# on the island, so while a walker strides it moves every half second, and
-	# this walked every depleted id and spent key there were, world-wide, as
-	# WorldProps. The rows near are read off the table, and only a prop that left
-	# a mark is made a WorldProp.
-	var t := w.table
-	var picked := not spent.is_empty()
-	for row in game.query.rows_near(here, REMNANT_RADIUS):
-		var id := t.id[row]
-		var gone := w.depleted.has(id)
-		if not gone and not picked:
-			continue
-		if t.pos[row].distance_to(here) > REMNANT_RADIUS:
-			continue
-		var kind := t.kind[row]
-		if gone:
-			var r := RemnantModels.for_kind(kind)
-			if r != &"":
-				lists[r].append(w.prop_at(row))
-			continue
-		# Standing but picked over: one mark of each sort per prop, however many
-		# of its options are spent.
-		var opts := Takes.options(kind)
-		var marked: Array[StringName] = []
-		for index in opts.size():
-			if not spent.has(SurvivalState.key(id, index)):
-				continue
-			var verb: StringName = (opts[index] as Dictionary).verb
-			var mark := RemnantModels.worked_for(kind, verb)
-			if not marked.has(mark):
-				marked.append(mark)
-				lists[mark].append(w.prop_at(row))
+	var lists := remnants_near(here)
 	for name: StringName in lists:
 		var mm: MultiMesh = _remnant_mm[name]
 		var list: Array = lists[name]
@@ -836,6 +813,77 @@ func _refresh_remnants() -> void:
 					tint = Color(0.8, 0.82, 0.88)
 			var k := 0.92 + Rng.hash01(w.seed_value, p.id, 91) * 0.16
 			mm.set_instance_color(j, Color(tint.r * k, tint.g * k, tint.b * k))
+
+
+## What taking left within REMNANT_RADIUS of `here`: mark name -> [WorldProp].
+##
+## THE PROPS NEAR, NOT EVERYTHING EVER TAKEN. The signature moves with any take
+## on the island, so while a walker strides it moves every half second, and this
+## used to walk every depleted id and spent key there were, world-wide, as
+## WorldProps. The rows near are read off the table, and only a prop that left a
+## mark is made a WorldProp. A spent key is only ever written for an option that
+## keeps the prop (Survival: one that takes it away depletes it), so only those
+## options are asked after.
+func remnants_near(here: Vector2) -> Dictionary:
+	var w := game.world
+	var t := w.table
+	var spent := SurvivalState.of(game).spent
+	var lists := {}
+	for name: StringName in _remnant_mm:
+		lists[name] = []
+	if w.get_instance_id() != _rows_of or here.distance_to(_rows_at) > REMNANT_STEP:
+		_rows = game.query.rows_near(here, REMNANT_RADIUS + REMNANT_STEP)
+		_rows_at = here
+		_rows_of = w.get_instance_id()
+		_rows_n = t.size()
+	elif t.size() > _rows_n:
+		# Set down since the rows were taken: few, and only the ones in reach.
+		for row in range(_rows_n, t.size()):
+			if t.pos[row].distance_to(_rows_at) <= REMNANT_RADIUS + REMNANT_STEP:
+				_rows.append(row)
+		_rows_n = t.size()
+	var picked := not spent.is_empty()
+	for row in _rows:
+		var id := t.id[row]
+		var gone := w.depleted.has(id)
+		if not gone and not picked:
+			continue
+		if t.pos[row].distance_to(here) > REMNANT_RADIUS:
+			continue
+		var kind := t.kind[row]
+		if gone:
+			var r := RemnantModels.for_kind(kind)
+			if r != &"":
+				lists[r].append(w.prop_at(row))
+			continue
+		# Standing but picked over: one mark of each sort per prop, however many
+		# of its options are spent.
+		var marked: Array[StringName] = []
+		for keep: Array in _kept_options(kind):
+			if not spent.has(SurvivalState.key(id, int(keep[0]))):
+				continue
+			var mark := RemnantModels.worked_for(kind, keep[1])
+			if not marked.has(mark):
+				marked.append(mark)
+				lists[mark].append(w.prop_at(row))
+	return lists
+
+
+## The options of `kind` that keep the prop, as [index, verb]: the only ones a
+## spent key is written for. Worked out once a kind.
+static var _kept_by_kind: Dictionary = {}
+
+
+static func _kept_options(kind: int) -> Array:
+	if not _kept_by_kind.has(kind):
+		var out := []
+		var opts := Takes.options(kind)
+		for i in opts.size():
+			var o: Dictionary = opts[i]
+			if bool(o.get("keep", false)):
+				out.append([i, StringName(o.get("verb", &""))])
+		_kept_by_kind[kind] = out
+	return _kept_by_kind[kind]
 
 
 # --- Fires -------------------------------------------------------------------------
