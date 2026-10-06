@@ -30,9 +30,11 @@ func _initialize() -> void:
 	if str(o.out) == "":
 		_fail("no --out")
 		return
-	var stamp := DevStamp.make(name, resolved, str(o.target), str(o.template), str(o.commit), o.dirty == true, int(Time.get_unix_time_from_system()))
+	# Into the settings, not only the stamp's own field: the running build reads
+	# its configuration from them (GameConfig.use_stamp), and both must say one version.
 	if str(o.version) != "":
-		stamp.version = str(o.version)
+		resolved.settings["build.version"] = str(o.version)
+	var stamp := DevStamp.make(name, resolved, str(o.target), str(o.template), str(o.commit), o.dirty == true, int(Time.get_unix_time_from_system()))
 	var path := str(o.out)
 	if not path.is_absolute_path():
 		path = ProjectSettings.globalize_path("res://").path_join(path)

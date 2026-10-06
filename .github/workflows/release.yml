@@ -286,9 +286,10 @@ jobs:
           npm install --prefix tools/web --no-audit --no-fund
           npx --prefix tools/web playwright install --with-deps chromium-headless-shell
       # The proof deploy.yml blocks on: SwiftShader draws WebGL2 on the CPU, enough
-      # to boot the title and fail on a console error.
+      # to boot the title and fail on a console error. Its first frame came 321 s
+      # after navigation here (run 37493687597), so the limit is a hang guard above that.
       - name: Boot to the title (CPU WebGL)
-        run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=400
+        run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=600
       - name: Keep what the browser saw
         if: always()
         uses: actions/upload-artifact@v4
