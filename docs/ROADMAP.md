@@ -19,14 +19,16 @@ The owner plays on this box with `tools/play.sh coast | reaper | holdfast | acro
 the web preview that every push to main deploys.
 
 - [x] Slice 1's proof: `home-coast.tour` from the title, frames 01-22 (main 9f7eb08d).
-- [ ] Slice 2's proof: `holdfast.tour` holds 01-08 with the gate fix; 09 fails on staging
-  (it feeds him after the lab at 23:30, beside a hunter his lit lamp drew).
+- [x] Slice 2's proof: `holdfast.tour`, frames 01-18 (main 4897a619).
 - [x] Slice 3's proof: `across.tour` by the goal line, frames 01-38.
-- [ ] The climb's clock runs at a set-piece rate (a 16-minute climb was 23 game hours),
-  with the climb keys and the lamp working on the leg, and nothing below sensing him
-  there. In batches 7-8.
-- [ ] The web new game: 80-85 s to raise the world against 43-48 on desktop; the title
-  under 15 s.
+- [x] The climb's clock runs at a set-piece rate; the climb keys and the lamp work on
+  the leg, and nothing below senses him there (batch 7).
+- [x] The web new game sizes its worker pool from the player's cores (four before): 95 s
+  to 71 and 76 to 48 in the page on this box's software renderer (batch 8).
+- [ ] The web start: 15-18 s of system setup on the main thread, and ~10 s compiling
+  the light shaders (`01_warm_lights`) before the first frame.
+- [ ] The lab gate stands inside the yard's raised deck: his head pokes through the
+  floor and no gate is drawn.
 - [ ] ★ The owner plays slices 1-3; his notes become the next plan.
 
 ## Slice 1 — the home coast (done but ★)
@@ -66,7 +68,7 @@ returns here: `~/Projects/unspent-ortho-archive/above-cost-2026-09-29.bundle`.
   game loads; edits pass the story tests and story-wright.
 - [ ] Tours run on main daily: CI has no GPU, so tours rot unseen. `tools/tour-sweep.sh
   --since <yesterday>` plus the proofs, failures routed the same day; the whole set weekly.
-- [ ] A world cache on disk, so tours and tests stop regenerating the same seeds.
+- [x] A world cache on disk (`src/boot/world_cache.gd`): a seed-1 tour boots in 21 s, not 47-82.
 - [ ] Tours walk with a path: `walkto` holds a straight line, so a proof can't walk a
   freed person home.
 
