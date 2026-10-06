@@ -178,7 +178,6 @@ src/systems/32_disposition.gd::_network_name::list
 src/systems/32_disposition.gd::_reads::builder Chapters.of
 src/systems/34_works.gd::_read_sites::builder Works.sites
 src/systems/35_folk.gd::_stream::list
-src/systems/37_fauna.gd::_find_sites::list
 src/systems/37_fauna.gd::_stream::list
 src/systems/41_shoulder.gd::_ground_top::raw
 src/systems/44_sentinels.gd::look_at::whole
