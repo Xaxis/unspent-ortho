@@ -408,10 +408,9 @@ try 3
 end
 # The pick in hand breaks wreckage for plate; with the knife in hand (which it
 # does not cut) his bare hands pull the rag out of it. Looked for from Oyster
-# Row, whose nearest wreckage lies 81 tiles up the coast, and never from where
-# the driftwood left him: which driftwood that is turns on the berry loop's
-# hour, and from the beach below the village the nearest wreckage is past
-# `near`'s 90 tiles. A shack gives scrap by hand, never the rag.
+# Row, a named place, and not from wherever the driftwood left him; and only
+# wreckage, since with the knife held a shack is turned for scrap and the block
+# went round again for the rag.
 tap inventory
 wait 0.5
 choose knife
