@@ -407,7 +407,11 @@ try 3
   await took:driftwood 4
 end
 # The pick in hand breaks wreckage for plate; with the knife in hand (which it
-# does not cut) his bare hands pull the rag out of it.
+# does not cut) his bare hands pull the rag out of it. Looked for from Oyster
+# Row, whose nearest wreckage lies 81 tiles up the coast, and never from where
+# the driftwood left him: which driftwood that is turns on the berry loop's
+# hour, and from the beach below the village the nearest wreckage is past
+# `near`'s 90 tiles. A shack gives scrap by hand, never the rag.
 tap inventory
 wait 0.5
 choose knife
@@ -415,8 +419,10 @@ tap use
 wait 0.3
 tap inventory
 wait 0.4
+village 0
+wait 0.6
 try 6
-  near shack,wreckage
+  near wreckage
   walk 0,0 0.05
   press use 0.1
   await took:rag 12
