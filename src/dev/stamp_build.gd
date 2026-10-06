@@ -6,8 +6,8 @@ extends SceneTree
 ## every default, dev mode off). The configuration is resolved and checked
 ## against the game's content here, so a build of a broken configuration fails
 ## before minutes are spent exporting it. A --version that is not empty stands
-## over the configuration's build.version: a release tag names its own. Prints `stamp ok <label>` or
-## `stamp FAILED: <why>` and exits 0 or 1.
+## over the configuration's build.version: a release tag names its own. Prints
+## `stamp ok <label>` or `stamp FAILED: <why>` and exits 0 or 1.
 
 
 func _initialize() -> void:

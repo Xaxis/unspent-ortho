@@ -7,8 +7,8 @@ extends Node
 ## once. This script names no game class (it loads them by path): naming one here
 ## would compile nearly every script before the first frame could be drawn.
 ## When the first frame of a world is drawn it prints `boot ready <scene> <ms>`
-## (tools/web.sh waits for that line; headless, once the world is up, and
-## tools/boot-check.sh waits for it there).
+## (tools/web.sh waits for that line). Headless draws nothing, so there it
+## prints once the world is up (tools/boot-check.sh waits for it).
 
 ## While a play session is up, this file names its process id, so the focus
 ## guard (tools/_focus_guard.sh) can tell a person playing from a tool run.

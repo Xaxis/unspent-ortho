@@ -7,7 +7,11 @@ name: release
 # does neither.
 #
 #   git tag v0.3.0 && git push origin v0.3.0           the release of 0.3.0
-#   gh workflow run release.yml -f version=0.3.0-rc.1  the same from any branch, untagged
+#   gh workflow run release.yml --ref BRANCH -f version=0.3.0-rc.1
+#                                                      the same from any branch, untagged
+# GitHub dispatches only a workflow the default branch holds ("release.yml not
+# found on the default branch"), so until this file is on main a branch proves
+# it with a test-only tag (v0.0.0-test.N) and deletes the tag and its draft after.
 #
 # Every build is exported on ubuntu with the official 4.7.2 templates, from the
 # `release` configuration (configs/release.json), stamped with the tag's version
