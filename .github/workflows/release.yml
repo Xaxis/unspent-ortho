@@ -1,0 +1,348 @@
+name: release
+
+# One version tag makes the game for macOS, Linux, Windows and the web, proves
+# each build boots on its own OS, and puts them on a DRAFT GitHub Release. The
+# repo is public and a draft is seen by its collaborators only: publishing it is
+# the owner's act, as is a production deploy (tools/deploy.sh --prod), and this
+# does neither.
+#
+#   git tag v0.3.0 && git push origin v0.3.0           the release of 0.3.0
+#   gh workflow run release.yml -f version=0.3.0-rc.1  the same from any branch, untagged
+#
+# Every build is exported on ubuntu with the official 4.7.2 templates, from the
+# `release` configuration (configs/release.json), stamped with the tag's version
+# (tools/export.sh --version). Each desktop build is then booted on its own OS by
+# tools/boot-check.sh: the real export, launched headless with no game arguments,
+# must print the game's ready line (src/main.gd) with no SCRIPT ERROR:
+#   boot ready title 6345 ms (engine 7210 ms, main at 865 ms)
+# The web build boots in headless Chromium on the CPU (tools/web.sh --boot-only,
+# the check deploy.yml blocks on), which waits for the same line.
+#
+# SIGNING IS THE OWNER'S, and nothing here pretends to it. Without these secrets
+# the builds ship as they are, and the release notes say what a player sees:
+#   macOS    ad-hoc signed (codesign/codesign=1 in export_presets.cfg). It runs,
+#            but Gatekeeper calls it from an unidentified developer until it is
+#            signed with the owner's Apple Developer ID and notarized:
+#              MACOS_CERTIFICATE_P12        base64 of a "Developer ID Application" .p12
+#              MACOS_CERTIFICATE_PASSWORD   its password
+#              MACOS_SIGNING_IDENTITY       "Developer ID Application: NAME (TEAMID)"
+#              MACOS_NOTARY_KEY             base64 of an App Store Connect API key (.p8)
+#              MACOS_NOTARY_KEY_ID, MACOS_NOTARY_ISSUER
+#   Windows  unsigned. SmartScreen warns ("Windows protected your PC") until it
+#            carries a code-signing certificate (an OV or EV certificate):
+#              WINDOWS_CERTIFICATE_PFX       base64 of the .pfx
+#              WINDOWS_CERTIFICATE_PASSWORD  its password
+# A build is signed on its own OS before it is booted, so the boot proves the
+# bytes that ship. These signing steps have never run: no secret exists yet.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to stamp, without the v (e.g. 0.3.0-rc.1); the draft is named v<version>'
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = push ]; then v="${GITHUB_REF_NAME#v}"; else v="${{ inputs.version }}"; v="${v#v}"; fi
+          # It names files and a tag: plain characters only.
+          [[ "$v" =~ ^[0-9A-Za-z][0-9A-Za-z.+-]*$ ]] || { echo "::error::not a version: '$v'"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "release $v of ${GITHUB_SHA::7}"
+
+      # The same cache deploy.yml fills: one Godot and one set of templates.
+      - name: Cache Godot and its export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot-bin
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-linux-with-templates
+
+      - name: Install Godot and templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/godot-bin
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d ~/godot-bin
+          mv ~/godot-bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot-bin/godot
+          chmod +x ~/godot-bin/godot
+          curl -fsSL "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o /tmp/templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates
+          unzip -q /tmp/templates.tpz -d /tmp/templates
+          mv /tmp/templates/templates "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+
+      - name: Put Godot on PATH
+        run: echo "$HOME/godot-bin" >> "$GITHUB_PATH"
+
+      - name: Brotli (tools/export.sh writes the web build's .br siblings)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq brotli
+
+      - name: Import
+        run: tools/_import.sh
+
+      - name: Export all four
+        run: |
+          set -euo pipefail
+          v="${{ steps.version.outputs.version }}"
+          for t in linux windows mac web; do tools/export.sh "$t" --config=release "--version=$v"; done
+
+      # A zip per build, made here where every file's mode is known: an artifact
+      # loses the executable bit, a zip made with -X keeps it. Its build.json
+      # (tools/export.sh) goes beside the zip, not in it.
+      - name: Package
+        run: |
+          set -euo pipefail
+          v="${{ steps.version.outputs.version }}"
+          mkdir -p dist
+          pack() { # dir, name, files...
+            local dir="$1" name="$2"; shift 2
+            (cd "$dir" && zip -q -r -y -X "$GITHUB_WORKSPACE/dist/UNSPENT-$v-$name.zip" "$@")
+            cp "$dir/build.json" "dist/UNSPENT-$v-$name.build.json"
+          }
+          pack build/linux linux-x86_64 UNSPENT.x86_64
+          pack build/windows windows-x86_64 UNSPENT.exe
+          pack build/mac macos-universal UNSPENT.app
+          # The web build as served: raw files only (a host compresses its own).
+          (cd build/web && find . -type f ! -name '*.br' ! -name '*.gz' ! -name build.json | sort > /tmp/web-files)
+          (cd build/web && zip -q -X "$GITHUB_WORKSPACE/dist/UNSPENT-$v-web.zip" -@ < /tmp/web-files)
+          cp build/web/build.json "dist/UNSPENT-$v-web.build.json"
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with: { name: linux, path: "dist/*-linux-x86_64.*", if-no-files-found: error }
+      - uses: actions/upload-artifact@v4
+        with: { name: windows-unsigned, path: "dist/*-windows-x86_64.*", if-no-files-found: error }
+      - uses: actions/upload-artifact@v4
+        with: { name: macos-unsigned, path: "dist/*-macos-universal.*", if-no-files-found: error }
+      - uses: actions/upload-artifact@v4
+        with: { name: web, path: "dist/*-web.*", if-no-files-found: error }
+
+  boot-linux:
+    needs: export
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: linux, path: dist }
+      - name: Boot to the title (headless)
+        run: |
+          set -euo pipefail
+          unzip -q dist/*-linux-x86_64.zip -d run
+          tools/boot-check.sh run/UNSPENT.x86_64
+
+  boot-windows:
+    needs: export
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      HAS_WINDOWS_SIGNING: ${{ secrets.WINDOWS_CERTIFICATE_PFX != '' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: windows-unsigned, path: dist }
+      - name: Unpack
+        shell: pwsh
+        run: Expand-Archive -Path (Get-Item dist/*-windows-x86_64.zip).FullName -DestinationPath run
+
+      - name: Sign (only with the owner's certificate)
+        if: env.HAS_WINDOWS_SIGNING == 'true'
+        shell: pwsh
+        env:
+          PFX: ${{ secrets.WINDOWS_CERTIFICATE_PFX }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX))
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' | Sort-Object FullName | Select-Object -Last 1
+          & $signtool.FullName sign /f $pfx /p $env:PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 run\UNSPENT.exe
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
+          & $signtool.FullName verify /pa run\UNSPENT.exe
+          if ($LASTEXITCODE -ne 0) { throw "signature does not verify" }
+          Remove-Item $pfx
+
+      - name: Boot to the title (headless)
+        run: tools/boot-check.sh run/UNSPENT.exe
+
+      - name: Package the signed build
+        if: env.HAS_WINDOWS_SIGNING == 'true'
+        shell: pwsh
+        run: |
+          $zip = (Get-Item dist/*-windows-x86_64.zip).FullName
+          Remove-Item $zip
+          Compress-Archive -Path run\UNSPENT.exe -DestinationPath $zip
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: "dist/*-windows-x86_64.*", if-no-files-found: error }
+
+  boot-macos:
+    needs: export
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      HAS_MACOS_SIGNING: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
+      HAS_MACOS_NOTARY: ${{ secrets.MACOS_NOTARY_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: macos-unsigned, path: dist }
+      - name: Unpack
+        run: |
+          set -euo pipefail
+          mkdir run && ditto -x -k dist/*-macos-universal.zip run
+          codesign -dv run/UNSPENT.app 2>&1 | grep -E 'Signature|Identifier|Format' || true
+
+      - name: Sign with the owner's Developer ID
+        if: env.HAS_MACOS_SIGNING == 'true'
+        env:
+          P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+          kc="$RUNNER_TEMP/sign.keychain-db"; kcpw="$(uuidgen)"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/sign.p12"
+          security create-keychain -p "$kcpw" "$kc"
+          security set-keychain-settings -lut 3600 "$kc"
+          security unlock-keychain -p "$kcpw" "$kc"
+          security import "$RUNNER_TEMP/sign.p12" -k "$kc" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$kcpw" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/sign.p12"
+          codesign --force --deep --timestamp --options runtime --keychain "$kc" --sign "$IDENTITY" run/UNSPENT.app
+          codesign --verify --deep --strict --verbose=2 run/UNSPENT.app
+
+      - name: Notarize and staple
+        if: env.HAS_MACOS_SIGNING == 'true' && env.HAS_MACOS_NOTARY == 'true'
+        env:
+          NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.MACOS_NOTARY_ISSUER }}
+        run: |
+          set -euo pipefail
+          echo "$NOTARY_KEY" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          ditto -c -k --keepParent run/UNSPENT.app "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --key "$RUNNER_TEMP/notary.p8" \
+            --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER" --wait
+          xcrun stapler staple run/UNSPENT.app
+          rm "$RUNNER_TEMP/notary.p8"
+
+      - name: Boot to the title (headless)
+        run: tools/boot-check.sh run/UNSPENT.app
+
+      - name: Package the signed build
+        if: env.HAS_MACOS_SIGNING == 'true'
+        run: |
+          set -euo pipefail
+          zip=$(ls dist/*-macos-universal.zip); rm "$zip"
+          ditto -c -k --norsrc --noextattr --keepParent run/UNSPENT.app "$zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: macos, path: "dist/*-macos-universal.*", if-no-files-found: error }
+
+  boot-web:
+    needs: export
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with: { name: web, path: dist }
+      - name: Unpack into build/web
+        run: mkdir -p build/web && unzip -q dist/*-web.zip -d build/web
+      - name: Browser harness
+        run: |
+          npm install --prefix tools/web --no-audit --no-fund
+          npx --prefix tools/web playwright install --with-deps chromium-headless-shell
+      # The proof deploy.yml blocks on: SwiftShader draws WebGL2 on the CPU, enough
+      # to boot the title and fail on a console error.
+      - name: Boot to the title (CPU WebGL)
+        run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=400
+      - name: Keep what the browser saw
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: web-proof, path: shots/export/, if-no-files-found: ignore }
+
+  draft:
+    needs: [export, boot-linux, boot-windows, boot-macos, boot-web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      # The signed builds where signing ran, else the exports as they were booted.
+      - uses: actions/download-artifact@v4
+        with: { name: linux, path: dist }
+      - uses: actions/download-artifact@v4
+        with: { name: windows, path: dist }
+      - uses: actions/download-artifact@v4
+        with: { name: macos, path: dist }
+      - uses: actions/download-artifact@v4
+        with: { name: web, path: dist }
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.export.outputs.version }}
+          MAC_NOTARIZED: ${{ secrets.MACOS_CERTIFICATE_P12 != '' && secrets.MACOS_NOTARY_KEY != '' }}
+          WINDOWS_SIGNED: ${{ secrets.WINDOWS_CERTIFICATE_PFX != '' }}
+        run: |
+          set -euo pipefail
+          tag="v$V"
+          ls -l dist
+          mac="ad-hoc signed, not notarized: macOS says it cannot check UNSPENT for malicious software, and it opens once allowed in System Settings, Privacy & Security, Open Anyway."
+          [ "$MAC_NOTARIZED" = true ] && mac="signed with a Developer ID and notarized."
+          win="unsigned: SmartScreen says Windows protected your PC, and it runs from More info, Run anyway."
+          [ "$WINDOWS_SIGNED" = true ] && win="signed."
+          {
+            echo "UNSPENT $V, made from ${GITHUB_SHA::7} by run $GITHUB_RUN_ID. Each build booted to its title on its own OS before it was attached."
+            echo
+            echo "- **macOS** (universal): $mac"
+            echo "- **Windows** (x86_64): $win"
+            echo "- **Linux** (x86_64): one file. Make it executable if your unzip did not."
+            echo "- **Web**: the threaded build. Its host must send \`Cross-Origin-Opener-Policy: same-origin\` and \`Cross-Origin-Embedder-Policy: require-corp\`."
+            echo
+            echo "Each \`.build.json\` is the stamp its build carries: configuration, version, commit and sizes."
+          } > notes.md
+          # Never a published release: a re-run refreshes its own draft, and a tag
+          # that is already published is left alone.
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft > /tmp/draft 2>/dev/null; then
+            [ "$(cat /tmp/draft)" = true ] || { echo "::error::$tag is already published; this never touches a published release"; exit 1; }
+            gh release upload "$tag" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$tag" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$tag" dist/* --draft --target "$GITHUB_SHA" --title "UNSPENT $V" \
+              --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,url,assets \
+            --jq '"draft=\(.isDraft) \(.url)", (.assets[] | "  \(.name) \(.size)")'

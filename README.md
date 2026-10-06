@@ -26,6 +26,22 @@ tools/web.sh             # the web build, booted in a headless browser
 tools/deploy.sh          # deploy to Vercel and prove it runs there
 ```
 
+## Releasing
+
+A version tag makes macOS, Linux, Windows and the web, boots each on its own OS, and
+leaves them on a **draft** GitHub Release (`.github/workflows/release.yml`):
+
+```sh
+git tag v0.3.0 && git push origin v0.3.0        # or untagged, from any branch:
+env -u GITHUB_TOKEN gh workflow run release.yml --ref BRANCH -f version=0.3.0-rc.1
+```
+
+Builds come from `configs/release.json`, stamped with the tag's version (each zip's
+`.build.json`). Publishing the draft is deliberate, like `tools/deploy.sh --prod`. macOS is
+ad-hoc signed and Windows unsigned until the owner's Developer ID and code-signing
+certificate are secrets (the workflow's header names them). One build by hand:
+`tools/export.sh linux`, then `tools/boot-check.sh build/linux/UNSPENT.x86_64`.
+
 ## Docs
 
 - `docs/VISION.md`: where the game is going.

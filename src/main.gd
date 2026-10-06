@@ -7,7 +7,8 @@ extends Node
 ## once. This script names no game class (it loads them by path): naming one here
 ## would compile nearly every script before the first frame could be drawn.
 ## When the first frame of a world is drawn it prints `boot ready <scene> <ms>`
-## (tools/web.sh waits for that line).
+## (tools/web.sh waits for that line; headless, once the world is up, and
+## tools/boot-check.sh waits for it there).
 
 ## While a play session is up, this file names its process id, so the focus
 ## guard (tools/_focus_guard.sh) can tell a person playing from a tool run.
@@ -177,7 +178,11 @@ func _ready_line(scene: Node) -> void:
 		await get_tree().process_frame
 	if not is_instance_valid(scene) or not scene.is_inside_tree():
 		return
-	await RenderingServer.frame_post_draw
+	# Headless draws nothing and this never fires there (measured, 4.7.2), so the
+	# line never came. A release boots every desktop build headless on a runner
+	# with no GPU (tools/boot-check.sh): there it is up once the world is.
+	if DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
 	# And again on the far side of that await: a scene can be taken down DURING
 	# it. The title frees itself the moment it hands over to a loaded game, so
 	# continuing a save raced this line and read `name` off a freed object —
