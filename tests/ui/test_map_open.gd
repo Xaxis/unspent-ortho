@@ -82,7 +82,7 @@ func test_opening_the_survey_costs_a_frame() -> void:
 		s._take_regions(true)
 	print("  the survey opened at 1840 in %s ms" % str(opens))
 	check(not s._regions.is_empty(), "and it is lettered")
-	cost_lt(opens.min(), 12.0, "opening the survey at 1840 (ms)")
+	cost_lt(opens.min(), 4.0, "opening the survey at 1840 (ms)")
 	_done(g, s)
 
 
@@ -126,7 +126,9 @@ func test_one_texture_of_the_land_seen_is_kept_and_written_over() -> void:
 	e.reveal(Vector2i(200, 200), UiExplored.RADIUS)
 	s._on_open()
 	check(s._seen_tex == tex, "opened again, the same texture")
-	eq(tex.get_image().get_pixel(200, 200).r8, 255, "written over with the new walk")
+	# Headless, the dummy renderer keeps a texture's first image and drops every
+	# update, so the write is read off what the texture was last written from.
+	eq(s._seen_for, [e.changes, e.revealed], "written over with the walk as it stands")
 	_done(g, s)
 
 

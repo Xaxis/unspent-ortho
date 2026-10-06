@@ -137,4 +137,6 @@ func test_finding_an_islands_refuse_costs_a_few_ms() -> void:
 		_free(f)
 	gt(float(found), 500.0, "the island's refuse is found (%d sites)" % found)
 	print("  every refuse site of 130k props found in %s ms" % str(spent))
-	cost_lt(spent.min(), 25.0, "finding an island's refuse (ms)")
+	# 6 ms on CI's runner (2026-10-06), whole, in one frame: at a game's start
+	# and on a realm's first visit, both under a cover, so it is not spread.
+	cost_lt(spent.min(), 12.0, "finding an island's refuse (ms)")
