@@ -739,6 +739,9 @@ func test_the_right_button_peeks_and_lands_back_down() -> void:
 	var g: Game = made[0]
 	var sys: Node = made[1]
 	_right(true)
+	# Held across a real frame, as a hand holds it: a press let go inside one
+	# frame is a tap, and 00_taps holds a tap down for the frame it came in.
+	await tree.process_frame
 	check(Input.is_action_pressed(&"shoulder_peek"), "the right button says `shoulder_peek`")
 	check(not Input.is_action_pressed(&"shoulder"), "and not the view's own key")
 	sys.call("_process", DT)
