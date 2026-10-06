@@ -27,7 +27,8 @@
 //   --after=SECS     second screenshot this long after ready (default 4)
 //   --timeout=SECS   each ready line must come within this (default 300: a full new game
 //                    raises its island in the page, and on the Linux box's GPU at load 25-43
-//                    seed 7's came 100-146 s after Enter, so 90 failed runs that were only slow)
+//                    seed 7's came 100-146 s after Enter, so 90 failed runs that were only slow;
+//                    2400 on the CPU, where they came 664 and 790 s at load 85-100, see `software`)
 //   --play           start a new game from the title with real keys and shoot it
 //   --reload         reload and require user:// (IndexedDB) to have kept the probe's save
 //   --resize=WxH     then resize the page and require the scale to stay an exact integer
@@ -81,7 +82,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const opt = { dir: 'build/web', out: 'shots/export/web', args: '', after: '4', timeout: '300', resize: '', tour: '', frames: '', window: '' };
+const opt = { dir: 'build/web', out: 'shots/export/web', args: '', after: '4', resize: '', tour: '', frames: '', window: '' };
 for (const a of process.argv.slice(2)) {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/);
   if (m) opt[m[1]] = m[2] === undefined ? true : m[2];
@@ -101,6 +102,15 @@ if (GPU_OFF && opt.gpu) {
   process.exit(2);
 }
 const software = Boolean(opt.swiftshader) || GPU_OFF;
+// On the CPU every wait is longer, measured: at load 85-100 on the Linux box
+// (SwiftShader, 10-06) the title's first frame came 664 s after navigation, the
+// new game 790 s after Enter and its warm-up 1003 s after, one frame 15-60 s.
+if (opt.timeout === undefined) opt.timeout = software ? '2400' : '300';
+// The longest one frame may hold the page before a screenshot, a read or a
+// reload counts it as not drawing: a minute on a GPU, five on the CPU, where one
+// frame held the main thread 78 s (the title's first, building its programs) and
+// steady frames 15-60 s at load 75-100 (10-05/06).
+const FRAME_WAIT_S = software ? 300 : 60;
 // --url= proves a build that is already on the internet (tools/deploy.sh) with
 // the same checks a local one gets: the host sends the headers, not us, so a
 // deploy that forgets cross-origin isolation or the wasm type fails here.
@@ -290,61 +300,103 @@ await context.addInitScript(() => {
       }
     };
   }
+  // THE EARS ARE ON THE AUDIO THREAD. They were analysers read from the page's
+  // main thread, and a read only sees the last 43 ms at the moment the main thread
+  // is free: on SwiftShader (10-05) one frame held it 18-44 s, the probe's tone
+  // played inside such a frame, and every read came back silent. A worklet hears
+  // every sample as it is rendered and keeps the loudest moment since the last
+  // reset (and the 2048 samples after it, for its pitch), whenever the page reads it.
+  const EAR = `class Ear extends AudioWorkletProcessor {
+    constructor() {
+      super();
+      this.buf = new Float32Array(2048); this.at = 0; this.peak = 0; this.wait = -1;
+      this.port.onmessage = () => { this.peak = 0; this.wait = -1; };
+    }
+    process(inputs) {
+      const ch = inputs[0] && inputs[0][0];
+      if (!ch) return true;
+      let p = 0;
+      for (let i = 0; i < ch.length; i++) { const v = ch[i]; this.buf[this.at] = v; this.at = (this.at + 1) & 2047; if (Math.abs(v) > p) p = Math.abs(v); }
+      if (p >= 0.0005 && p > this.peak * 1.02) { this.peak = p; this.wait = 2048; }
+      if (this.wait >= 0) {
+        this.wait -= ch.length;
+        if (this.wait <= 0) {
+          this.wait = -1;
+          const w = new Float32Array(2048);
+          for (let i = 0; i < 2048; i++) w[i] = this.buf[(this.at + i) & 2047];
+          this.port.postMessage({ peak: this.peak, window: w, rate: sampleRate });
+        }
+      }
+      return true;
+    }
+  }
+  registerProcessor('unspent-ear', Ear);`;
+  const earUrl = URL.createObjectURL(new Blob([EAR], { type: 'text/javascript' }));
+  window.__ear = null;
+  const ears = new Map();
   const connect = AudioNode.prototype.connect;
+  const earFor = (ctx) => {
+    if (!ears.has(ctx)) {
+      ears.set(ctx, ctx.audioWorklet.addModule(earUrl).then(() => {
+        const ear = new AudioWorkletNode(ctx, 'unspent-ear');
+        // Pulled by the graph through a silent gain, so it is rendered and adds nothing.
+        const hush = ctx.createGain();
+        hush.gain.value = 0;
+        connect.call(ear, hush);
+        connect.call(hush, ctx.destination);
+        ear.port.onmessage = (e) => { if (!window.__ear || e.data.peak >= window.__ear.peak) window.__ear = e.data; };
+        window.__taps.push(ear);
+        return ear;
+      }));
+    }
+    return ears.get(ctx);
+  };
   AudioNode.prototype.connect = function (dest, ...rest) {
     const out = connect.call(this, dest, ...rest);
     if (typeof AudioDestinationNode !== 'undefined' && dest instanceof AudioDestinationNode) {
-      const tap = this.context.createAnalyser();
-      tap.fftSize = 2048;
-      tap.smoothingTimeConstant = 0;
-      connect.call(this, tap);
-      window.__taps.push(tap);
+      earFor(this.context).then((ear) => connect.call(this, ear)).catch((e) => console.warn(`harness ear not made: ${e}`));
     }
     return out;
   };
-  // What reaches the speakers right now: the loudest sample (0..1), and the
+  window.__earReset = () => {
+    window.__ear = null;
+    for (const t of window.__taps) t.port.postMessage('reset');
+  };
+  // The loudest moment heard since the reset: its loudest sample (0..1), and the
   // strongest frequency with the share of all power within 3 bins of it (a pure
-  // test tone puts nearly all of it there; a game's mix spreads it).
+  // test tone puts nearly all of it there; a game's mix spreads it), Blackman-
+  // windowed as an analyser's spectrum is.
   window.__loudness = () => {
-    let peak = 0;
-    let best = null;
-    for (const t of window.__taps) {
-      const buf = new Float32Array(t.fftSize);
-      t.getFloatTimeDomainData(buf);
-      let p = 0;
-      for (const v of buf) p = Math.max(p, Math.abs(v));
-      peak = Math.max(peak, p);
-      if (p < 0.001) continue;
-      const spec = new Float32Array(t.frequencyBinCount);
-      t.getFloatFrequencyData(spec);
-      let top = 0, total = 0;
-      const pow = spec.map((db) => Math.pow(10, db / 10));
-      for (let i = 0; i < pow.length; i += 1) { total += pow[i]; if (pow[i] > pow[top]) top = i; }
-      let near = 0;
-      for (let i = Math.max(0, top - 3); i <= Math.min(pow.length - 1, top + 3); i += 1) near += pow[i];
-      const hz = top * t.context.sampleRate / t.fftSize;
-      if (!best || p > best.peak) best = { peak: p, hz, share: total > 0 ? near / total : 0 };
+    const h = window.__ear;
+    if (!h) return { peak: 0, hz: 0, share: 0 };
+    const n = h.window.length;
+    const x = h.window.map((v, i) => v * (0.42 - 0.5 * Math.cos(2 * Math.PI * i / n) + 0.08 * Math.cos(4 * Math.PI * i / n)));
+    const pow = new Float64Array(n / 2);
+    for (let k = 0; k < n / 2; k += 1) {
+      let re = 0, im = 0;
+      for (let i = 0; i < n; i += 1) { const a = 2 * Math.PI * k * i / n; re += x[i] * Math.cos(a); im -= x[i] * Math.sin(a); }
+      pow[k] = re * re + im * im;
     }
-    return { peak, hz: best ? best.hz : 0, share: best ? best.share : 0 };
+    let top = 0, total = 0;
+    for (let k = 0; k < pow.length; k += 1) { total += pow[k]; if (pow[k] > pow[top]) top = k; }
+    let near = 0;
+    for (let k = Math.max(0, top - 3); k <= Math.min(pow.length - 1, top + 3); k += 1) near += pow[k];
+    return { peak: h.peak, hz: top * h.rate / n, share: total > 0 ? near / total : 0 };
   };
 });
 
-// Listen at the speakers for up to `secs` (or `until` the first sound, when
-// asked): the loudest sample heard (0..1), and the strongest frequency and its
-// share of the power at that loudest moment.
-async function listen(secs, { until = true } = {}) {
-  let heard = { peak: 0, hz: 0, share: 0 };
-  let end = Date.now() + secs * 1000;
-  let caught = false;
-  while (Date.now() < end) {
-    const now = await page.evaluate(() => window.__loudness());
-    if (now.peak > heard.peak) heard = now;
-    // Once something is heard, a second more: the loudest moment of a sound, not its first edge.
-    if (until && !caught && heard.peak >= 0.001) { caught = true; end = Math.min(end, Date.now() + 1000); }
-    await page.waitForTimeout(40);
-  }
-  return heard;
+// What reached the speakers since the ears were last reset: the loudest sample
+// heard (0..1), and the strongest frequency and its share of the power just
+// after that loudest moment.
+async function heard() {
+  return (await bounded(page.evaluate(() => window.__loudness()), FRAME_WAIT_S * 1000)) || { peak: 0, hz: 0, share: 0 };
 }
+const resetEars = () => bounded(page.evaluate(() => window.__earReset()), FRAME_WAIT_S * 1000);
+// How many GL programs the page has built so far (NaN if it did not answer in --timeout).
+const linksBuilt = async () => {
+  const n = await bounded(page.evaluate(() => window.__glLinks || 0), Number(opt.timeout) * 1000);
+  return typeof n === 'number' ? n : NaN;
+};
 // What a silence at the speakers IS, since each kind has its own fix: the engine
 // never made an AudioContext, the browser still holds one suspended (its clock
 // stands still), or it runs and the engine hands it nothing but zeros. The last
@@ -432,6 +484,8 @@ await context.addInitScript(() => {
   P.shaderSource = function (s, src) { srcOf.set(s, src); return shaderSource.call(this, s, src); };
   const linkProgram = P.linkProgram;
   P.linkProgram = function (p) {
+    // Counted for the run's `web programs` line: each is a build the page waits on.
+    window.__glLinks = next + 1;
     p.__glId = ++next;
     p.__glChecked = 0;
     p.__glSrc = this.getAttachedShaders(p).map((s) => srcOf.get(s) || '');
@@ -511,6 +565,20 @@ function shaderOfIds(ids) {
 const page = await context.newPage();
 let tourEnded = false;
 const failures = [];
+// A HARNESS MUST NEVER END IN A STACK TRACE. A Playwright call with a limit of
+// its own (a locator's 30 s default) threw out of the flow when one frame held
+// the page's main thread longer than that (SwiftShader, 10-05: 35-76 s), and node
+// died printing it: no `web FAILED` line, no check after it run, the browser left
+// to the backstop. Whatever escapes the flow ends the run here, as a failure that
+// says where the run was and what was already wrong.
+const harnessFailed = (e) => {
+  for (const f of [...new Set(failures)]) console.log(`web FAILED: ${f}`);
+  console.log(`web FAILED: the harness stopped ${phase}: ${String((e && e.message) || e).split('\n')[0]}`);
+  try { browser.process()?.kill('SIGKILL'); } catch {}
+  process.exit(1);
+};
+process.on('uncaughtException', harnessFailed);
+process.on('unhandledRejection', harnessFailed);
 // The browser's own words for a GL refusal, the first time it says them.
 let glReason = '';
 page.on('console', (m) => {
@@ -705,9 +773,9 @@ async function inspectPage(pngPath) {
 async function shoot(name, { expectScale = null, still = false } = {}) {
   const file = `${opt.out}_${name}.png`;
   try {
-    await page.screenshot({ path: file, timeout: 60000 });
+    await page.screenshot({ path: file, timeout: FRAME_WAIT_S * 1000 });
   } catch (e) {
-    failures.push(`${file}: the page drew no frame for a minute (${e.message.split('\n')[0]})`);
+    failures.push(`${file}: the page drew no frame for ${FRAME_WAIT_S} s (${e.message.split('\n')[0]})`);
     return null;
   }
   const s = await inspect(file);
@@ -754,7 +822,7 @@ async function boot(label, from = lines.length) {
   const ready = await waitLine(/^boot ready/, Number(opt.timeout), from);
   if (!ready) {
     failures.push(`no "boot ready" line within ${opt.timeout} s`);
-    await page.screenshot({ path: `${opt.out}_${label}FAILED.png` });
+    await page.screenshot({ path: `${opt.out}_${label}FAILED.png`, timeout: FRAME_WAIT_S * 1000 }).catch(() => {});
   }
   return ready;
 }
@@ -780,13 +848,13 @@ phase = 'waiting for the shell to draw';
 if (await page.waitForFunction(() => window.unspentShell && window.unspentShell().shown, null, { timeout: 20000 }).catch(() => null)) {
   await page.waitForTimeout(400);
   const shellFile = `${opt.out}_shell.png`;
-  await page.screenshot({ path: shellFile });
+  await page.screenshot({ path: shellFile, timeout: FRAME_WAIT_S * 1000 });
   const shell = await inspectPage(shellFile);
   const state = await page.evaluate(() => window.unspentShell());
   releaseWasm();
   const gone = await page.waitForFunction(() => !window.unspentShell().shown, null, { timeout: Number(opt.timeout) * 1000 }).catch(() => null);
   const handFile = `${opt.out}_handover.png`;
-  await page.screenshot({ path: handFile });
+  await page.screenshot({ path: handFile, timeout: FRAME_WAIT_S * 1000 });
   const hand = await inspectPage(handFile);
   console.log(`web shell ${shellFile}: glass ${shell.rect.join(',')} x${shell.scale}, line lit ${shell.lit} px, words ${shell.ink} px ('${state.words}', ${(state.progress * 100).toFixed(0)}%)`);
   console.log(`web handover ${handFile}: glass ${hand.rect.join(',')} x${hand.scale}, line lit ${hand.lit} px, words ${hand.ink} px`);
@@ -822,6 +890,7 @@ if (first && touring) {
   else console.log(`web tour done in ${(end.t - first.t).toFixed(1)} s after the first frame, ${kept.length} frames in ${path.relative(process.cwd(), tourDir)}`);
 
 } else if (first) {
+  result.links_title = await linksBuilt();
   // The wasm was held while the shell was shot: that wait is not the build's.
   result.first_frame_s = first.t - wasmHeldMs / 1000;
   console.log(`web first frame ${result.first_frame_s.toFixed(2)} s after navigation, not counting ${(wasmHeldMs / 1000).toFixed(2)} s the harness held the wasm (${first.text})`);
@@ -845,6 +914,8 @@ if (first && !touring && opt['boot-only']) {
 
   // Browsers hold audio until a gesture: the first key must start it.
   const before = await page.evaluate(() => window.__audio.map((a) => a.state));
+  await resetEars();
+  const keyed = lines.length;
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowUp');
   await page.waitForTimeout(500);
@@ -853,12 +924,20 @@ if (first && !touring && opt['boot-only']) {
   if (before.includes('running')) failures.push('audio was running before any key: the browser held nothing back, so the first-key start is untested');
   if (!after.includes('running')) failures.push(`audio did not start after the first key (contexts: ${after.join(',') || 'none'})`);
   // The probe answers the key with a short tone: it must come out of the page.
-  const tone = await listen(4);
+  // Heard from the key until the engine's own meter has seen it (the probe says
+  // so) and a second past: the tone plays in the engine's first frame after the
+  // key, and on SwiftShader (10-05) that frame came 18-44 s later, past a fixed
+  // four-second window. A probe that never says is a failure of its own below.
+  await waitLine(/^web (ok|FAIL) audio path/, Number(opt.timeout), keyed);
+  await page.waitForTimeout(1000);
+  const tone = await heard();
   console.log(`web speakers: loudest sample ${dbfs(tone)} dBFS after the first key (${tone.hz.toFixed(0)} Hz, ${(tone.share * 100).toFixed(0)}% of the power there)`);
   if (tone.peak < 0.001) failures.push(`nothing reached the speakers after the first key (the probe plays a tone): ${await silence()}`);
   // The same ears must know the tone, or telling the game from it below means nothing.
   else if (!isTone(tone)) failures.push(`the probe's tone was heard but not recognised as 440 Hz (${tone.hz.toFixed(0)} Hz, ${(tone.share * 100).toFixed(0)}%)`);
-  if (!(await waitLine(/^web probe done/, 30, 0))) failures.push('the probe on the first scene never finished');
+  // Bounded by --timeout, not 30 s: the probe's last steps are frames, and a frame
+  // here held the main thread 18-44 s (SwiftShader, 10-05).
+  if (!(await waitLine(/^web probe done/, Number(opt.timeout), 0))) failures.push('the probe on the first scene never finished');
   const started = lines.find((l) => /^web probe start/.test(l.text));
   if (!started) failures.push('the probe never started');
   else if (/--(shot|give)/.test(started.text)) failures.push(`tool options in the address reached the build: ${started.text}`);
@@ -877,15 +956,18 @@ if (first && !touring && opt['boot-only']) {
     await page.waitForTimeout(800);
     await page.keyboard.press('ArrowUp');
     await page.waitForTimeout(300);
+    const linksBefore = await linksBuilt();
     const pressed = Date.now();
     await page.keyboard.press('Enter');
     const game = await waitLine(/^boot ready game/, Number(opt.timeout), from);
     if (!game) {
       failures.push('no "boot ready game" line after Enter on the title');
-      await page.screenshot({ path: `${opt.out}_FAILED-play.png` });
+      await page.screenshot({ path: `${opt.out}_FAILED-play.png`, timeout: FRAME_WAIT_S * 1000 }).catch(() => {});
     } else {
       result.new_game_s = (Date.now() - pressed) / 1000;
       console.log(`web new game drawn ${result.new_game_s.toFixed(2)} s after Enter (${game.text})`);
+      // From here the speakers carry the game: the ears keep its loudest moment.
+      await resetEars();
       await shoot('game');
       if (opt['use-after'] !== undefined) {
         await page.waitForTimeout(Number(opt['use-after']) * 1000);
@@ -905,14 +987,33 @@ if (first && !touring && opt['boot-only']) {
       await shoot(`game+${opt.after}s`);
       // The game's probe plays no tone (the title proved the path): once it has
       // heard the game on the bus, what the speakers carry is the game.
-      if (!(await waitLine(/^web (ok|FAIL) audio game/, 40, from))) failures.push('the probe on the game never reported its sound');
-      const heard = await listen(6, { until: false });
+      // Bounded by --timeout for the reason the title's probe is.
+      if (!(await waitLine(/^web (ok|FAIL) audio game/, Number(opt.timeout), from))) failures.push('the probe on the game never reported its sound');
+      // Heard since the game was drawn, to six seconds past the probe's report: on
+      // SwiftShader (10-06, load 88) the engine's meter had the game at -24 dB and
+      // the six seconds after its report alone were silent at the speakers, its
+      // frames 15-60 s apart and nothing new started between them.
+      await page.waitForTimeout(6000);
+      const mix = await heard();
       const graph = await page.evaluate(() => ({ taps: window.__taps.length, contexts: window.__audio.map((a) => `${a.state}@${a.currentTime.toFixed(1)}s/${a.sampleRate}`) }));
-      console.log(`web speakers: loudest sample ${dbfs(heard)} dBFS in the game over 6 s (${heard.hz.toFixed(0)} Hz strongest, ${(heard.share * 100).toFixed(0)}% of the power there; ${graph.taps} outputs tapped, contexts ${graph.contexts.join(' ')})`);
-      if (heard.peak < 0.001) failures.push(`nothing reached the speakers in 6 s of the game: ${await silence()}`);
-      if (isTone(heard)) failures.push(`what reached the speakers in the game is the probe's 440 Hz test tone, not the game (${dbfs(heard)} dBFS)`);
+      console.log(`web speakers: loudest sample ${dbfs(mix)} dBFS in the game (${mix.hz.toFixed(0)} Hz strongest, ${(mix.share * 100).toFixed(0)}% of the power there; ${graph.taps} outputs tapped, contexts ${graph.contexts.join(' ')})`);
+      if (mix.peak < 0.001) failures.push(`nothing of the game reached the speakers: ${await silence()}`);
+      if (isTone(mix)) failures.push(`what reached the speakers in the game is the probe's 440 Hz test tone, not the game (${dbfs(mix)} dBFS)`);
       if (lines.slice(from).some((l) => /^web ok audio path/.test(l.text))) failures.push('the game\'s probe played its test tone again after the title proved the path');
-      if (!(await waitLine(/^web probe done/, 40, from))) failures.push('the probe on the game never finished');
+      if (!(await waitLine(/^web probe done/, Number(opt.timeout), from))) failures.push('the probe on the game never finished');
+      // PLAYABLE, not only drawn: until the boot's warm-up (01_warm_lights) has
+      // built the programs a first light, door or fire would freeze on, the frames
+      // are those builds, and on a slow renderer the page lifts before it ends (the
+      // draw stage's deadline). The press-to-playable is the later of the two.
+      const warm = await waitLine(/^boot warm lights/, Number(opt.timeout), from);
+      if (!warm) failures.push('the new game\'s warm-up never ended (no "boot warm lights" line)');
+      else {
+        const warmed = (t0 + warm.t * 1000 - pressed) / 1000;
+        result.playable_s = Math.max(result.new_game_s, warmed);
+        console.log(`web new game playable ${result.playable_s.toFixed(2)} s after Enter (drawn at ${result.new_game_s.toFixed(2)}, warm-up over at ${warmed.toFixed(2)})`);
+        const linksNow = await linksBuilt();
+        console.log(`web programs: ${result.links_title} built by the title's first frame, ${linksBefore - result.links_title} more on the title, ${linksNow - linksBefore} from Enter to playable`);
+      }
     }
   }
 
@@ -928,7 +1029,8 @@ if (first && !touring && opt['boot-only']) {
   if (opt.reload) {
     const from = lines.length;
     t0 = Date.now();
-    await page.reload();
+    // Bounded as a frame is: the old page has to let go of its main thread first.
+    await page.reload({ timeout: FRAME_WAIT_S * 1000 });
     const again = await boot('reload-', from);
     if (again) {
       console.log(`web reload first frame ${again.t.toFixed(2)} s`);
@@ -950,8 +1052,16 @@ if (first && !touring && opt['boot-only']) {
       window.addEventListener(type, (e) => { window.__defaults[`${type}:${e.key || e.button}`] = e.defaultPrevented; });
     }
   });
-  const box = await page.locator('#canvas').boundingBox();
-  if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  // Asked of the page under the wait a screenshot gets (FRAME_WAIT_S): a
+  // locator's own 30 s limit threw out of the run on a frame that held the main
+  // thread longer (see harnessFailed), where a page that does not answer is a
+  // finding about the page.
+  const box = await bounded(page.evaluate(() => {
+    const r = document.getElementById('canvas').getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  }), FRAME_WAIT_S * 1000).catch(() => null);
+  if (!box) failures.push(`the page did not answer for ${FRAME_WAIT_S} s when asked where its canvas is`);
+  else await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
   await page.keyboard.press('Tab');
   await page.keyboard.press('Alt');
   await page.waitForTimeout(200);
@@ -1044,6 +1154,7 @@ if (failures.length) {
 const parts = [`first frame ${result.first_frame_s.toFixed(2)} s`];
 if (touring) parts.push(`tour ${tourName} played`);
 if (result.new_game_s !== undefined) parts.push(`new game ${result.new_game_s.toFixed(2)} s after Enter`);
+if (result.playable_s !== undefined) parts.push(`playable ${result.playable_s.toFixed(2)} s after Enter`);
 if (result.reload_s !== undefined) parts.push(`reload ${result.reload_s.toFixed(2)} s`);
 console.log(`web OK: ${parts.join(', ')}`);
 // Said, not hoped: a passing run ends here whatever is still holding the loop.
