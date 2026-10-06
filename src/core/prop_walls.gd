@@ -11,6 +11,7 @@ extends RefCounted
 ##
 ## Contract:
 ##   KINDS                          the walled kinds
+##   ROOMS                          those whose walls are walls to more than a body
 ##   key(kind, variant, land) -> int
 ##   shape(kind, variant, land) -> PackedFloat32Array  (x, z, r) model space
 ##   reach(kind, variant, land) -> float  the farthest wall edge from the origin
@@ -31,6 +32,15 @@ const KINDS: Array[int] = [
 	PropKind.SIGN, PropKind.SHACK, PropKind.BARRICADE, PropKind.TIDE_GAUGE,
 	PropKind.ARCHIVE, PropKind.PUMP_HOUSE, PropKind.FALLEN_SPAN,
 ]
+
+## THE WALLED KINDS A BODY STANDS AMONG, AS IN A ROOM: their walls are walls to
+## what reads a room's (`set_blocks`) as well as to a body, the eye of the
+## shoulder camera (41_shoulder) and the held lantern (15_lights). Every other
+## walled kind's walls stop a body only, and those read it as the prop it is:
+## the eye by its drawn model's height, the lantern not at all, so a waist-high
+## barricade does not pull the eye in as a tower does, nor a lantern dim beside
+## every house at night (WorldQuery.stops_bodies_only).
+const ROOMS: Array[int] = [PropKind.RUIN, PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF]
 
 ## How far a prop's collision may miss its drawing, both ways, in tiles: the
 ## same tolerance the machines' bodies are held to (tests/models/test_hit_shapes).

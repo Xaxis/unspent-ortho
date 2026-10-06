@@ -46,6 +46,7 @@ var _wall_rows: Dictionary = {}     # cell key -> PackedInt32Array of walled row
 var _walls_waiting: Dictionary = {} # cell key -> true: walls filed there, not yet stamped
 var _walls_made: Dictionary = {}    # cell key -> Array[Vector3] stamped there
 var _row_walls: Dictionary = {}     # walled row -> Array[Vector3], its walls as they stand
+var _wall_of: Dictionary = {}       # wall circle -> its walled row, for each in _row_walls
 var _row_tiles: Dictionary = {}     # (row, body radius) -> PackedInt32Array of tiles they shut
 ## Kind -> 1 when its collision is its walls (PropWalls.walled, as a lookup).
 var _walled_kind := PackedByteArray()
@@ -263,6 +264,7 @@ func _unmake_walls(key: int) -> void:
 ## as it is next asked about (only the cells asked about so far hold any).
 func walls_changed() -> void:
 	_row_walls.clear()
+	_wall_of.clear()
 	_row_tiles.clear()
 	for key: int in _walls_made.keys():
 		_unmake_walls(key)
@@ -272,8 +274,28 @@ func walls_changed() -> void:
 ## until a wall changes.
 func walls_of(row: int) -> Array[Vector3]:
 	if not _row_walls.has(row):
-		_row_walls[row] = PropWalls.of_row(world, row)
+		var walls := PropWalls.of_row(world, row)
+		_row_walls[row] = walls
+		for c: Vector3 in walls:
+			_wall_of[c] = row
 	return _row_walls[row]
+
+
+## Whether block circle `c` (`blocks_at`) is a wall that stops a body and
+## nothing else: a walled prop's, of a kind outside PropWalls.ROOMS. What reads
+## `blocks_at` as walls nobody drew (no height, no prop) leaves these out.
+func stops_bodies_only(c: Vector3) -> bool:
+	var row: int = _wall_of.get(c, -1)
+	return row >= 0 and not PropWalls.ROOMS.has(int(world.table.kind[row]))
+
+
+## Walled `row`'s walls forgotten, to be worked out again as it stands now.
+func _forget_walls(row: int) -> void:
+	for c: Vector3 in (_row_walls.get(row, []) as Array):
+		@warning_ignore("return_value_discarded")
+		_wall_of.erase(c)
+	@warning_ignore("return_value_discarded")
+	_row_walls.erase(row)
 
 
 ## The walled rows whose walls could stop a body of radius `r` in the box
@@ -459,8 +481,7 @@ func add_prop(p: WorldProp) -> void:
 	if row >= 0:
 		_file(k, row)
 		if _walled_kind[p.kind] == 1:
-			@warning_ignore("return_value_discarded")
-			_row_walls.erase(row)
+			_forget_walls(row)
 			_row_tiles.clear()
 			_file_walls(row)
 		elif p.solid > ORDINARY:
@@ -476,8 +497,7 @@ func remove_prop(p: WorldProp) -> void:
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
 	var row := world.row_of_id(p.id)
 	if row >= 0 and _walled_kind[p.kind] == 1:
-		@warning_ignore("return_value_discarded")
-		_row_walls.erase(row)
+		_forget_walls(row)
 		_row_tiles.clear()
 		for key in _wall_cells(row):
 			var rows: PackedInt32Array = _wall_rows.get(key, PackedInt32Array())
@@ -709,9 +729,16 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 		var at := Vector2(c.x, c.y)
 		var rr := c.z + r
 		var after := at.distance_squared_to(to)
-		if after < rr * rr and after < at.distance_squared_to(from) and after < best_d:
-			best_d = after
-			best = at
+		if after < rr * rr and after < at.distance_squared_to(from):
+			# Inside a walled prop's walls the prop is one disc about its middle.
+			var mid := _held_in(c, from, r)
+			if mid.is_finite():
+				if mid.distance_squared_to(to) >= mid.distance_squared_to(from):
+					continue
+				at = mid
+			if after < best_d:
+				best_d = after
+				best = at
 	return best
 
 
@@ -753,5 +780,32 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 		var rr := c.z + r
 		var after := at.distance_squared_to(to)
 		if after < rr * rr and after < at.distance_squared_to(from):
-			return false
+			var mid := _held_in(c, from, r)
+			if not mid.is_finite() or mid.distance_squared_to(to) < mid.distance_squared_to(from):
+				return false
 	return true
+
+
+## A BODY STANDING IN A WALLED PROP CAN ALWAYS WALK OUT OF IT, as it always could
+## out of one disc. The move lets a body out of a circle it overlaps, but a prop's
+## walls are many circles, and inside them every way out of one was a way into
+## the next: seed 1's salt flats keeper, put down at its lair on its station's
+## pump house, never took a step (tests/core/test_prop_walls.gd). So while a body
+## of radius `r` at `from` stands in any of the walls of the prop wall `c` is
+## one of, that prop holds it as one disc about its middle, which this answers;
+## Vector2.INF when `c` is no prop's wall or the body stands in none of them.
+## Only what overlaps `from` is looked at, so a body walking into a wall from
+## outside, the common case, pays one pass over the walls of its own tile.
+func _held_in(c: Vector3, from: Vector2, r: float) -> Vector2:
+	var row := -1
+	for w: Vector3 in blocks_at(from):
+		var rr := w.z + r
+		if Vector2(w.x, w.y).distance_squared_to(from) >= rr * rr:
+			continue
+		if row < 0:
+			row = _wall_of.get(c, -2)
+			if row < 0:
+				return Vector2.INF
+		if _wall_of.get(w, -1) == row:
+			return world.table.pos[row]
+	return Vector2.INF
