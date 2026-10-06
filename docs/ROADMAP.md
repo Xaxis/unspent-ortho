@@ -35,9 +35,10 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
 5. [x] **Its fall changes the coast** (C). The first memory opens; the land shows it.
 6. [x] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
    Rescue on a clock, or a loss heard in Maren's lines.
-7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★ On main:
-   01-21 from the title (the Reaper by FOUNDER). Open: 7a force and 7b starve can't be
-   won with real input (fight2, `fight/reaper-reachable`); then the owner's playtest.
+7. [x] **Proof** (all). The proof tour plays the whole slice unassisted. ★ On main
+   9f7eb08d (2026-10-05): `home-coast.tour` from the title, frames 01-22, the Reaper by the
+   tide (FOUNDER); force with real input in `reaper_force.tour` (every smoke run). Open:
+   the owner's playtest.
 
 ## Slice 2 — the Holdfast (next; planned 2026-09-28)
 
@@ -57,7 +58,7 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    reason said by the camp.
 5. [x] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
-6. [ ] **The second keeper** (B+C). The nearest keeper of another design on a leg he
+6. [x] **The second keeper** (B+C). Played in `second-keeper.tour` (smoke). The nearest keeper of another design on a leg he
    can reach (`Sentinels.next_keeper`, `Guide.bodies_reached`), holding a non-key
    memory (`TESTIMONY_SENTINEL`, beat `gap`). Never across water before the raft,
    never on an islet off the journey. Where home's body holds a second design,
@@ -70,7 +71,10 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    gates on the kitchen.
 7. [x] **Vera and the way on** (A). `vera_knew` ("filed under weather"); she names
    the archive across the water: slice 3's lead.
-8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
+8. [ ] **Proof** (all). The tour plays the slice unassisted. ★ `holdfast.tour` holds
+   01-08 with the gate fix (`at gate:` turns him to the gate's verb); 09 fails on staging:
+   it feeds him after the lab at 23:30, beside a hunter his lit lamp drew. Then the owner's
+   playtest.
 
 ## Slice 3 — across the water (planned 2026-09-29)
 
