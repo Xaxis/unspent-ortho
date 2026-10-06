@@ -21,7 +21,8 @@ hauntingly beautiful and specific.
 ```sh
 tools/test.sh [filter]          # headless tests; filter is a "file:method" substring
 tools/check.sh                  # the gate: test shards + real frames (needs memory, see below)
-tools/preflight.sh [filter]     # before calling a branch ready: the whole-tree rules CI keeps catching (~2 min)
+tools/preflight.sh [--ci] [filter] # before calling a branch ready: the whole-tree rules CI keeps catching; --ci runs its tests on GitHub (push first)
+tools/ci-test.sh FILTER [--parts N] [--repeat N] # tools/test.sh on GitHub's runners, for the pushed branch: no heavy slot, no load on this box
 tools/shot.sh shots/x.png [...] # one rendered frame; options in src/boot_options.gd header
 tools/shot.sh shots/g.png --scene=gallery [--filter=NAME]
 tools/tour.sh tours/x.tour      # scripted real-input proof; each tour's header has its options
