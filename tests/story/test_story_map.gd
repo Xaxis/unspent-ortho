@@ -35,6 +35,21 @@ func test_every_beat_is_placed_or_listed_with_why() -> void:
 		print("seed %d: %d of %d beats placed; unplaced: %s" % [s, placed, m.beats.size(), ", ".join(PackedStringArray(m.unplaced))])
 
 
+## Coming home to his burned beds (`holding_burned`) is a witnessed door, and his
+## holding is his own, built after the world was made: it stands at no place the
+## map can read, and the map says why in the door's own words.
+func test_his_burned_holding_is_a_door_with_no_place() -> void:
+	for s: int in [1, 7]:
+		var m := _map(s)
+		var d: Dictionary = m.beats.get(&"holding_burned", {})
+		check(not d.is_empty(), "seed %d: the beat for his burned holding is on the map" % s)
+		if d.is_empty():
+			continue
+		eq(d.place, &"", "seed %d: at no place of the world's" % s)
+		check(m.unplaced.has(&"holding_burned"), "seed %d: and listed as unplaced" % s)
+		eq(str(d.why), str(StoryContent.WITNESSED.get(&"holding_burned", "")), "seed %d: with its door's own words" % s)
+
+
 func test_a_beat_a_named_person_lands_stands_where_they_stand() -> void:
 	var w := WorldGen.generate(1, SIZE)
 	var m := StoryMap.project(w)

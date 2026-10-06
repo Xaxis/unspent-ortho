@@ -111,6 +111,40 @@ func test_as_many_as_there_are_beds_come_and_the_rest_are_named() -> void:
 	Story.forget()
 
 
+## His offer is beds and a roof over them, so with no bed standing at his holding
+## (a march burned them, 48_raids `_burn_his`) a village that has seen him is not
+## asked to come to what is not there.
+func test_with_no_bed_standing_he_offers_none() -> void:
+	Story.forget()
+	var got := await _game("bunk")
+	check(not got.is_empty(), "a village in a region with a yard")
+	if got.is_empty():
+		return
+	var g: Game = got[0]
+	var v: int = got[1]
+	var holdings := g.get_node("46_settlements")
+	var s: Settlement = (holdings.get("places") as Array)[0]
+	for p: Structure in s.pieces:
+		if StructureKind.sleeps(p.kind) > 0:
+			@warning_ignore("return_value_discarded")
+			holdings.call(&"damage", s.id, p.id, p.health + 1.0)
+	eq(s.beds(), 0, "no bed stands at his holding")
+	var folk := g.get_node("folk")
+	var at: Vector2 = g.world.villages[v].get("pos", Vector2.INF)
+	_stand(g, at)
+	for i in 90:
+		await frames(1)
+	check(is_finite(folk.call(&"seen_at", v)), "they have seen him")
+	var rows: Array = folk.call(&"out_of", v, at)
+	check(not rows.is_empty(), "somebody of the village is out")
+	if not rows.is_empty():
+		var offer: Dictionary = holdings.call(&"holding_offer", rows[0])
+		check(offer.is_empty(), "and nobody is offered beds that are not there")
+	Sx.end(g)
+	await frames(1)
+	Story.forget()
+
+
 func test_a_village_all_gone_to_the_holding_is_not_taken_from() -> void:
 	Story.forget()
 	var got := await _game("bunk,bunk")

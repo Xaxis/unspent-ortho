@@ -962,7 +962,7 @@ func _sync_people() -> void:
 		for who: int in s.people:
 			var key := "%d:%d" % [s.id, who]
 			var row: Dictionary = _bodies.get(key, {})
-			if not row.is_empty() and is_instance_valid(row.get("model") as Node):
+			if not row.is_empty() and is_instance_valid(row.get("model")):
 				continue
 			var seed_value := int(s.looks.get(who, s.id * 1013 + who))
 			var spot := s.centre + Vector2.from_angle(float(who) * 2.39) * 1.6
@@ -998,7 +998,9 @@ func holding_offer(row: Dictionary) -> Dictionary:
 	if v < 0 or folk == null or not (folk.get("seen_by") as Dictionary).has(v):
 		return {}
 	var s := _holding_for(row.get("pos", game.player.pos) as Vector2)
-	if s == null:
+	# Its offer is beds and a roof over them: with no bed standing there (none
+	# built yet, or a march burned them, 48_raids `_burn_his`) it is not made.
+	if s == null or s.beds() == 0:
 		return {}
 	var n: int = folk.call(&"people_of", v)
 	if n <= 0:
@@ -1086,7 +1088,7 @@ func _walk_in() -> void:
 	var folk := _folk()
 	for key: String in _walking.keys():
 		var row: Dictionary = _bodies.get(key, {})
-		if row.is_empty() or not is_instance_valid(row.get("model") as Node):
+		if row.is_empty() or not is_instance_valid(row.get("model")):
 			_walking.erase(key)
 			continue
 		var far := game.player != null and (row.pos as Vector2).distance_to(game.player.pos) > Escort.LOSE_TILES
@@ -1199,7 +1201,7 @@ func _keep_in() -> void:
 		var barred := s.barred()
 		for i in s.people.size():
 			var row: Dictionary = _bodies.get("%d:%d" % [s.id, s.people[i]], {})
-			if row.is_empty() or not is_instance_valid(row.get("model") as Node):
+			if row.is_empty() or not is_instance_valid(row.get("model")):
 				continue
 			var hide := i < barred
 			if bool(row.get("kept_in", false)) and not hide:
