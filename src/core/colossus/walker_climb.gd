@@ -74,6 +74,11 @@ const PITCHES: Array[Dictionary] = [
 ]
 
 const LEVEL := 0.5
+## Where the body hangs from a hold (43_climb draws him there): his feet this far
+## down the pitch from the rung his hands are on, and his middle this far out
+## from the plate.
+const BODY_DROP := 1.35
+const BODY_OUT := 0.45
 ## Holds are this many levels apart; every STANCE_EVERY levels one is a ledge.
 const HOLD_EVERY := 2
 const STANCE_EVERY := 10

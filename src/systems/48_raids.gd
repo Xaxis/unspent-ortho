@@ -1863,15 +1863,19 @@ func _on_works_part_broken(region: int, yard: Vector2) -> void:
 ## yards across seeds 1, 7 and 42 had no roof in REACH (the burning's slag, the
 ## frost sea's soundings, a snowfield stack, a scrapwood breaking yard; #67). So:
 ## the nearest roof in REACH; else the nearest roof on the yard's own body, at any
-## distance, the march longer by the road (Reprisal.march_minutes); else his own
-## fire on that body (`_his_on_body`), his CAMP or his HOLDING; else NONE, and
-## nobody is sent. Villages hold the far roofs, so the far search asks round each
-## village on the body (its houses stand within GenSettle.HOUSE_REACH of its
-## square, WorldData.body_villages), never the whole prop table or village list.
+## distance, the march longer by the road (Reprisal.march_minutes); else his CAMP
+## on that body; else NONE, and nobody is sent. The machines are blind to whose
+## roof it is (the ants rule, docs/STORY.md): his HOLDING's beds are a roof like a
+## village's and are ranked with them by distance in both searches (#96); a camp,
+## with nobody sleeping under it, is no roof and is only ever the last. Villages
+## hold the far roofs, so the far search asks round each village on the body (its
+## houses stand within GenSettle.HOUSE_REACH of its square, WorldData.body_villages),
+## never the whole prop table or village list.
 func _target_for(yard: Vector2) -> Dictionary:
 	var roof := _nearest_roof_round(yard, yard, Reprisal.REACH)
-	if roof.is_finite():
-		return {"at": roof, "kind": Reprisal.ROOF}
+	var near := _nearer(yard, roof, _his_nearest(yard, Reprisal.HOLDING, Reprisal.REACH))
+	if not near.is_empty():
+		return near
 	var w := game.world
 	var villages: Array[Vector2] = []
 	for i: int in w.body_villages.get(w.continent_at(floori(yard.x), floori(yard.y)), PackedInt32Array()):
@@ -1887,12 +1891,23 @@ func _target_for(yard: Vector2) -> Dictionary:
 		var here := _nearest_roof_round(vp, yard, GenSettle.HOUSE_REACH)
 		if here.is_finite() and (not roof.is_finite() or here.distance_to(yard) < roof.distance_to(yard)):
 			roof = here
+	var far := _nearer(yard, roof, _his_nearest(yard, Reprisal.HOLDING, INF))
+	if not far.is_empty():
+		return far
+	var camp := _his_nearest(yard, Reprisal.CAMP, INF)
+	if camp == null:
+		return {"at": Vector2.INF, "kind": Reprisal.NONE}
+	return {"at": camp.centre, "kind": Reprisal.CAMP}
+
+
+## The nearer to `yard` of a village roof and his holding, as a target, or {}
+## where there is neither.
+func _nearer(yard: Vector2, roof: Vector2, held: Settlement) -> Dictionary:
+	if held != null and (not roof.is_finite() or held.centre.distance_to(yard) < roof.distance_to(yard)):
+		return {"at": held.centre, "kind": Reprisal.HOLDING}
 	if roof.is_finite():
 		return {"at": roof, "kind": Reprisal.ROOF}
-	var home := _his_on_body(yard)
-	if home == null:
-		return {"at": Vector2.INF, "kind": Reprisal.NONE}
-	return {"at": home.centre, "kind": _kind_of(home)}
+	return {}
 
 
 ## The nearest unburned house to `yard` within `r` of `at`.
@@ -1906,15 +1921,20 @@ func _nearest_roof_round(at: Vector2, yard: Vector2, r: float) -> Vector2:
 	return Reprisal.nearest_roof(near, yard, gone)
 
 
-## His own place nearest `yard` on the same body with something there the
-## hunters would burn (`_his_to_burn`), or null.
-func _his_on_body(yard: Vector2) -> Settlement:
+## His place of `kind` (`_kind_of`) nearest `yard` with something there the
+## hunters would burn (`_his_to_burn`): within `reach` of the yard as a village's
+## roof is asked for, or anywhere on the yard's own body where `reach` is INF.
+## Null where there is none.
+func _his_nearest(yard: Vector2, kind: StringName, reach: float) -> Settlement:
 	var h := holdings()
 	if h == null:
 		return null
 	var best: Settlement = null
 	for st: Settlement in h.call(&"all", Realm.SURFACE):
-		if not game.world.same_body(yard, st.centre) or _his_to_burn(st, st.centre, _kind_of(st)).is_empty():
+		if _kind_of(st) != kind or _his_to_burn(st, st.centre, kind).is_empty():
+			continue
+		var off_reach := st.centre.distance_to(yard) > reach if is_finite(reach) else not game.world.same_body(yard, st.centre)
+		if off_reach:
 			continue
 		if best == null or st.centre.distance_to(yard) < best.centre.distance_to(yard):
 			best = st
@@ -2109,9 +2129,16 @@ func _burn_his(at: Vector2, kind: StringName) -> int:
 		return 0
 	var n := 0
 	for st: Settlement in h.call(&"all", Realm.SURFACE):
+		var here := 0
 		for p in _his_to_burn(st, at, kind):
 			if bool(h.call(&"damage", st.id, p.id, p.health + 1.0)):
-				n += 1
+				here += 1
+		# What he comes home to (49_story, holding_burned): a march's burning of
+		# beds his people slept in, never a camp wrecked or any other damage.
+		if here > 0 and kind == Reprisal.HOLDING:
+			@warning_ignore("return_value_discarded")
+			Story.hear(Holding.marched_on(st.id))
+		n += here
 	return n
 
 

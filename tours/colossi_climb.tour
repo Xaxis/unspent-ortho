@@ -9,8 +9,10 @@
 # off only when his leg will stand for the next section (`climb_ready`), and
 # between pitches he rides up inside the bone while the eye swings out off the
 # leg to the island under the walker, and back. At the rim the panel in the crown is read, and listening to it he
-# meets the enclave. The whole of it is about a world day, some twenty real
-# minutes, dawn to the next night.
+# meets the enclave. The whole of it is some twenty real minutes, and the world
+# runs at the climb's set-piece share while he is up (43_climb SET_PIECE), so it
+# is under three world hours of the morning it began in. Each ledge is logged as
+# N of the pitch's M (`climb`).
 #   TOUR_TIMEOUT=2400 tools/tour.sh tours/colossi_climb.tour --seed=1 --place=tread0 --colossus=2@tread0+5 --hour=6 --weather=clear:0 --stats
 coast calm
 await colossus_tread 30
@@ -24,15 +26,8 @@ await climbing 3
 await climb_patch 10
 wait 1
 shot 01-on-the-cable with climbing,climb_patch
-# The cable, ledge to ledge, until its top hands him on to the drum.
-try 20
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:onto 0.1
-end
+# The cable, ledge to ledge (eighteen), until its top hands him on to the drum.
+climb onto 900
 await climb_patch 10
 wait 1
 shot 01b-on-the-drum with climbing,climb_patch
@@ -40,14 +35,7 @@ perf stats begin drum
 wait 2
 perf stats end drum
 # The drum, ledge to ledge, until its top takes him into the bone.
-try 12
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:rode 0.1
-end
+climb rode 600
 # Near the middle of the ride, the eye out on the island.
 wait 24
 perf stats begin
@@ -55,14 +43,7 @@ shot 02-riding-up-the-shin with climb_riding
 perf stats end ride_shin
 until climb_ready 240
 shot 03-below-the-knee with climbing,climb_patch
-try 12
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:rode 0.1
-end
+climb rode 600
 wait 12
 perf stats begin
 shot 04-riding-up-the-thigh with climb_riding
@@ -72,37 +53,16 @@ shot 05-on-the-thigh with climbing,climb_patch
 perf stats begin thigh
 wait 2
 perf stats end thigh
-try 16
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:rode 0.1
-end
+climb rode 900
 until climb_ready 240
 shot 06-near-the-hip with climbing,climb_patch
-try 12
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:rode 0.1
-end
+climb rode 600
 until climb_ready 240
 shot 07-under-the-hubs-rim with climbing,climb_patch
 perf stats begin hatch
 wait 2
 perf stats end hatch
-try 12
-release move_up
-until climb_ready 240
-hold move_up
-await climb:ledge 60
-release move_up
-await climb:at_hub 0.1
-end
+climb at_hub 600
 await talking 5
 wait 1
 shot 08-the-panel-in-the-crown with talking

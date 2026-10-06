@@ -1,238 +1,124 @@
 # ROADMAP.md — what we are building now, in order
 
-The current slice and its checklist. Updated in the commit that moves a step.
-The destination is `docs/VISION.md`; the story is `docs/STORY.md`.
+The current work and its checklist, updated in the commit that moves a step. The
+destination is `docs/VISION.md`; the story is `docs/STORY.md`. Finished steps are one
+line here; their contracts live in the code's headers and tests.
 
 ## How a step is done
 
-A step is done when the **proof tour** (`tours/home-coast.tour`, from the title,
-no `--give`/`--folk`/`--beats`) plays through it, its frames are read, the gate is
-green and it is on main. Every step carries three threads (owner, 2026-09-28): a
-story beat that points at the whole arc, a craft or survival need with a stated
-reason, and an introduction (the record's voice; staged beats, never for a time
-crossing).
+A step is done when its slice's **proof tour** plays through it, its frames are read,
+the gate is green and it is on main. A slice is closed when the owner has played it (★).
+Every step carries three threads (owner, 2026-09-28): a story beat that points at the
+whole arc, a craft or survival need with a stated reason, and an introduction (the
+record's voice; staged beats, never for a time crossing).
 
-## Slice 1 — thirty minutes on the home coast
+## Now: slices 1-3 to the owner's playtest (★)
 
-Builders: **A** introduction and story (teammate3, words via story-wright) ·
-**B** crafting with a reason, and the fight (fight) · **C** stakes and consequence
-(teammate2). The owner plays a web build at each ★.
+None of the three has reached its ★. That comes before new depth (re-plan, 2026-10-05).
+The owner plays on this box with `tools/play.sh coast | reaper | holdfast | across`, or on
+the web preview that every push to main deploys.
 
-1. [x] **The wake** (A, `world/wake`). A new game starts in the shallows, the black site
-   behind him; he surfaces on the real clock; Maren waits at the water; the record's
-   first lines paced on what happens. The proof tour starts here. ★
-   - [x] **1b-i The Tether** (A, `look/tether`). A hair-thin thread from the far shore's
-     horizon up to the Foundry, a fixed lit point; a climber's light rides it; the ring
-     passes near on its own orbit. Seen over the shoulder from the first morning.
-   - [x] **1b-ii Staging** (A). One CameraRig staging call (look, hold, return, first sight
-     only), used by the wake, the Tether's first sight, and the Reaper's reveal and fall.
-2. [x] **Maren's ask becomes the goal** (A). After the pick, the goal line is her
-   lead, not a recipe; the guide names why.
-3. [x] **The Tide Reaper, named** (A+B). A person names the yard and its keeper;
-   the knife does not bite its plating, so the next make has a reason.
-4. [x] **The Reaper as a set piece** (B). Force and one other way; tells in its
-   body; staged reveal and fall. ★
-5. [x] **Its fall changes the coast** (C). The first memory opens; the land shows it.
-6. [x] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
-   Rescue on a clock, or a loss heard in Maren's lines.
-7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★ On main:
-   01-21 from the title (the Reaper by FOUNDER). Open: 7a force and 7b starve can't be
-   won with real input (fight2, `fight/reaper-reachable`); then the owner's playtest.
+- [x] Slice 1's proof: `home-coast.tour` from the title, frames 01-22 (main 9f7eb08d).
+- [ ] Slice 2's proof: `holdfast.tour` holds 01-08 with the gate fix; 09 fails on staging
+  (it feeds him after the lab at 23:30, beside a hunter his lit lamp drew).
+- [x] Slice 3's proof: `across.tour` by the goal line, frames 01-38.
+- [ ] The climb's clock runs at a set-piece rate (a 16-minute climb was 23 game hours),
+  with the climb keys and the lamp working on the leg, and nothing below sensing him
+  there. In batches 7-8.
+- [ ] The web new game: 80-85 s to raise the world against 43-48 on desktop; the title
+  under 15 s.
+- [ ] ★ The owner plays slices 1-3; his notes become the next plan.
 
-## Slice 2 — the Holdfast (next; planned 2026-09-28)
+## Slice 1 — the home coast (done but ★)
 
-Maren's lead to the camp; the holding; the Holdfast's price; the lab and Ruth's
-table; the second keeper. Reason to make: the holding's defence (armour, shutters
-and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
+The wake (the Tether's first sight; one staging call for reveals) · Maren's ask becomes
+the goal · the Tide Reaper named (the knife won't bite its plate) · the Reaper as a set
+piece (force, and the tide by its lure) · its fall changes the coast · the taken.
 
-1. [x] **The road to the camp** (A). `marens_lead` → `holdfast_fight` at the camp;
-   `crew_paid` from Rook (his note's hand is held for slice 4). The survey marks the
-   camp; Rook pays for iron in plate, and the want turns to armour.
-2. [x] **The holding** (A+C). The people the Seeker has met, kept where a yard
-   can't reach them; the taken who are freed go there.
-3. [x] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
-   broken works) the region's hunters come; `holdfast_price` and Vera's "we break
-   their works, they burn a village". Settlements introduced here.
-4. [x] **Defend the holding** (B). The slice's make: armour and shutters, with the
-   reason said by the camp.
-5. [x] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
-   `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
-6. [ ] **The second keeper** (B+C). The nearest keeper of another design on a leg he
-   can reach (`Sentinels.next_keeper`, `Guide.bodies_reached`), holding a non-key
-   memory (`TESTIMONY_SENTINEL`, beat `gap`). Never across water before the raft,
-   never on an islet off the journey. Where home's body holds a second design,
-   slice 2 keeps it. Where it holds only the Reaper (seeds 1, 7 and 42), slice 2 has
-   no second keeper and Teague's lead waits: the second keeper is the first across
-   the water, met in slice 3, and `gap` moves with it; nothing gates on it. Salt
-   flats can't be guaranteed on home without moving the coast keeper: measured on
-   seeds 1-40 (salt on home in 3/40; every home deal moves the Reaper's lair, 90-500
-   tiles). The Pan Rake and `mem_kitchen` come where salt flats is reached; nothing
-   gates on the kitchen.
-7. [x] **Vera and the way on** (A). `vera_knew` ("filed under weather"); she names
-   the archive across the water: slice 3's lead.
-8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
+## Slice 2 — the Holdfast (proof open, then ★)
 
-## Slice 3 — across the water (planned 2026-09-29)
+Reason to make: the holding's defence. The road to the camp (Rook pays for iron) · the
+holding · raids answer attention (light, broken works; a yard's hunters go for the
+nearest roof, his own included) · armour and shutters · the lab and Ruth's table
+(`gate_lab`, `gate_meet`) · Vera and the way on.
+- The second keeper (`second-keeper.tour`): the nearest keeper of another design on a leg
+  he can reach, never across water before the raft. Where home holds only the Reaper
+  (seeds 1, 7 and 42), the second keeper is the first across the water, in slice 3.
 
-The raft to the Covenant's seat and the war's archive (one body, 704 and 1006 tiles
-from the spawn on seed 1; the narrowest water is 130 tiles, from near the camp).
-Reason to make: the raft, then gear mended from what the machines leave. Beats from
-STORY.md (wright's map); June's reveals land here, echo_hand stays held for slice 4.
-From the crossing on, the next keeper may be the far shore's (slice 2 step 6): on
-seed 1 Teague's Candlestick, on 7 the listener, on 42 the pan rake.
-Proof tour: `tours/across.tour`, from slice 2's end.
+## Slice 3 — across the water (done but ★)
 
-1. [x] **The crossing** (A+B). After `war_archive` the goal points at a raft and the
-   shore nearest the far body; a 130-tile crossing proved by play (time, hull).
-2. [x] **The Covenant's seat** (A). A guaranteed `covenant_speaker` door at
-   the_covenant; `covenant_fed`, `covenant_price`; Solis: `teague_sold`, `solis_made`.
-3. [x] **June** (A). `june_named`, `june_met`, `june_knew`, `echo_kept`, `hannah_died`.
-4. [x] **The archive** (A). Otto: `forged_order`, `tradecraft`; `war_relay` is slice
-   4's lead (the relay below, a shaft down), with a survey pin and a goal.
-5. [x] **Mended gear** (B). The slice's make, with its reason said at the Covenant.
-6. [x] **The drowned city** (C). The third landscape, on the leg-1 body. Worldgen: prove
-   the home coast and its keeper don't move (the salt flats lesson). The city is the
-   landfall, dealt to the body the shortest water from home reaches, and the raft comes in
-   at its port stair (tests/biome/test_landfall.gd). Home's tiles, spawn, yard, camp and
-   keepers hold when a landscape is traded on another body
-   (tests/biome/test_body_independence.gd). `tours/across.tour` frames 03-04.
-7. [x] **The climb and the first enclave** (A+B+C). The slice's set piece: a foot of the
-   half-broken walker comes down in the region; he climbs it (grips, stamina, falls,
-   the gait moving under him) to its cut-off crown, where the first enclave lives
-   (`enclave_met`, a machine talk, one fragment; his cadence, faintly). Tread-folk in
-   its craters. The climb stops at the hub. On main: the climb core (a), the pitches set
-   on the body, the leg drawn under his hands (b), getting on by the cable from the
-   crater (c), the climb to `enclave_met` at the hub (d), the leg model, the enclave's
-   talk and panel, and the climb's words (e); the limp gait (f); the warden's lead to it
-   (`walker_told`, the survey pinning the crater); Tull, who farms its craters (colour,
-   never load). `tours/colossi_climb.tour` plays it by real keys from a staged landing,
-   `tours/across.tour` by the goal line (frames 24-31; on seed 1 the crater lies in the
-   frost sea). Where the lame leg's tread comes down off leg 1's body, the walker lead
-   follows it across a second crossing, so all twelve measured seeds pin a crater the
-   goal reaches (tests/story/test_walker_reach.gd). The tread-folk's holding stands at
-   the folk tread's lip (GEN 51, tests/story/test_tull.gd). Siting the treads before the
-   keeps was measured, and the keeps were not the cause.
-8. [x] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
-9. [x] **Fix** (A). `hale_log` locked until `war_relay`.
-10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★ On main:
-    `tours/across.tour` plays steps 1-8 by the goal line, frames 01-38 (seed 1, 2026-10-05).
-    Open: the owner's playtest. Seen in that run, for it: the cable's hand-on to the drum
-    came on the 18th of the 20 tries the tour allows, and the climb took 23 hours on the
-    world's clock, so he reaches the crown with the hunger goal on the glass (frames 28-31).
+Reason to make: the raft, then gear mended from what the machines leave. The crossing
+(130 tiles) · the Covenant's seat · June · the archive (`war_relay` is slice 4's lead) ·
+mended gear · the drowned city at the landfall (`test_landfall`,
+`test_body_independence`) · the climb to the first enclave (`colossi_climb.tour`; the
+walker lead reaches a crater on 12/12 seeds; the tread-folk's holding) · back at the camp.
 
-## Tools track — the story map and the dev slate (alongside slice 1)
+## Next: slice 4 — Below
 
-The owner's ask (2026-09-28): see every arc and sub-arc as directional arrows over the
-world, how they interleave across the whole game, and view and edit each in a
-meaningful way. It must be brilliant. Builder **D**.
+HALCYON's deep plant; the Seeker and the Echo; the drill crawler; the secret takes shape.
+Planned after the owner's ★ notes on slices 1-3. The parked "ground above ground" work
+returns here: `~/Projects/unspent-ortho-archive/above-cost-2026-09-29.bundle`.
 
-- [x] **T1 The dev slate, rebuilt.** One dev app on the slate with pages (world, story,
-  fight, look and speed, saves) in the hacked-slate idiom. Today's rules and toggles
-  move in whole; nothing lost.
-- [x] **T2 The story map.** On any seed: the journey's legs as the spine; each arc a
-  coloured line of arrows beat to beat, at the places the beats land; interleaving
-  seen where arcs share ground. Filter by arc, cast or leg; scrub through the
-  order; the live save's state shown (landed, open, withheld). ★
-- [x] **T3 The arc view.** One arc as a graph (Godot's `GraphEdit`): beats, what opens
-  each (gates, witnessed events, memories), sub-arcs and branches, every line with
-  its speaker and place, each node linked to its source. ★
-- [ ] **T4 Editing** (after the owner has used T2–T3): story data moves to a structured
-  file the game loads; edits save through the story tests; the words still pass
-  story-wright.
-- [ ] **Tours run on main.** CI has no GPU, so tours rot unseen: three failed on main
-  (raids_live, raids-dark, score) until a sweep found them. A daily local run of every
-  tour on main (`tools/tour-sweep.sh --since <yesterday>`, the proofs always), with
-  failures routed the same day; the whole set weekly.
-- [ ] **Tours walk with a path.** `walkto` holds a straight line and has no pathfinding, so
-  a proof cannot walk a freed person 188 tiles home; home-coast.tour reads "home again"
-  from the record instead.
+## Tools
 
-**Brilliant means:** a stranger reads the whole story's shape in ten seconds; nothing
-overlaps unreadably at any zoom; it opens in under a second and pans at 60 fps; it
-looks like the game (the slate, lit, never a debug grey); every mark leads to the
-line that made it. Proved by frames read at three zooms on two seeds, and the owner's
-★ review.
+- [x] The dev slate (T1), the story map (T2), the arc view (T3).
+- [ ] T4 editing (after the owner has used T2-T3): story data in a structured file the
+  game loads; edits pass the story tests and story-wright.
+- [ ] Tours run on main daily: CI has no GPU, so tours rot unseen. `tools/tour-sweep.sh
+  --since <yesterday>` plus the proofs, failures routed the same day; the whole set weekly.
+- [ ] A world cache on disk, so tours and tests stop regenerating the same seeds.
+- [ ] Tours walk with a path: `walkto` holds a straight line, so a proof can't walk a
+  freed person home.
 
-## Fixes that serve the slice
+## Open fixes
 
-- [x] Title-time warm: no gain measured, dropped; separating compile from state would need `--programs` in `--play`.
-- [x] The white panel at the player: the boot warm-up rack, drawn before the cover
-  lifted and caught by early shots. The cover and shots now wait for the warm-up
-  (tests/render/test_warm_in_shots.gd).
-- [ ] A lit machine yard throws a light pool at night (one lamp-pool source per yard, put out with its lamps), so a dark yard reads at a glance. Counts against the web's 7 pool slots. (Step 5 follow-up.)
-- [x] Web: the 0.2–0.6 s hitch on the shoulder switch in pinewood. Looking out puts
-  the sun in four blended splits under the seen sky (SkyLight._look_out), and 18
-  programs were first drawn there. 01_warm_lights' fourth state draws them at the
-  boot: `--programs` 0 at the switch (tours/shoulder-warm.tour). Costs about 1.1 s of
-  boot on the web (boot ready game 6.7/6.9 s -> 7.7/8.1 s, A/B on one box).
-- [x] Web: the 0.8–1.0 s hitch after crowd spawns (main ab92296c) is not on main
-  fd9bb4e7: four runs of teammate3's crowd_dusk scene, worst 76–87 ms, 0 programs
-  at the spawns or the swing. Leads if it returns: the web heap grows 900 MB -> 1 GB
-  around the dusk teleport and spawns (a wasm grow landing in a frame), and
-  21_doors takes 60 ms in one frame of the walk past a house.
-
-## Parked (decided after slice 1)
-
-Landscape batch 2+3
-(`look/batch3`) and batch 4 props (`l2/placement`) · streaming S4j3/S5c
-(`land/s4j3`, `world/s5c`) · the crossing programs check and long-walk tour ·
-the vent-tender and G10 · walls follow-ups · web frame budgets.
-Ground above ground (S1: overhangs, cut-rock roofs; 8 commits, parked for slice 4 "Below"):
-`~/Projects/unspent-ortho-archive/above-cost-2026-09-29.bundle`, branch `world/above-cost`.
-
-Latent worldgen bugs no main seed hits yet (each moves seeds, so each gets its own GEN
-and a check that the home coast keeper stays put):
-- `gen_treads._never` marks water HARD but not the tiles beside it, so a gouge or step
-  can hang water over a cut (seed 42 at GEN 47, drowned city (1223,756)). Fix: tiles
-  4-adjacent to land water are HARD too; test_the_drowned_city goes red.
-- `Sentinels.gets_out` passes a lair on 6 clear rays, but test_keeper_reach floods for
-  300 tiles (seed 1's crags lair opened 262 at GEN 47). Fix: gets_out floods, with
-  the test's `_opens` moved into Sentinels.
+- [ ] A lit machine yard throws a light pool at night, so a dark yard reads at a glance
+  (one pool per yard; counts against the web's 7 pool slots).
+- [ ] Parked until after the ★: shaped machine bodies that collide as drawn
+  (`fix/draws-match-hits`: they moved every keeper fight off its bars), and fight tuning
+  under the honest reader.
+- [ ] Latent worldgen bugs no main seed hits yet. Each moves seeds, so each gets its own
+  GEN and a check that the home coast's keeper stays put:
+  - `gen_treads._never` marks water HARD but not the tiles beside it, so a step can hang
+    water over a cut (seed 42 at GEN 47, drowned city (1223,756)).
+  - `Sentinels.gets_out` passes a lair on 6 clear rays, but `test_keeper_reach` floods
+    300 tiles (seed 1's crags lair opened 262 at GEN 47).
+- Parked since slice 1: landscape batches 2-4, streaming S4j3/S5c, the vent-tender, web
+  frame budgets.
 
 ## The whole game, as slices
 
-Each slice is one leg of the journey (`STORY.md`), playable end to end, and adds one
-new layer of play with a reason. Rough size: two to three weeks each.
+Each slice is one leg of the journey (`STORY.md`), playable end to end, adding one new
+layer of play with a reason.
 
-1. **Home coast**: survive and make, for a reason; the first keeper; the first lead;
-   the taken. *(now)*
-2. **The Holdfast**: Maren's lead to the camp. The holding is built to keep people from
-   the depots; raids answer your light; a chapter's way on (explored, mined, defended)
-   reads on the land; the next memory gates (the lab at the first works, Ruth's table at
-   the camp); the second keeper.
-3. **Across the water**: the raft; the Covenant's seat and June; the war's archive;
-   mended gear; a third landscape; the first machine enclave that seeks balance
-   with humans.
-4. **Below**: HALCYON's deep plant; the Seeker and the Echo; the drill crawler; the secret
-   takes shape.
-5. **The far shore**: the Emissary's works at the Tether's foot; the Guest met in play;
-   the climb.
+1. **Home coast**: survive and make, for a reason; the first keeper; the first lead; the taken.
+2. **The Holdfast**: the camp, the holding, raids that answer your light, the first memory
+   gates, the second keeper.
+3. **Across the water**: the raft, the Covenant and June, the archive, mended gear, the
+   drowned city, the first machine enclave.
+4. **Below**: HALCYON's deep plant; the Seeker and the Echo; the drill crawler.
+5. **The far shore**: the Emissary's works at the Tether's foot; the Guest met in play; the climb.
 6. **Orbit**: the dead ring, the Foundry, Oksana, the channel; the endings; the After.
-
-## Groups, and what each does per slice
-
-Every group moves in every slice, and only as far as the slice needs.
 
 | Group | Standing direction |
 |---|---|
-| Story and narration | The slice's beats, leads and lines; the record's voice; wright reviews every line. |
-| Survival, making, gear | One new reason to make per slice; gear tiers follow the journey (made → mended → found). |
+| Story and narration | The slice's beats, leads and lines; story-wright reviews every line. |
+| Survival, making, gear | One new reason to make per slice; gear follows the journey (made → mended → found). |
 | Fight and keepers | One keeper per slice, built as a set piece; balance judged by the human reader. |
-| Settlements and raids | Introduced in slice 2, for the taken; grows each slice. |
-| World and landscapes | Depth only where the slice walks; the parked batches return for the slice that visits them. |
-| Realms and time | Memory gates in STORY.md's order (his house in slice 1); the underground in slice 4, orbit in slice 6. |
+| Settlements and raids | Grow each slice from slice 2's holding. |
+| World and landscapes | Depth only where the slice walks. |
+| Realms and time | Memory gates in STORY.md's order; the underground in slice 4, orbit in slice 6. |
 | Look, light, sound, slate | A quality pass on everything the slice shows: frames read, web budgets held. |
-| Tech: web, streaming, speed | Whatever the slice's playtest shows is slow; the web title under 15 s before slice 3. |
-| Process and tools | Refined at every slice's end; see below. |
+| Tech | Whatever the slice's playtest shows is slow. |
 
 ## The loop, per slice
 
 1. **Plan** (a day): the steps in this file; only the owner's own calls go to him.
-2. **Build** (about a day per step): one branch per step, preflight, frames read,
-   gated, landed; the proof tour grows with it.
-3. **Play** (★): the owner plays a web build at each milestone.
-4. **Close**: the slice's docs cut to contracts; one retro line on what slowed us,
-   turned into a script, check or rule (CLAUDE.md, memory); then the next plan.
+2. **Build**: one branch per step, its own tests and preflight; land in batches (one gate
+   round per batch, CI on the exact head); the proof tour grows with it.
+3. **Play** (★): the owner plays it. Nothing past the slice starts before this.
+4. **Close**: docs cut to contracts; one retro line on what slowed us, turned into a
+   script, check or rule.
 
 ## Open for the owner
 

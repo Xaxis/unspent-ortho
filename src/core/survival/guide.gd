@@ -183,6 +183,10 @@ static func _goal_of(game: Game) -> String:
 	if not SurvivalState.of(game).bags.is_empty():
 		return BAG_GOAL
 	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and inv.has(&"lamp"):
+		# A dry lamp only gutters (Survival.burn_lamp): ask for what lights it, and
+		# where it is surely found, not for the light it cannot give (#99).
+		if Survival.lamp_oil(game) <= 0.0:
+			return "Oil for the lamp: search the shelves of houses."
 		return "Light the lamp against the dark."
 	# PEOPLE AT RISK BEFORE HIS OWN KIT: a raid warned on his holding
 	# (Holding.RAIDED) puts shutters on its beds ahead of the pick, the plate and
@@ -839,7 +843,9 @@ static func _applicable(game: Game) -> Array[StringName]:
 				out.append(&"runner")
 			if seen and m.patrol and m.indifferent():
 				out.append(&"worker")
-	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and game.inventory.has(&"lamp"):
+	# Its key taught once there is oil to light: a dry lamp's key only gutters it.
+	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and game.inventory.has(&"lamp") \
+			and Survival.lamp_oil(game) > 0.0:
 		out.append(&"lamp")
 	if game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
 		out.append(&"carry")

@@ -43,7 +43,7 @@ const ARCS := {
 	&"the_holdfast": {
 		"title": "the Holdfast",
 		"note": "The last people still trying to take the world back.",
-		"beats": [&"marens_lead", &"reaper_down", &"holdfast_fight", &"holdfast_price", &"holdfast_hope", &"vera_knew"],
+		"beats": [&"marens_lead", &"reaper_down", &"holdfast_fight", &"holdfast_price", &"holding_burned", &"holdfast_hope", &"vera_knew"],
 	},
 	&"the_covenant": {
 		"title": "the Covenant",
@@ -138,6 +138,7 @@ const BEATS := {
 	&"reaper_down": {"short": "the yard dark", "arc": &"the_holdfast", "says": "The gantry that kept the yard past the point is down, and the yard is dark."},
 	&"holdfast_fight": {"short": "still fighting", "arc": &"the_holdfast", "says": "There are people still fighting to take the world back. Not many."},
 	&"holdfast_price": {"short": "what it costs", "arc": &"the_holdfast", "says": "When the Holdfast breaks a works, the hunters come for the nearest roof."},
+	&"holding_burned": {"short": "a roof like any other", "arc": &"the_holdfast", "says": "The holding is a roof like any other. Its people lose their beds like anyone else."},
 	&"holdfast_hope": {"short": "a weapon", "arc": &"the_holdfast", "says": "To the Holdfast, anybody who knows the old machines is a weapon."},
 	&"vera_knew": {"reveal": true, "short": "filed under weather", "arc": &"the_holdfast", "says": "Vera knows the machines file the Holdfast under weather. She has not told her people."},
 	&"covenant_fed": {"short": "fed for it", "arc": &"the_covenant", "says": "Some people live on what the machines leave, and are glad of it."},
@@ -6298,6 +6299,7 @@ const WITNESS_ON := {
 	&"hunted": &"noticed",
 	&"lost": &"not_home",
 	&"burned_seen": &"holdfast_price",
+	&"holding_burned_seen": &"holding_burned",
 	&"ring_held": &"ring_held",
 }
 ## The signet only means his own old password once he knows he had one.
@@ -6311,6 +6313,7 @@ const WITNESSED := {
 	&"noticed": "the region the player stands in is hunting them",
 	&"not_home": "somebody he was walking home from a yard is lost on the road",
 	&"holdfast_price": "the player comes to the roofs a broken yard's hunters burned",
+	&"holding_burned": "the player comes to his holding after a broken yard's hunters burned its beds",
 	&"ring_held": "a machine hunting the player stops at a crags ring's edge and holds there, facing in",
 }
 

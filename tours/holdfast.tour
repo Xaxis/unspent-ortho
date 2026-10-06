@@ -142,7 +142,10 @@ await made:kit_plate 10
 wait 1.0
 # 3a FED: the ore, the smelt and the bench have taken the day, and a hungry body's
 # goal is its hunger (Guide), not the yard. Berries off Oyster Row's bushes, each
-# eaten off the carry page (E on food), until the goal is the yard's again.
+# eaten off the carry page (E on food), until he is fed, and two more for the
+# night: what he reads in the yard settles for four hours (StoryPacing.SETTLE),
+# so the lab is a night's errand, and the crew's camp he comes back to has a
+# machine about it, by day and by night, and nobody eats with a machine about.
 try 10
   near bush
   walk 0,0 0.05
@@ -155,7 +158,33 @@ try 10
   wait 0.4
   tap inventory
   wait 1.0
-  await goal:yard 2
+  await hunger:0 2
+end
+try 3
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 1.0
+end
+try 3
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 1.0
 end
 wait 1.0
 shot 04-armour-and-the-yard-next with goal:yard
@@ -207,24 +236,7 @@ await realm:surface 300
 wait 1.5
 
 # 6 ROOK, AGAIN (Guide.way_goal rook_again, holdfast_hope): he tells Rook he
-# knows the old machines, and the crew's hope in him brings their leader. Fed
-# first off the camp's bushes: the lab's night has made him hungry again.
-at cast:rook
-await cast:rook 8
-try 10
-  near bush
-  walk 0,0 0.05
-  press use 0.1
-  await took:berries 8
-  tap inventory
-  wait 0.5
-  choose berries
-  tap use
-  wait 0.4
-  tap inventory
-  wait 1.0
-  await goal:rook_again 2
-end
+# knows the old machines, and the crew's hope in him brings their leader.
 at cast:rook
 await cast:rook 8
 wait 0.6
@@ -297,10 +309,23 @@ await app:none 5
 # has met taken, the goal line puts the people before the archive: beds at a
 # holding of his. A lean-to is the first piece, of driftwood and a rag off a
 # shack; it founds the holding. Then he asks the village, and whoever the bed
-# takes walks there with him. The night passes while he is away at the camp.
-hour 5 +1
+# takes walks there with him. The night passes while he is away at the camp, the
+# lamp put out for it (one flask: a night jumped with it lit burns it dry). The
+# plan comes in the small hours a seed picks (SnatchNight.due), so the clock goes
+# to that, then on to first light, when he can see to gather without the lamp
+# (Survival DARK_NIGHTFALL). Whether he is back from the lab before midnight or
+# after, it is the same morning. He goes down to Oyster Row, which lost one of
+# its own in the night, and eats off its bushes. Its nearest berry bushes were
+# eaten from last evening, and some of the next nearest give no berries, so the
+# loop has room for those tries.
+tap lamp
+await unlit 2
+hour snatch
 await taken 10
-try 10
+hour 6
+village 0
+wait 1.0
+try 14
   near bush
   walk 0,0 0.05
   press use 0.1
