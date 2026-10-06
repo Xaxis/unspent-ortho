@@ -12,11 +12,14 @@ const GATE_SHARE_SEEDS: Array[int] = [1, 7, 42]
 static var _worlds: Dictionary = {}
 
 
+## One world per seed per process, loaded from WorldCache when another process
+## already grew it (its stage times are then that process's, and not printed).
 static func world(s: int) -> WorldData:
 	if not _worlds.has(s):
 		var t := Time.get_ticks_msec()
-		_worlds[s] = WorldGen.generate(s)
-		print("       world %d at %d: %d ms (%s)" % [s, Tuning.WORLD_SIZE, Time.get_ticks_msec() - t, _stage_line()])
+		_worlds[s] = WorldCache.world(s, Tuning.WORLD_SIZE)
+		var how := "kept" if WorldCache.last == &"loaded" else _stage_line()
+		print("       world %d at %d: %d ms (%s)" % [s, Tuning.WORLD_SIZE, Time.get_ticks_msec() - t, how])
 	return _worlds[s]
 
 
