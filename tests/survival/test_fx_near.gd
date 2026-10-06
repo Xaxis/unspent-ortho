@@ -145,21 +145,24 @@ func test_what_was_taken_far_off_costs_nothing_here() -> void:
 	var f := _fx(g)
 	# What the player took round them.
 	_take(g, g.player.pos, 40.0, false, 5)
+	# A walker's stride: the signature moves and the player does not.
 	var refresh := func() -> void:
 		f.set("_remnant_sig", "")
 		f.call("_refresh_remnants")
+	# A step walked: the rows taken again and the spent options asked after.
+	var walk_on := func() -> void:
+		f.set("_rows_of", 0)
+		refresh.call()
 	var alone := TestCase.best_of(5, refresh)
+	var walked_alone := TestCase.best_of(3, walk_on)
 	# And across the rest of the island, a walker's whole stride of it.
 	_take(g, g.player.pos, 120.0, true, 9)
 	print("  taken far off: %d depleted, %d spent" % [g.world.depleted.size(), SurvivalState.of(g).spent.size()])
 	var beside := TestCase.best_of(5, refresh)
-	# The refresh that takes the rows again, once the player has walked on.
-	var walk_on := func() -> void:
-		f.set("_rows_of", 0)
-		refresh.call()
 	var walked := TestCase.best_of(3, walk_on)
-	print("  the remnants refreshed in %.0f us, %.0f us with the island's takes, %.0f us walked on" % [alone, beside, walked])
-	ratio_lt(beside / maxf(alone, 1.0), 1.5, "the remnants' refresh beside the island's takes, as a share of it alone")
+	print("  the remnants refreshed on a stride in %.0f us, %.0f us beside the island's takes; on a step walked %.0f us, %.0f us beside them" % [alone, beside, walked_alone, walked])
+	ratio_lt(beside / maxf(alone, 1.0), 1.5, "a stride's refresh beside the island's takes, as a share of it alone")
+	ratio_lt(walked / maxf(walked_alone, 1.0), 1.5, "a step's refresh beside the island's takes, as a share of it alone")
 	_free(g, f)
 
 

@@ -104,6 +104,12 @@ var _rows := PackedInt32Array()
 var _rows_at := Vector2(-1e9, -1e9)
 var _rows_of := 0
 var _rows_n := 0
+## The rows of `_rows` with a spent option, each with its mark: [row, mark]. A
+## spent key is asked after by its string, a format a row, so this is worked
+## out only when the rows are taken again or the spent count moves
+## (`_picked_n`), not on every stride of a walker, which moves only what is gone.
+var _picked: Array[Array] = []
+var _picked_n := -1
 ## Tiles walked before the remnants are drawn again for where the player is.
 const REMNANT_STEP := 12.0
 var _fires: Dictionary = {} # prop id -> FireModel
@@ -836,36 +842,45 @@ func remnants_near(here: Vector2) -> Dictionary:
 		_rows_at = here
 		_rows_of = w.get_instance_id()
 		_rows_n = t.size()
+		_picked_n = -1
 	elif t.size() > _rows_n:
 		# Set down since the rows were taken: few, and only the ones in reach.
 		for row in range(_rows_n, t.size()):
 			if t.pos[row].distance_to(_rows_at) <= REMNANT_RADIUS + REMNANT_STEP:
 				_rows.append(row)
 		_rows_n = t.size()
-	var picked := not spent.is_empty()
+		_picked_n = -1
+	if spent.size() != _picked_n:
+		_picked.clear()
+		_picked_n = spent.size()
+		if not spent.is_empty():
+			for row in _rows:
+				var kept := _kept_options(t.kind[row])
+				if kept.is_empty():
+					continue
+				var id := t.id[row]
+				# One mark of each sort per prop, however many of its options are spent.
+				var marked: Array[StringName] = []
+				for keep: Array in kept:
+					if not spent.has(SurvivalState.key(id, int(keep[0]))):
+						continue
+					var mark := RemnantModels.worked_for(t.kind[row], keep[1])
+					if not marked.has(mark):
+						marked.append(mark)
+						_picked.append([row, mark])
+	var reach := REMNANT_RADIUS * REMNANT_RADIUS
 	for row in _rows:
-		var id := t.id[row]
-		var gone := w.depleted.has(id)
-		if not gone and not picked:
+		if t.pos[row].distance_squared_to(here) > reach or not w.depleted.has(t.id[row]):
 			continue
-		if t.pos[row].distance_to(here) > REMNANT_RADIUS:
+		var r := RemnantModels.for_kind(t.kind[row])
+		if r != &"":
+			lists[r].append(w.prop_at(row))
+	# Standing but picked over.
+	for pick: Array in _picked:
+		var row: int = pick[0]
+		if t.pos[row].distance_squared_to(here) > reach or w.depleted.has(t.id[row]):
 			continue
-		var kind := t.kind[row]
-		if gone:
-			var r := RemnantModels.for_kind(kind)
-			if r != &"":
-				lists[r].append(w.prop_at(row))
-			continue
-		# Standing but picked over: one mark of each sort per prop, however many
-		# of its options are spent.
-		var marked: Array[StringName] = []
-		for keep: Array in _kept_options(kind):
-			if not spent.has(SurvivalState.key(id, int(keep[0]))):
-				continue
-			var mark := RemnantModels.worked_for(kind, keep[1])
-			if not marked.has(mark):
-				marked.append(mark)
-				lists[mark].append(w.prop_at(row))
+		lists[pick[1]].append(w.prop_at(row))
 	return lists
 
 

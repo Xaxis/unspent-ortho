@@ -37,9 +37,11 @@ func test_a_loaded_mask_is_counted() -> void:
 	var e := UiExplored.new(61)
 	e.reveal(Vector2i(30, 30), UiExplored.RADIUS)
 	e.reveal(Vector2i(58, 2), UiExplored.RADIUS)
+	# A copy each: a packed array is shared by reference, and walking on from a
+	# loaded mask writes into the very array that was loaded.
 	var walked := e.mask.duplicate()
 	var f := UiExplored.new(61)
-	f.load_mask(walked)
+	f.load_mask(walked.duplicate())
 	eq(f.fraction(), e.fraction(), "a loaded mask says what the walked one did")
 	f.reveal(Vector2i(35, 30), UiExplored.RADIUS)
 	eq(roundi(f.fraction() * f.mask.size()), _counted(f), "and walking on from it keeps counting")
