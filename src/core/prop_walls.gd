@@ -49,64 +49,97 @@ const TOL := 0.2
 ## collision (the footprint test's walk-through measure).
 const WAIST := 0.5
 
-static var _reach: Dictionary = {}
-static var _kind_reach: Dictionary = {}
 ## The most a cast stretches a model (PropModels.cast, x and z).
 const CAST_MOST := 1.11
+
+## THE TABLE'S LOOKUPS ARE MADE WHOLE, ONCE, UNDER A LOCK (`_fill`), and only
+## read after. Casting reads walls on worker threads (GateStand) while the game
+## reads them on the main one, and a Dictionary one thread writes while another
+## reads it is not safe; made whole, they are a few ms once a process.
+static var _filled := false
+static var _fill_lock := Mutex.new()
+## Kind -> 1 when walled.
 static var _walled := PackedByteArray()
-## The table's shapes as packed arrays, made on first use.
+## Shape index -> its (x, z, r) triples as a packed array.
 static var _shapes: Dictionary = {}
+## key() -> the farthest wall edge of that model from its origin.
+static var _reach: Dictionary = {}
+## Kind -> the farthest any of its models reaches, cast at its widest.
+static var _kind_reach: Dictionary = {}
+
+
+static func _fill() -> void:
+	_fill_lock.lock()
+	if not _filled:
+		var walled_of := PackedByteArray()
+		walled_of.resize(PropKind.COUNT)
+		for k in KINDS:
+			walled_of[k] = 1
+		var shapes := {}
+		for i in PropWallsTable.SHAPES.size():
+			shapes[i] = PackedFloat32Array(PropWallsTable.SHAPES[i])
+		var reach_of := {}
+		var most := {}
+		for k: int in PropWallsTable.OF:
+			var sh: PackedFloat32Array = shapes[int(PropWallsTable.OF[k])]
+			var r := 0.0
+			for i in range(0, sh.size(), 3):
+				r = maxf(r, Vector2(sh[i], sh[i + 1]).length() + sh[i + 2])
+			reach_of[k] = r
+			var kind := k / 256 / 64
+			most[kind] = maxf(float(most.get(kind, 0.0)), r)
+		for kind: int in most:
+			most[kind] = float(most[kind]) * CAST_MOST
+		_walled = walled_of
+		_shapes = shapes
+		_reach = reach_of
+		_kind_reach = most
+		_filled = true
+	_fill_lock.unlock()
 
 
 static func key(kind: int, variant: int, land: int) -> int:
 	return (kind * 64 + variant) * 256 + land
 
 
+## The key a model's walls are under: its own land's, else the coast's; -1 for none.
+static func _key_of(kind: int, variant: int, land: int) -> int:
+	var k := key(kind, variant, land)
+	if PropWallsTable.OF.has(k):
+		return k
+	k = key(kind, variant, Country.COAST)
+	return k if PropWallsTable.OF.has(k) else -1
+
+
 static func shape(kind: int, variant: int, land: int) -> PackedFloat32Array:
-	var i: int = PropWallsTable.OF.get(key(kind, variant, land), -1)
-	if i < 0:
-		i = PropWallsTable.OF.get(key(kind, variant, Country.COAST), -1)
-	if i < 0:
+	if not _filled:
+		_fill()
+	var k := _key_of(kind, variant, land)
+	if k < 0:
 		return PackedFloat32Array()
-	if not _shapes.has(i):
-		_shapes[i] = PackedFloat32Array(PropWallsTable.SHAPES[i])
-	return _shapes[i]
+	return _shapes[int(PropWallsTable.OF[k])]
 
 
 static func reach(kind: int, variant: int, land: int) -> float:
-	var k := key(kind, variant, land)
-	if _reach.has(k):
-		return _reach[k]
-	var s := shape(kind, variant, land)
-	var r := 0.0
-	for i in range(0, s.size(), 3):
-		r = maxf(r, Vector2(s[i], s[i + 1]).length() + s[i + 2])
-	_reach[k] = r
-	return r
+	if not _filled:
+		_fill()
+	var k := _key_of(kind, variant, land)
+	return float(_reach[k]) if k >= 0 else 0.0
 
 
 ## Whether `kind` is walled, a lookup a body's every step can afford.
 static func walled(kind: int) -> bool:
-	if _walled.is_empty():
-		_walled.resize(PropKind.COUNT)
-		for k in KINDS:
-			_walled[k] = 1
+	if not _filled:
+		_fill()
 	return _walled[kind] == 1
 
 
 ## The farthest any model of `kind` reaches from its origin at scale 1, cast at
 ## its widest: what a prop's walls can touch is filed by this.
 static func kind_reach(kind: int) -> float:
-	if _kind_reach.has(kind):
-		return _kind_reach[kind]
-	var most := 0.0
-	for k: int in PropWallsTable.OF:
-		if k / 256 / 64 == kind:
-			var s: PackedFloat32Array = shape(kind, (k / 256) % 64, k % 256)
-			for i in range(0, s.size(), 3):
-				most = maxf(most, Vector2(s[i], s[i + 1]).length() + s[i + 2])
-	_kind_reach[kind] = most * CAST_MOST
-	return _kind_reach[kind]
+	if not _filled:
+		_fill()
+	return float(_kind_reach.get(kind, 0.0))
 
 
 ## The walls of the prop at `row`, in tile space, as it is drawn there: its
