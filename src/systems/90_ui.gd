@@ -601,7 +601,7 @@ func _load(v: Variant) -> void:
 	var n := explored.size * explored.size
 	var mask := Marshalls.base64_to_raw(String(v.get("seen", ""))).decompress(n, FileAccess.COMPRESSION_DEFLATE)
 	if mask.size() == n:
-		explored.mask = mask
+		explored.load_mask(mask)
 	var tn := int(v.get("trail_n", 0))
 	var raw := Marshalls.base64_to_raw(String(v.get("trail", ""))).decompress(tn * 8, FileAccess.COMPRESSION_DEFLATE).to_float32_array()
 	explored.trail = PackedVector2Array()

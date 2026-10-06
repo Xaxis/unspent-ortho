@@ -15,11 +15,22 @@ const TRAIL_STEP := 1.5
 const TRAIL_MAX := 30000
 
 var size: int
+## Read it freely; write it only through `reveal` or `load_mask`, which keep the
+## seen count beside it.
 var mask := PackedByteArray()
 var trail := PackedVector2Array()
 ## Tiles seen at all, as a bounding box; zero size until something is seen.
 var bounds := Rect2i()
 var _last := Vector2i(-1000000, -1000000)
+## A byte at or over this is a tile seen (`seen`, `fraction`).
+const SEEN := 128
+## Tiles of `mask` at or over SEEN. Kept by `reveal` and `load_mask` because
+## counting the mask is 3.4M bytes at 1840 and cost the pause page 0.6 s a
+## time it opened.
+var _seen_n := 0
+## Bumped by every write that changed `mask`, so a reader that drew it (the
+## survey's texture, its lettering) knows whether to draw it again.
+var changes := 0
 
 ## DEV MODE ONLY: draw the whole island whether it has been walked or not (owner,
 ## 2026-09-18, "in dev mode you should obviously be able to reveal the full world
@@ -49,7 +60,7 @@ func _init(p_size: int) -> void:
 func seen(x: int, y: int) -> bool:
 	if x < 0 or y < 0 or x >= size or y >= size:
 		return false
-	return revealed or mask[y * size + x] >= 128
+	return revealed or mask[y * size + x] >= SEEN
 
 
 func value(x: int, y: int) -> int:
@@ -120,6 +131,7 @@ func note_trail(p: Vector2) -> void:
 
 func reveal(c: Vector2i, r: int) -> void:
 	var outer := r + RIM
+	var wrote := false
 	for y in range(maxi(0, c.y - outer), mini(size, c.y + outer + 1)):
 		var row := y * size
 		for x in range(maxi(0, c.x - outer), mini(size, c.x + outer + 1)):
@@ -127,8 +139,14 @@ func reveal(c: Vector2i, r: int) -> void:
 			if d > outer:
 				continue
 			var v := 255 if d <= r else int(255.0 * (outer - d) / RIM)
-			if v > mask[row + x]:
+			var was := mask[row + x]
+			if v > was:
 				mask[row + x] = v
+				wrote = true
+				if was < SEEN and v >= SEEN:
+					_seen_n += 1
+	if wrote:
+		changes += 1
 	var disc := Rect2i(c.x - r, c.y - r, r * 2 + 1, r * 2 + 1).intersection(Rect2i(0, 0, size, size))
 	bounds = disc if bounds.size == Vector2i.ZERO else bounds.merge(disc)
 
@@ -136,11 +154,48 @@ func reveal(c: Vector2i, r: int) -> void:
 ## Share of the world's tiles seen, 0..1. Deliberately off the TRUE mask, so a
 ## revealed map does not report itself as progress on the pause page.
 func fraction() -> float:
+	return _seen_n / float(mask.size())
+
+
+## Put a whole mask in place (a save's), counting what it has seen.
+func load_mask(m: PackedByteArray) -> void:
+	mask = m
+	_seen_n = UiExplored.count_seen(m)
+	changes += 1
+
+
+## Bytes of `m` at or over SEEN, eight at a time. SEEN is 128, the high bit, so
+## a 64-bit word shifted down by 7 and masked to the low bit of each byte holds
+## a 1 in each byte lane that is seen, and words summed lane by lane count eight
+## bytes an add. 127 words at most per sum, so no lane carries into the next and
+## the top lane never reaches the sign bit. A byte loop took 0.6 s at 1840; this
+## is about a twentieth of that.
+static func count_seen(m: PackedByteArray) -> int:
+	assert(SEEN == 128, "the count reads the high bit")
+	const LOW_BITS := 0x0101010101010101
+	var whole := m.size() & ~7
 	var n := 0
-	for v in mask:
-		if v >= 128:
+	var acc := 0
+	var lanes := 0
+	for word in m.slice(0, whole).to_int64_array():
+		acc += (word >> 7) & LOW_BITS
+		lanes += 1
+		if lanes == 127:
+			n += _lane_sum(acc)
+			acc = 0
+			lanes = 0
+	n += _lane_sum(acc)
+	for i in range(whole, m.size()):
+		if m[i] >= SEEN:
 			n += 1
-	return n / float(mask.size())
+	return n
+
+
+static func _lane_sum(acc: int) -> int:
+	var s := 0
+	for k in 8:
+		s += (acc >> (k * 8)) & 0xFF
+	return s
 
 
 ## Pretend the player has walked `steps` tiles from `start`: a wandering walk
