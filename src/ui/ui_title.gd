@@ -34,6 +34,9 @@ var world: WorldData
 var view: WorldView
 var sky: SkyLight
 var camera: CameraRig
+## The game's light state, stood under the coast too (ConstantLights): what the
+## title builds to draw its coast is what the game draws with.
+var _constant: Array[Light3D] = []
 var menu: UiTitleMenu
 ## Dev mode on the title (DevTitle): its keys, its app, its label.
 var dev: DevTitle
@@ -89,6 +92,7 @@ func setup(o: BootOptions) -> void:
 	camera.name = "camera"
 	camera.follow_rate = 2.0
 	add_child(camera)
+	_constant = ConstantLights.stand(self)
 	_layer = CanvasLayer.new()
 	_layer.layer = 20
 	add_child(_layer)
@@ -333,6 +337,7 @@ func _process(delta: float) -> void:
 	if _focus.distance_to(centre) > world.size * 0.3:
 		_heading = _heading.lerp((centre - _focus).normalized(), delta * 0.2).normalized()
 	camera.target = world.to_3d(_focus)
+	ConstantLights.follow(_constant, camera.target)
 	view.focus = _focus
 	sky.set_hour(_hour + _shown_for / 60.0)
 

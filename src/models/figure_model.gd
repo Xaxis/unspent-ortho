@@ -30,6 +30,10 @@ var part_side: StringName = &"front"
 var height := 1.2
 var material: Material
 
+## Where a kind's own script is found, by its id, in this order (BootPage keeps a
+## copy, to have them compiled ahead; tests/export/test_boot_page holds the two together).
+const DIRS: PackedStringArray = ["res://src/models/machines/", "res://src/models/machines/sentinels/", "res://src/models/animals/"]
+
 
 ## `part_side`: where a machine's working part is built, when a landscape's own
 ## kind moves it (BiomeDef.roster `over`); &"" builds it where the kind puts it.
@@ -37,7 +41,7 @@ static func create(kind_id: StringName, mat: Material = null, part_side: StringN
 	var m: FigureModel = null
 	# Sentinels are machines drawn the same way in their own directory, so a
 	# landscape's keeper is found by `model` like any other kind (VISION §3).
-	for dir: String in ["res://src/models/machines/", "res://src/models/machines/sentinels/", "res://src/models/animals/"]:
+	for dir: String in DIRS:
 		var path := dir + String(kind_id) + ".gd"
 		if ResourceLoader.exists(path):
 			m = _instance_of(load(path) as GDScript)

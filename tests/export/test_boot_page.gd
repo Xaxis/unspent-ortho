@@ -361,3 +361,31 @@ func test_a_crossing_shows_its_page_before_the_raise() -> void:
 	check(page._sketch_image != null, "the world below was sketched on the page")
 	holder.free()
 	RealmWorlds.forget()
+
+
+func test_a_page_compiles_ahead_what_its_scene_loads_once_it_is_up() -> void:
+	# What a start loads on its own compiles there, on the main thread or behind
+	# another thread's compile: the raise's warm-up loads two systems on its worker
+	# (RealmWarm), and a game's figures load each kind's script (FigureModel).
+	eq(BootPage.FIGURE_DIRS, FigureModel.DIRS, "the page looks where a figure's script is found")
+	var holder := _holder()
+	var title := BootPage.new()
+	title._plan(holder, BootOptions.parse(["--seed=6", "--size=%d" % SIZE]), "title", true)
+	for path: String in RealmWarm.SCRIPTS:
+		check(title.compiles.has(path), "the title's page compiles %s, which the island's raise loads" % path)
+	var game := BootPage.new()
+	game._plan(holder, BootOptions.parse(["--seed=6", "--size=%d" % SIZE]), "game", true)
+	var kinds := 0
+	for k: StringName in Roster.kinds():
+		for dir: String in FigureModel.DIRS:
+			var path := dir + String(k) + ".gd"
+			if ResourceLoader.exists(path):
+				kinds += 1
+				check(game.compiles.has(path), "a game's page compiles %s, which its figures load" % path)
+				break
+	gt(kinds, 10, "the kinds' scripts were found")
+	for path: String in game.compiles:
+		check(not path.contains("gallery"), "a tool's gallery is not compiled for a game: %s" % path)
+	title.free()
+	game.free()
+	holder.free()

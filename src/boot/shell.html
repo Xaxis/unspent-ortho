@@ -385,6 +385,15 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
     GODOT_CONFIG.emscriptenPoolSize = pool + margin;
     console.log(`boot pool ${pool} workers (${cores} cores)`);
   }
+  // Every GL program the page links, counted for the engine's pacer
+  // (src/boot/web_pacer.gd): a slow frame that built one was a compile, not a
+  // renderer that cannot keep up.
+  const GL2 = window.WebGL2RenderingContext && WebGL2RenderingContext.prototype;
+  if (GL2) {
+    const link = GL2.linkProgram;
+    window.unspentLinks = 0;
+    GL2.linkProgram = function (...a) { window.unspentLinks += 1; return link.apply(this, a); };
+  }
   const engine = new Engine(GODOT_CONFIG);
   engine.startGame({
     onProgress(current, total) {

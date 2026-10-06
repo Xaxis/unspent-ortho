@@ -38,6 +38,13 @@ extends RefCounted
 ## (tests/export/test_exit.gd). By then the systems are loaded; this is a lookup.
 const _LIGHTS := "res://src/systems/15_lights.gd"
 const _COLOSSI := "res://src/systems/19_colossi.gd"
+## Both, for a page that compiles them before the raise asks (BootPage: the
+## title's), because a worker that loads a script another thread is compiling
+## waits on every file read of it, and on the web each of those is handed to the
+## page's main thread (Emscripten proxies the file system there) and waits for
+## the frame it is drawing to end: on SwiftShader at load 25-35 (10-05) the
+## raise sat 87-560 s on these two loads, 0.1-2 s of work natively.
+const SCRIPTS: PackedStringArray = [_LIGHTS, _COLOSSI]
 
 
 static func prepare(w: WorldData) -> void:

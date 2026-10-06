@@ -44,13 +44,10 @@ extends GameSystem
 ## boot's pacing; and how many states there are.
 const HOLD := 3
 const STATES := 4
-## Past any world's edge from wherever the camera is, so the lights reach
-## everything on every frame, the first one back outside a room included (the
-## camera's focus is still the room's then).
-const REACH := 100000.0
 
-var _omni: OmniLight3D
-var _spot: SpotLight3D
+## The three that never change (ConstantLights, which the title stands too):
+## [omni, spot, dir].
+var _constant: Array[Light3D] = []
 ## Casts for the last HOLD frames only, then goes.
 var _caster: SpotLight3D
 var _quads: Array[MeshInstance3D] = []
@@ -75,26 +72,15 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	# After the sky has set the sun for the frame, so the held shadows hold.
 	process_priority = 1000
-	_omni = OmniLight3D.new()
-	_omni.name = "constant_omni"
-	_omni.omni_range = REACH
-	_spot = SpotLight3D.new()
-	_spot.name = "constant_spot"
-	_spot.spot_range = REACH
-	_spot.spot_angle = 170.0
-	var dir := DirectionalLight3D.new()
-	dir.name = "constant_dir"
-	dir.rotation = Vector3(-PI * 0.3, 0.4, 0.0)
+	_constant = ConstantLights.stand(g)
 	_caster = SpotLight3D.new()
 	_caster.name = "warm_caster"
 	_caster.spot_range = 40.0
 	_caster.spot_angle = 60.0
-	for l: Light3D in [_omni, _spot, dir, _caster]:
-		l.light_energy = 1.0
-		l.light_color = Color.BLACK
-		l.light_volumetric_fog_energy = 0.0
-		l.shadow_enabled = false
-		g.add_child(l)
+	_caster.light_energy = 1.0
+	_caster.light_color = Color.BLACK
+	_caster.light_volumetric_fog_energy = 0.0
+	g.add_child(_caster)
 	_caster.shadow_enabled = true
 	_keep = _room_materials()
 	for m: Material in _keep:
@@ -185,11 +171,12 @@ func done() -> bool:
 func _process(_delta: float) -> void:
 	if game == null or game.player == null:
 		return
-	var focus: Vector3 = game.camera.target if game.camera != null else game.player.position
-	_omni.position = focus + Vector3(0.0, 3.0, 0.0)
-	_spot.position = focus + Vector3(0.0, 40.0, 0.0)
-	_spot.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
+	ConstantLights.follow(_constant, game.camera.target if game.camera != null else game.player.position)
 	if _frame > HOLD * STATES:
+		return
+	# A frame the page holds (WebPacer, a slow renderer) is not drawn: the state
+	# waits for one that is, or its programs are never built.
+	if not RenderingServer.render_loop_enabled:
 		return
 	var now := Time.get_ticks_usec()
 	if _frame > 0:

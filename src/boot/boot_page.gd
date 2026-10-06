@@ -142,6 +142,8 @@ var held_progress := -1.0
 var scene: Node
 
 var _parent: Node
+## Every script this page has compiled before it builds its scene.
+var compiles := PackedStringArray()
 ## BootWorld, loaded inside the first stage (a member: lambdas copy locals).
 var _bw: GDScript
 var _world: Variant = null
@@ -304,6 +306,12 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 	needed.append(SCENES_SCRIPT)
 	if what == "game":
 		needed.append_array(BootPage.system_scripts())
+		needed.append_array(BootPage.figure_scripts())
+	elif threads:
+		# What the island's raise, begun as the title opens, loads on its worker
+		# once the land is grown: compiled here, while the page's frames are cheap.
+		needed.append_array(RealmWarm.SCRIPTS)
+	compiles = needed
 	if threaded:
 		# The scene's scripts compile on loader threads beside the world.
 		stages.add(&"code", "waking", 500.0, func() -> void:
@@ -419,6 +427,25 @@ func _add_draw_stage() -> void:
 func _warmed() -> bool:
 	var w: Node = scene.find_child("01_warm_lights", true, false) if scene != null else null
 	return w == null or bool(w.call("done"))
+
+
+## Where a figure's kind script is found (FigureModel.DIRS, written out so this
+## page names nothing heavy; tests/export/test_boot_page holds the two together).
+const FIGURE_DIRS: PackedStringArray = ["res://src/models/machines/", "res://src/models/machines/sentinels/", "res://src/models/animals/"]
+
+
+## THE SCRIPTS A GAME'S FIGURES ARE BUILT FROM, compiled on the loader threads
+## with the systems. A game's start builds every kind's figure (30_mobs' warm-up),
+## and the first of each kind compiled its script there, on the main thread:
+## 30_mobs was the start's slowest system on the web (5.0 s of 16.5 at load 88,
+## 10-06). A gallery is a tool's and is left out.
+static func figure_scripts() -> PackedStringArray:
+	var out := PackedStringArray()
+	for dir: String in FIGURE_DIRS:
+		for f: String in ResourceLoader.list_directory(dir):
+			if f.ends_with(".gd") and not f.contains("gallery"):
+				out.append(dir + f)
+	return out
 
 
 ## Every system script the game loads (Game._system_files), as res:// paths.
@@ -538,7 +565,7 @@ func _after_lift() -> bool:
 		var view: Variant = scene.get("view")
 		if view == null or int(view.call("pending")) > 0:
 			return false
-	for path in BootPage.system_scripts():
+	for path in BootPage.system_scripts() + BootPage.figure_scripts():
 		ResourceLoader.load_threaded_request(path, "GDScript")
 	return true
 
