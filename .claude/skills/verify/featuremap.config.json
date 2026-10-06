@@ -2,6 +2,13 @@
  "manual": [
   {
    "kind": "system",
+   "label": "00_taps",
+   "entry": "src/systems/00_taps.gd",
+   "reach": "tools/test.sh test_era_gates:test_the_press_beside",
+   "area": "platform"
+  },
+  {
+   "kind": "system",
    "label": "01_warm_lights",
    "entry": "src/systems/01_warm_lights.gd",
    "reach": "tools/web.sh --tour=tours/every-room.tour --programs",

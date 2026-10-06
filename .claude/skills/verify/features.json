@@ -260,6 +260,14 @@
       "tests": []
     },
     {
+      "id": "system:00_taps",
+      "kind": "system",
+      "entry": "src/systems/00_taps.gd",
+      "reach": "tools/test.sh test_era_gates:test_the_press_beside",
+      "area": "platform",
+      "tests": []
+    },
+    {
       "id": "system:01_warm_lights",
       "kind": "system",
       "entry": "src/systems/01_warm_lights.gd",
