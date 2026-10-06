@@ -94,9 +94,7 @@ func _set_walls() -> void:
 		return
 	var walls: Array[Vector3] = []
 	for s in sites:
-		for c: Vector3 in LandmarkModels.blocks(s.kind):
-			var at := s.pos + Vector2(c.x, c.y).rotated(s.facing)
-			walls.append(Vector3(at.x, at.y, c.z))
+		walls.append_array(Landmarks.walls(s))
 	game.query.set_blocks(&"landmarks", walls)
 
 

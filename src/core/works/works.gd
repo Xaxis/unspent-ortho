@@ -578,6 +578,46 @@ static func part_near(site: WorksSite, p: Vector2) -> int:
 	return best
 
 
+## THE MASS OF A DEPOT, in tile space `(x, y, radius)`: its yard as its landscape
+## draws it and each working part (WorksDepot.yard_blocks, part_blocks), turned
+## to the survey bearing. The one answer to what stops a body at a yard: 34_works
+## hands it to `WorldQuery.set_blocks`, and the story stands a gate off it
+## (StoryGates), so the two can never disagree about where the deck is.
+static func walls(world: WorldData, s: WorksSite) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	var along := Vector2.from_angle(s.facing)
+	var across := Vector2(-along.y, along.x)
+	for c: Vector3 in WorksDepot.yard_blocks(form(s), cable(world, s)):
+		var at := s.pos + along * c.x + across * c.y
+		out.append(Vector3(at.x, at.y, c.z))
+	for i in PART_NAMES.size():
+		var base := s.part(i)
+		for c: Vector3 in WorksDepot.part_blocks(i):
+			var at := base + along * c.x + across * c.y
+			out.append(Vector3(at.x, at.y, c.z))
+	return out
+
+
+## What a yard is drawn as: its landscape's own depot form (BiomeDef.depot_form).
+static func form(s: WorksSite) -> StringName:
+	var def := BiomeRegistry.get_def(s.land)
+	return def.depot_form if def != null else WorksDepot.DECK
+
+
+## Where a winch house's cable comes down (`lip_foot`), in the yard's own frame
+## as WorksDepot draws it: along the bearing, up, across. INF where there is no
+## lip by it, and for every other form.
+static func cable(world: WorldData, s: WorksSite) -> Vector3:
+	if form(s) != WorksDepot.WINCH or world == null:
+		return Vector3.INF
+	var foot := lip_foot(world, s.pos)
+	if not foot.is_finite():
+		return Vector3.INF
+	var along := Vector2.from_angle(s.facing)
+	var v := foot - s.pos
+	return Vector3(v.dot(along), world.height_at(foot) - world.height_at(s.pos), v.dot(Vector2(-along.y, along.x)))
+
+
 ## What a player is told a depot is. The trade is the work it was founded on, so
 ## a coast depot reads as an intake and a snowfield one as a relay yard.
 static func says(site: WorksSite) -> String:
