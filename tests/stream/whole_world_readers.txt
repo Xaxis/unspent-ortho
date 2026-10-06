@@ -195,7 +195,6 @@ src/systems/49_story.gd::subarc_look::builder Landmarks.sites
 src/systems/49_story.gd::subarc_look::builder Works.sites
 src/systems/49_story.gd::tour_place::builder StoryGates.all
 src/systems/49_story.gd::tour_place::builder Works.sites
-src/systems/52_survival_fx.gd::_refresh_remnants::list
 src/systems/70_audio.gd::_scan::builder SoundMix.remoteness
 src/systems/90_ui.gd::_load::tiles
 src/systems/90_ui.gd::setup::builder UiMapData.new

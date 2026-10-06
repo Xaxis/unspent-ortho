@@ -784,30 +784,38 @@ func _refresh_remnants() -> void:
 	var lists := {}
 	for name: StringName in _remnant_mm:
 		lists[name] = []
-	for id: int in w.depleted:
-		var p := w.prop(id)
-		if p == null:
+	# THE PROPS NEAR, NOT EVERYTHING EVER TAKEN. The signature moves with any take
+	# on the island, so while a walker strides it moves every half second, and
+	# this walked every depleted id and spent key there were, world-wide, as
+	# WorldProps. The rows near are read off the table, and only a prop that left
+	# a mark is made a WorldProp.
+	var t := w.table
+	var picked := not spent.is_empty()
+	for row in game.query.rows_near(here, REMNANT_RADIUS):
+		var id := t.id[row]
+		var gone := w.depleted.has(id)
+		if not gone and not picked:
 			continue
-		var r := RemnantModels.for_kind(p.kind)
-		if r == &"" or p.pos.distance_to(here) > REMNANT_RADIUS:
+		if t.pos[row].distance_to(here) > REMNANT_RADIUS:
 			continue
-		lists[r].append(p)
-	# Standing but picked over: one mark of each sort per prop, however many of its options are spent.
-	var marked := {}
-	for key: String in spent:
-		var id := key.get_slice(":", 0).to_int()
-		var p := w.prop(id)
-		if p == null or w.depleted.has(id):
+		var kind := t.kind[row]
+		if gone:
+			var r := RemnantModels.for_kind(kind)
+			if r != &"":
+				lists[r].append(w.prop_at(row))
 			continue
-		var opts := Takes.options(p.kind)
-		var index := key.get_slice(":", 1).to_int()
-		var verb: StringName = (opts[index] as Dictionary).verb if index >= 0 and index < opts.size() else &""
-		var mark := RemnantModels.worked_for(p.kind, verb)
-		var mk := "%d:%s" % [id, mark]
-		if marked.has(mk) or p.pos.distance_to(here) > REMNANT_RADIUS:
-			continue
-		marked[mk] = true
-		lists[mark].append(p)
+		# Standing but picked over: one mark of each sort per prop, however many
+		# of its options are spent.
+		var opts := Takes.options(kind)
+		var marked: Array[StringName] = []
+		for index in opts.size():
+			if not spent.has(SurvivalState.key(id, index)):
+				continue
+			var verb: StringName = (opts[index] as Dictionary).verb
+			var mark := RemnantModels.worked_for(kind, verb)
+			if not marked.has(mark):
+				marked.append(mark)
+				lists[mark].append(w.prop_at(row))
 	for name: StringName in lists:
 		var mm: MultiMesh = _remnant_mm[name]
 		var list: Array = lists[name]
@@ -835,17 +843,21 @@ func _refresh_remnants() -> void:
 func _scan_fires() -> void:
 	var here := game.player.pos
 	var seen := {}
-	for q in game.query.props_near(here, FIRE_RADIUS):
-		if q.kind != PropKind.FIRE or game.world.depleted.has(q.id):
+	var t := game.world.table
+	# Rows, not WorldProps: a view of every prop in reach every half second was
+	# the bulk of this, and only fires are wanted.
+	for row in game.query.rows_near(here, FIRE_RADIUS):
+		var id := t.id[row]
+		if t.kind[row] != PropKind.FIRE or game.world.depleted.has(id):
 			continue
-		seen[q.id] = true
-		if not _fires.has(q.id):
+		seen[id] = true
+		if not _fires.has(id):
 			var f := FireModel.new()
-			f.name = "fire_%d" % q.id
-			f.position = game.world.to_3d(q.pos)
+			f.name = "fire_%d" % id
+			f.position = game.world.to_3d(t.pos[row])
 			add_child(f)
-			f.build(_mat, q.id)
-			_fires[q.id] = f
+			f.build(_mat, id)
+			_fires[id] = f
 	for id: int in _fires.keys():
 		if not seen.has(id):
 			(_fires[id] as Node3D).queue_free()
