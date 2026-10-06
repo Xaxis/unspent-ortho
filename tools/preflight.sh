@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Before a branch is called ready: the cheap rules the CI gate keeps catching.
-# Usage: tools/preflight.sh [extra test filter, comma-separated]
+# Usage: tools/preflight.sh [--ci] [extra test filter, comma-separated]
+#   --ci  the tests run on GitHub's runners (tools/ci-test.sh, four parts) on the
+#         branch as pushed, which must be this checkout's HEAD; only the shaders,
+#         which need a GPU, run here. The box is shared: this is the default to reach for.
 #
 # A few minutes, safe on a busy laptop. It is not the gate: it runs
 # the tests that read the WHOLE TREE for a rule (a prop compared as an object, a
@@ -12,6 +15,8 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 fail=0
+ci=0
+[ "${1:-}" = "--ci" ] && { ci=1; shift; }
 
 # Every tracked script carries its tracked .uid (the same check tools/check.sh
 # makes first).
@@ -40,11 +45,15 @@ rules="$rules,test_world_stamp"
 # its id; the crags' store reached batch 6's CI red on it (2026-10-05). About 2 min.
 rules="$rules,test_screens:test_every_marked_work_worldgen_makes_has_words_for_the_reads_app"
 [ -n "${1:-}" ] && rules="$rules,$1"
-log="$(mktemp "${TMPDIR:-/tmp}/unspent-preflight.XXXXXX")"
-tools/test.sh "$rules" >"$log" 2>&1; code=$?
-grep -E "FAIL|^\s{7}|SCRIPT ERROR|LOAD FAIL|passed," "$log"
-if [ "$code" != "0" ] || grep -qE "SCRIPT ERROR|LOAD FAIL" "$log" || ! grep -qE "passed," "$log"; then fail=1; fi
-rm -f "$log"
+if [ $ci -eq 1 ]; then
+  tools/ci-test.sh "$rules" --parts 4 --same || fail=1
+else
+  log="$(mktemp "${TMPDIR:-/tmp}/unspent-preflight.XXXXXX")"
+  tools/test.sh "$rules" >"$log" 2>&1; code=$?
+  grep -E "FAIL|^\s{7}|SCRIPT ERROR|LOAD FAIL|passed," "$log"
+  if [ "$code" != "0" ] || grep -qE "SCRIPT ERROR|LOAD FAIL" "$log" || ! grep -qE "passed," "$log"; then fail=1; fi
+  rm -f "$log"
+fi
 
 # Every shader compiled and drawn by the real renderer. The gate's tests run on
 # the dummy renderer, which compiles none: an include that broke every sky_apply
