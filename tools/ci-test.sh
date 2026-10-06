@@ -46,9 +46,10 @@ while :; do
   [ "$(date +%s)" -lt "$deadline" ] || { echo "ci-test: run $id still '$st' after 120 min"; exit 3; }
   sleep 20
 done
-# Each log line is JOB<TAB>STEP<TAB>TIMESTAMP TEXT; keep the job and the text.
+# Each log line is JOB<TAB>STEP<TAB>TIMESTAMP TEXT; keep the job and the text, but
+# not the step's own script, which the log echoes in cyan (gh writes its escape as a literal "^[") before running it.
 gh_ run view "$id" --repo "$repo" --log 2>/dev/null \
-  | awk -F'\t' '$3 ~ /FAIL |passed,|SCRIPT ERROR|LOAD FAIL|ci-test part/ { sub(/^[0-9TZ:.-]+ /, "", $3); print $1 " | " $3 }'
+  | awk -F'\t' 'index($3, "[36;1m") == 0 && $3 ~ /FAIL |passed,|SCRIPT ERROR|LOAD FAIL|ci-test part|##\[error\]/ { sub(/^[0-9TZ:.-]+ /, "", $3); print $1 " | " $3 }'
 concl=${st#completed }
 echo "ci-test: $concl"
 [ "$concl" = success ]
