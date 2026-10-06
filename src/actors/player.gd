@@ -43,6 +43,9 @@ var sunk := 0.0
 ## the same frame as the leg it hangs from, and the climb puts this node with it,
 ## so what is seen and heard of him (his lamp, his breath, his sounds) is up
 ## there too. `pos`, the fight body and `on_land` stay where it left the ground.
+## Nothing below has him while he hangs: the machines' senses read him as gone
+## (Moment.aloft), so one that had him loses him and goes back to its rounds, and
+## none lands a blow on the body he left at the foot.
 var hanging := false:
 	set(v):
 		hanging = v

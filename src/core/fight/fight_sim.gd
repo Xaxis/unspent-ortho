@@ -778,6 +778,10 @@ func _beat() -> void:
 ## the cone, &"heard", or &"" not at all. The one door is StealthQuery's, split
 ## so that only sight in front is sure at once.
 func _notice(m: MobState, look: float) -> StringName:
+	# Up a walker's leg he is out of the land's world: his body waits at the foot,
+	# and nothing below has him there (Moment.aloft).
+	if moment != null and moment.aloft:
+		return &""
 	# A machine's senses read a crags ring's inside as nothing (docs/HUSH.md H1).
 	if m.machine and hush_disc(hero.pos).is_finite():
 		return &""
