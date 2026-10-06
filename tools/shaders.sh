@@ -6,6 +6,10 @@
 # an include that broke every sky_apply shader passed every gate (2026-10-01).
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# On Linux it draws in tools/gpu.sh's private display, whoever runs it: a shell's
+# own can be dead (a stale cookie), and then every preflight not itself run under
+# gpu.sh sat here to the timeout (2026-10-05).
+if [ "$(uname)" = Linux ] && [ -z "${UNSPENT_GPU:-}" ]; then exec tools/gpu.sh tools/shaders.sh "$@"; fi
 tools/_import.sh
 . tools/_focus.sh
 . tools/_slack.sh

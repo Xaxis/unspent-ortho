@@ -862,6 +862,11 @@ if (first && !touring && opt['boot-only']) {
   const started = lines.find((l) => /^web probe start/.test(l.text));
   if (!started) failures.push('the probe never started');
   else if (/--(shot|give)/.test(started.text)) failures.push(`tool options in the address reached the build: ${started.text}`);
+  // A threaded page sizes the engine's worker pool for the machine (src/boot/shell.html).
+  // Without it the island is raised on the export's four workers, and nothing else says so.
+  else if (/threads true/.test(started.text) && !lines.some((l) => /^boot pool \d+ workers/.test(l.text))) {
+    failures.push('the threaded page never sized the engine\'s worker pool (no "boot pool" line from src/boot/shell.html)');
+  }
 
   if (opt.play) {
     const from = lines.length;

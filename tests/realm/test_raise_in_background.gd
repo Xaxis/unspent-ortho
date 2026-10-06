@@ -18,6 +18,17 @@ extends TestCase
 const SLEEP_MS := 40
 
 
+## Every test here is about a raise in flight, so each one grows its world: a
+## world kept by WorldCache stands in under a second and would be up before
+## anything here looked.
+func _init() -> void:
+	WorldCache.enabled = false
+
+
+func teardown() -> void:
+	WorldCache.enabled = true
+
+
 func test_the_pool_answers_while_a_realm_is_raised() -> void:
 	RealmWorlds.forget()
 	RealmWorlds.settle()

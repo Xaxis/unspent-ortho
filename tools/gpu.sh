@@ -11,5 +11,6 @@
 # Linux with a Mesa GPU driver only.
 set -euo pipefail
 command -v xvfb-run >/dev/null || { echo "gpu.sh: xvfb-run is not on PATH" >&2; exit 1; }
+# UNSPENT_GPU tells a tool that draws on its own (tools/shaders.sh) it is already here.
 exec env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u VK_DRIVER_FILES -u VK_ICD_FILENAMES \
-  MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1280x720x24 -nolisten tcp" "$@"
+  MESA_VK_WSI_DEBUG=sw UNSPENT_GPU=1 xvfb-run -a -s "-screen 0 1280x720x24 -nolisten tcp" "$@"

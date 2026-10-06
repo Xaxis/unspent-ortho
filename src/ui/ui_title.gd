@@ -220,8 +220,10 @@ func _raise_island(w: WorldData, s: int) -> void:
 ## does not wait on the island. Beside it, it takes one worker and the island the
 ## rest; begun only once the island stood, it was still raising 95 s into a game
 ## started at once (desktop). Where the pool has only SPARE_BELOW workers or fewer
-## (the web's four) that one worker is a quarter of the island's pool, which made
-## the island 48-52 s instead of ~37 (web, measured), so there it waits.
+## that one worker is a quarter of the island's pool, which made the island 48-52 s
+## instead of ~37 (web, four workers, measured), so there it waits. The web always
+## waits: its pool is sized by the page (src/boot/shell.html), and the game cannot
+## read it there (OS.get_processor_count() is capped at 2 on the web).
 func _step_island() -> void:
 	if _raised_for < 0 or _below_begun:
 		return
