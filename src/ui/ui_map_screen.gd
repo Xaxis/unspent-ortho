@@ -58,10 +58,40 @@ var _rect: ColorRect
 var _viewport: SubViewport
 var _overlay: Control
 var _material: ShaderMaterial
+## One texture of what is seen, kept and written over (`_feed_seen`): a new
+## 1840-square texture on every open was most of a frame by itself.
 var _seen_tex: ImageTexture
+## What `_seen_tex` was last written from: [UiExplored.changes, revealed].
+var _seen_for: Array = []
+## Whether the sheet has the world's textures (`_feed`): not until UiMapData's
+## worker has packed them, which an early open no longer waits on.
+var _fed := false
 var _regions: Array[Dictionary] = []
+## THE LETTERING IS WORKED OUT ON A WORKER (`warm`). It reads a coarse cell of
+## every 4x4 tiles of the world, 211k at 1840, and its neighbours: hundreds of
+## ms on the main thread, on every open. What was worked out last is drawn
+## until the new is in, a frame or a few later. Keyed as `_seen_for`, plus the
+## world it read.
+var _regions_for: Array = []
+var _regions_job: RegionsJob = null
 var _seen_share := 0.0
 var _time := 0.0
+
+
+## The lettering being worked out: its inputs, taken on the main thread, and
+## its answer, written by the worker. Its own object, not the screen, so the
+## screen is never locked by the worker (a free would fail on it).
+class RegionsJob extends RefCounted:
+	var key: Array = []
+	var world: WorldData
+	var mask: PackedByteArray
+	var size := 0
+	var revealed := false
+	var out: Array[Dictionary] = []
+	var task := -1
+
+	func run() -> void:
+		out = UiMapScreen.region_labels_of(world, mask, size, revealed)
 
 
 func _init() -> void:
@@ -103,7 +133,8 @@ func _on_open() -> void:
 		return
 	if data == null:
 		data = UiMapData.new(game.world)
-	data.ensure()
+	# Packed ahead by 90_ui; an open before that starts it and is fed when it is in.
+	data.build_async()
 	if explored == null:
 		explored = UiExplored.new(game.world.size)
 	# A SURVEY OF 0.3% OF THE LAND IS NOT A SURVEY. The map draws only what has
@@ -116,9 +147,14 @@ func _on_open() -> void:
 	# find, which is the same as not existing.
 	if DevMode.reachable() and not explored.revealed:
 		explored.reveal_all(game.world)
-	_seen_tex = ImageTexture.create_from_image(Image.create_from_data(explored.size, explored.size, false, Image.FORMAT_L8, explored.shown_mask()))
-	UiMapScreen.feed(_material, data, _seen_tex, MAP_RECT.size)
-	_regions = UiMapScreen.region_labels(game.world, explored)
+	_feed_seen()
+	# Fed again on every open (the seen texture may be a new one); until the
+	# world's textures are in, the sheet is not drawn at all, only its grid.
+	_fed = false
+	_rect.visible = false
+	_feed()
+	warm()
+	_take_regions()
 	_seen_share = explored.fraction()
 	var told: Array[Vector2] = []
 	for t: Dictionary in UiMapScreen.told(game):
@@ -126,6 +162,78 @@ func _on_open() -> void:
 	var f := UiMapScreen.opening(explored.shown_bounds(), game.player.pos, told, MAP_RECT.size, SCALES)
 	map_scale = f.scale
 	centre_on(f.centre)
+
+
+## Write what is seen into the one texture, if it has changed since.
+func _feed_seen() -> void:
+	var key := [explored.changes, explored.revealed]
+	if _seen_tex != null and key == _seen_for and _seen_tex.get_width() == explored.size:
+		return
+	var img := Image.create_from_data(explored.size, explored.size, false, Image.FORMAT_L8, explored.shown_mask())
+	if _seen_tex == null or _seen_tex.get_width() != explored.size:
+		_seen_tex = ImageTexture.create_from_image(img)
+	else:
+		_seen_tex.update(img)
+	_seen_for = key
+
+
+## Hand the sheet the world's textures once they are packed.
+func _feed() -> void:
+	if _fed or data == null or not data.built():
+		return
+	data.ensure()
+	UiMapScreen.feed(_material, data, _seen_tex, MAP_RECT.size)
+	_fed = true
+	_rect.visible = true
+	_apply()
+
+
+## Work the lettering out on a worker for the land seen now, unless it already
+## is, or is being. 90_ui asks as home opens, so the survey usually opens on it.
+func warm() -> void:
+	if game == null or explored == null:
+		return
+	var key := [explored.changes, explored.revealed, game.world.get_instance_id()]
+	if key == _regions_for or _regions_job != null:
+		return
+	var job := RegionsJob.new()
+	job.key = key
+	job.world = game.world
+	# The mask as it stands: walking on writes a copy of its own.
+	job.mask = explored.mask
+	job.size = explored.size
+	job.revealed = explored.revealed
+	job.task = WorkerThreadPool.add_task(job.run, false, "survey lettering")
+	_regions_job = job
+
+
+## Take the lettering in once its worker is done (`wait`: wait for it), and ask
+## again if the land seen has moved on since it was asked.
+func _take_regions(wait: bool = false) -> void:
+	if _regions_job == null:
+		return
+	if not wait and not WorkerThreadPool.is_task_completed(_regions_job.task):
+		return
+	WorkerThreadPool.wait_for_task_completion(_regions_job.task)
+	_regions = _regions_job.out
+	_regions_for = _regions_job.key
+	_regions_job = null
+	_overlay.queue_redraw()
+	if is_open:
+		warm()
+
+
+func settle() -> void:
+	super()
+	if data != null:
+		data.ensure()
+	_feed()
+	_take_regions(true)
+
+
+func _exit_tree() -> void:
+	super()
+	_take_regions(true)
 
 
 ## The survey's sheet, in the slate's own tones (UiTheme), for any window that
@@ -259,6 +367,12 @@ static func glass_at(centre: Vector2, scale: float, p: Vector2) -> Vector2i:
 ## name sits over its own land rather than a neighbour's.
 ## [{text, at: Vector2, country, seen}]
 static func region_labels(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
+	return UiMapScreen.region_labels_of(w, seen.mask, seen.size, seen.revealed)
+
+
+## `region_labels` from a mask (`UiExplored.mask`, `size` a side, all seen when
+## `revealed`): pure, so a worker can run it on a copy of the mask.
+static func region_labels_of(w: WorldData, mask: PackedByteArray, size: int, revealed: bool) -> Array[Dictionary]:
 	const STEP := 4
 	const ENOUGH := 120 # seen tiles before a region is worth naming
 	const REACH := 2 # neighbourhood, in coarse cells
@@ -271,7 +385,8 @@ static func region_labels(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
 			var x := cx * STEP + STEP / 2
 			var y := cy * STEP + STEP / 2
 			var c := -1
-			if x < w.size and y < w.size and seen.seen(x, y) and w.level_at(x, y) > 0:
+			var seen := x < size and y < size and (revealed or mask[y * size + x] >= UiExplored.SEEN)
+			if x < w.size and y < w.size and seen and w.level_at(x, y) > 0:
 				c = w.country_at(x, y)
 				counts[c] = int(counts.get(c, 0)) + 1
 			cells[cy * n + cx] = c
@@ -456,7 +571,7 @@ func place_region(label: Dictionary, free: Callable) -> Vector2i:
 			if moved > 0 and (explored == null or not explored.seen(mid.x, mid.y) or game.world.country_at(mid.x, mid.y) != int(label.country)):
 				continue
 			var mean := 0.0
-			if data != null:
+			if data != null and data.ready:
 				mean = UiMapData.ink_in(data.ink, data.tex_size, Rect2i(t.position / data.step, \
 					Vector2i(maxi(1, t.size.x / data.step), maxi(1, t.size.y / data.step)))) \
 					/ float(maxi(1, (t.get_area()) / (data.step * data.step)))
@@ -610,7 +725,9 @@ func to_screen(p: Vector2) -> Vector2i:
 
 func _process(delta: float) -> void:
 	super(delta)
+	_take_regions()
 	if is_open:
+		_feed()
 		_time += delta
 		_overlay.queue_redraw()
 

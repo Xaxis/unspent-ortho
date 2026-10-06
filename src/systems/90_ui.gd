@@ -117,6 +117,12 @@ func top() -> UiScreen:
 	return stack.back() if not stack.is_empty() else null
 
 
+func _warm_map() -> void:
+	var m: UiMapScreen = screens.get(&"map")
+	if m != null:
+		m.warm()
+
+
 ## Open an app by name. Returns false (and says why) when it cannot open now.
 func open_screen(n: StringName, switched: bool = false) -> bool:
 	if n == &"controls":
@@ -153,6 +159,8 @@ func open_screen(n: StringName, switched: bool = false) -> bool:
 		(s as UiCraftingScreen).stations = here
 	if s is UiPauseScreen:
 		(s as UiPauseScreen).seen_share = explored.fraction()
+		# The survey is an app of home's: its lettering is worked out as home opens.
+		_warm_map()
 	s.power = power
 	s.brightness = UiRules.brightness(power)
 	stack.append(s)
@@ -306,6 +314,7 @@ func _process(delta: float) -> void:
 		_map_build_in -= delta
 		if _map_build_in <= 0.0:
 			map_data.build_async()
+			_warm_map()
 			var carried: Array[StringName] = []
 			carried.assign(game.inventory.items.keys())
 			var stations: Array[StringName] = [&"fire", &"bench", &"kiln", &"hand"]

@@ -78,6 +78,11 @@ func wait() -> void:
 			_finish_textures()
 
 
+## Whether the images are packed: `ensure` then only makes their textures.
+func built() -> bool:
+	return ready or (_task >= 0 and WorkerThreadPool.is_task_completed(_task))
+
+
 ## Make sure textures exist (waits for a running build). Main thread only.
 func ensure() -> void:
 	if ready:
