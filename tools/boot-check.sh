@@ -7,13 +7,14 @@
 # opens on the title, plus --headless: no window and no GPU, which a release
 # runner does not have. It passes on the game's own ready line (src/main.gd),
 # printed once the title's coast is up:
-#   boot ready title 6345 ms (engine 7210 ms, main at 865 ms)
+#   boot ready title 4846 ms (engine 7478 ms, main at 1467 ms)   (ubuntu runner, run 37495906351)
 # and fails on any SCRIPT ERROR, on the build ending first, or on no ready line
 # within --timeout (default 600 s: a hang guard, not a speed bar). The log is
-# read from --log-file, not stdout: a Windows build is a GUI program with no
-# console. Its user data is a fresh folder (XDG_DATA_HOME, on Linux), so a boot
-# on someone's machine never reads or writes their saves. Prints
-# `boot-check ok ...` or `boot-check FAILED: ...`.
+# read from --log-file as well as stdout: a Windows build is a GUI program with
+# no console, and a release template prints a line as it comes only because
+# project.godot says so (run/flush_stdout_on_print). Its user data is a fresh
+# folder (XDG_DATA_HOME, on Linux), so a boot on someone's machine never reads
+# or writes their saves. Prints `boot-check ok ...` or `boot-check FAILED: ...`.
 set -uo pipefail
 build="${1:-}"
 timeout=600
@@ -23,6 +24,7 @@ for a in "${@:2}"; do
     *) echo "boot-check FAILED: unknown option $a"; exit 2 ;;
   esac
 done
+[[ "$timeout" =~ ^[0-9]+$ ]] || { echo "boot-check FAILED: --timeout takes whole seconds, not '$timeout'"; exit 2; }
 bin="$build"
 case "$build" in
   *.app|*.app/) bin="${build%/}/Contents/MacOS/$(basename "${build%/}" .app)" ;;
@@ -60,10 +62,11 @@ secs=$(( $(date +%s) - t0 ))
 [ "$verdict" = ok ] && sleep 3 && grep -q 'SCRIPT ERROR' "$log" "$out" 2>/dev/null && verdict=error
 stop
 
-show() { grep -hvE '^\s*at: ' "$log" "$out" 2>/dev/null | grep -iE 'error|failed|cannot|boot ready' | sort -u | head -"$1"; }
+errors() { grep -hvE '^\s*at: ' "$log" "$out" 2>/dev/null | grep -iE 'error|failed|cannot' | sort -u | head -n 20; }
+last() { cat "$log" "$out" 2>/dev/null | grep -vE '^\s*at: ' | tail -n "$1"; }
 case "$verdict" in
   ok) echo "boot-check ok $(basename "$bin") in ${secs} s: $ready" ;;
-  error) show 20; echo "boot-check FAILED: SCRIPT ERROR booting $(basename "$bin")"; exit 1 ;;
-  ended) tail -20 "$out" "$log" 2>/dev/null; echo "boot-check FAILED: $(basename "$bin") ended before its ready line"; exit 1 ;;
-  timeout) show 20; tail -5 "$log" 2>/dev/null; echo "boot-check FAILED: no 'boot ready title' from $(basename "$bin") in ${timeout} s"; exit 1 ;;
+  error) errors; echo "boot-check FAILED: SCRIPT ERROR booting $(basename "$bin")"; exit 1 ;;
+  ended) last 20; echo "boot-check FAILED: $(basename "$bin") ended before its ready line"; exit 1 ;;
+  timeout) errors; last 5; echo "boot-check FAILED: no 'boot ready title' from $(basename "$bin") in ${timeout} s"; exit 1 ;;
 esac

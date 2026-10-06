@@ -14,7 +14,7 @@ name: release
 # (tools/export.sh --version). Each desktop build is then booted on its own OS by
 # tools/boot-check.sh: the real export, launched headless with no game arguments,
 # must print the game's ready line (src/main.gd) with no SCRIPT ERROR:
-#   boot ready title 6345 ms (engine 7210 ms, main at 865 ms)
+#   boot ready title 4846 ms (engine 7478 ms, main at 1467 ms)   (ubuntu runner, run 37495906351)
 # The web build boots in headless Chromium on the CPU (tools/web.sh --boot-only,
 # the check deploy.yml blocks on), which waits for the same line.
 #
