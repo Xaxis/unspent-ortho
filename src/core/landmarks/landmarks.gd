@@ -410,6 +410,18 @@ static func cache_of(site: LandmarkSite) -> Vector2:
 	return site.pos + Vector2.from_angle(site.facing) * CACHE_OUT
 
 
+## A landmark's mass in tile space `(x, y, radius)`: its model's own
+## (LandmarkModels.blocks), turned with it. The one answer to what stops a body
+## there: 22_landmarks hands it to `WorldQuery.set_blocks`, and the story stands
+## a gate off it (StoryGates).
+static func walls(site: LandmarkSite) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for c: Vector3 in LandmarkModels.blocks(site.kind):
+		var at := site.pos + Vector2(c.x, c.y).rotated(site.facing)
+		out.append(Vector3(at.x, at.y, c.z))
+	return out
+
+
 ## EVERY STANDING LANDMARK IN THE WORLD'S OWN LIST of places, under the kind's own
 ## name, so the map, the reads app and `place NAME` find it without being taught
 ## what a landmark is, once each. No `mark`: a mark means the machines cut the
