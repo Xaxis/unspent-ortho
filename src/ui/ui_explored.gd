@@ -157,45 +157,15 @@ func fraction() -> float:
 	return _seen_n / float(mask.size())
 
 
-## Put a whole mask in place (a save's), counting what it has seen.
+## Put a whole mask in place (a save's), counting what it has seen: once, on
+## load, where a pass over the mask is a share of a load and not a stall.
 func load_mask(m: PackedByteArray) -> void:
 	mask = m
-	_seen_n = UiExplored.count_seen(m)
+	_seen_n = 0
+	for v in m:
+		if v >= SEEN:
+			_seen_n += 1
 	changes += 1
-
-
-## Bytes of `m` at or over SEEN, eight at a time. SEEN is 128, the high bit, so
-## a 64-bit word shifted down by 7 and masked to the low bit of each byte holds
-## a 1 in each byte lane that is seen, and words summed lane by lane count eight
-## bytes an add. 127 words at most per sum, so no lane carries into the next and
-## the top lane never reaches the sign bit. A byte loop took 0.6 s at 1840; this
-## is about a twentieth of that.
-static func count_seen(m: PackedByteArray) -> int:
-	assert(SEEN == 128, "the count reads the high bit")
-	const LOW_BITS := 0x0101010101010101
-	var whole := m.size() & ~7
-	var n := 0
-	var acc := 0
-	var lanes := 0
-	for word in m.slice(0, whole).to_int64_array():
-		acc += (word >> 7) & LOW_BITS
-		lanes += 1
-		if lanes == 127:
-			n += _lane_sum(acc)
-			acc = 0
-			lanes = 0
-	n += _lane_sum(acc)
-	for i in range(whole, m.size()):
-		if m[i] >= SEEN:
-			n += 1
-	return n
-
-
-static func _lane_sum(acc: int) -> int:
-	var s := 0
-	for k in 8:
-		s += (acc >> (k * 8)) & 0xFF
-	return s
 
 
 ## Pretend the player has walked `steps` tiles from `start`: a wandering walk
