@@ -143,10 +143,8 @@ func _load_systems(files: Array[String]) -> void:
 		print("boot systems slow (ms): %s" % ", ".join(slow))
 
 
-## True while gameplay input should be ignored (a screen is open, or the body is busy).
-## True while a page is up OR somebody is being talked to: a conversation is not
-## a screen (it is drawn over the world, owner 2026-09-17) but it holds the keys
-## the same way, so every reader that already asked this question keeps working.
+## True while somebody is being talked to: a conversation is not a screen (it is
+## drawn over the world, owner 2026-09-17) but it holds the keys the same way.
 ## 49_story is its only writer.
 var talking := false
 ## True while a staged look holds the view (42_stage is its only writer): the keys
@@ -157,8 +155,18 @@ var staged := false
 var aloft := false
 
 
+## THE LAND'S KEYS (move, use, swing, dodge, crouch, drop, gear, the view's own)
+## are not his while a page, a talk or a staged look holds the keys, nor up a
+## walker's leg, where move and use are the climb's and the rest act on a land
+## he is not on.
 func input_blocked() -> bool:
-	return not open_screens.is_empty() or talking or staged or aloft
+	return keys_held() or aloft
+
+
+## HIS OWN KEYS (the lamp; the slate's pages, 90_ui) are his on the leg too: only
+## a page, a talk or a staged look holds them.
+func keys_held() -> bool:
+	return not open_screens.is_empty() or talking or staged
 
 
 func _physics_process(delta: float) -> void:
@@ -207,7 +215,8 @@ static func _walk_apart(action: StringName) -> float:
 func _process(_delta: float) -> void:
 	if world == null:
 		return
-	var eye := watch if watch.is_finite() else player.position
+	# On the land, not up a leg: the land streams and the rig waits where he left it.
+	var eye := watch if watch.is_finite() else player.on_land()
 	camera.target = eye
 	view.focus = Vector2(eye.x, eye.z)
 	sky.set_hour(clock.hour())

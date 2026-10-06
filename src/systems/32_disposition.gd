@@ -158,6 +158,7 @@ func _read_player() -> void:
 	body.crouched = HoldToggle.on(CROUCH_ACTION, &"playing.crouch") and not game.input_blocked()
 	game.player.model.crouched = body.crouched
 	m.crouched = body.crouched
+	m.aloft = game.aloft
 	m.spoofed = game.clock.minutes < body.spoof_until
 	var p := hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))

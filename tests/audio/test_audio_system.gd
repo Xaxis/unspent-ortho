@@ -97,6 +97,21 @@ func test_one_shots_route_by_distance_and_kind() -> void:
 	_done(parts)
 
 
+## Up a walker's leg his own sounds come from where he hangs (Player.hanging), and
+## are heard as near, not as if from the land he left under it.
+func test_hung_on_a_leg_his_sounds_are_heard_from_where_he_hangs() -> void:
+	var parts := _make()
+	var sys: AudioSystem = parts[0]
+	var g: Game = parts[1]
+	_adopt(sys, &"hit_plate")
+	var p := g.player.pos
+	g.player.hanging = true
+	g.player.position = Vector3(p.x + 300.0, 120.0, p.y)
+	Events.sfx.emit(&"hit_plate", g.player.position + Vector3(1.0, 0.0, 0.0))
+	eq(sys.history.back()["bus"] if not sys.history.is_empty() else &"", &"SFX", "a blow beside him on the leg is dry and near, not 300 tiles off")
+	_done(parts)
+
+
 func test_footfalls_come_from_distance_moved() -> void:
 	var parts := _make()
 	var sys: AudioSystem = parts[0]

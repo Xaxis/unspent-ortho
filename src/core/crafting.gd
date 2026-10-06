@@ -138,6 +138,8 @@ static func sets_going(r: Dictionary) -> bool:
 static func why_not(game: Game, r: Dictionary) -> String:
 	if r.is_empty():
 		return "There is no such thing."
+	if game.aloft:
+		return Survival.ALOFT_LINE
 	if r.at != &"hand" and not Survival.stations_near(game).has(r.at):
 		return "Not without a %s." % r.at
 	if Survival.threat_near(game):
