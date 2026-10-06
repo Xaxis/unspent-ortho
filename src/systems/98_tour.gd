@@ -4,7 +4,8 @@ extends GameSystem
 ##
 ## A tour is a text file, one command per line, `#` comments:
 ##   at X,Y                 teleport the player (tile space)
-##   at KIND:NAME           stand where a system says (`cast:maren`: beside a named person)
+##   at KIND:NAME           stand where a system says (`cast:maren`: beside a named person);
+##                          at `gate:NAME`, turned until the press is the gate's
 ##   at prop:NAME           stand beside the nearest prop of that kind (PropKind.NAMES,
 ##                          a space written as _), facing it, in reach of `use`: a tour
 ##                          takes from the world without knowing where the world put it
@@ -437,6 +438,8 @@ func _run() -> void:
 					# KIND:NAME that a system owns (`cast:maren`): whichever answers
 					# `tour_place` says where, so the runner knows no story names.
 					ok = _stand_at_named(parts[1])
+					if ok and parts[1].begins_with("gate:"):
+						ok = await _face_the_gate(parts[1].substr(5))
 				else:
 					var p := parts[1].split(",")
 					_teleport(Vector2(p[0].to_float(), p[1].to_float()))
@@ -1087,6 +1090,34 @@ func _now_true(what: String) -> bool:
 ## what is built), so a tour names what it wants instead of the tile it lay on
 ## last month. It tries each way round until the prop is the thing under the hand:
 ## what the ruin left beside it can be nearer, and `use` takes what is in front.
+## A gate stands on the slot its year's people are cast at (StoryGates), and the
+## press goes to the words he faces before the gate (Survival.words_in_front): by
+## the lab's gate in 2029 Priya stood in front of him and the press opened her
+## talk. So `at gate:NAME` turns where he stands, as a player does, until the key
+## row names the gate's own verb (20_realms `use_line`); false when no way he
+## faces gives the gate the press.
+const GATE_VERB := "step into it"
+const GATE_TURNS := 16
+
+
+func _face_the_gate(id: String) -> bool:
+	var realms := _system("20_realms")
+	var turn := 0
+	for i in GATE_TURNS * 4:
+		await get_tree().physics_frame
+		await get_tree().process_frame
+		if _now_true("hint:" + GATE_VERB):
+			return true
+		# Turned only once the gate itself would answer: in its reach, and past
+		# the settle a crossing leaves (20_realms `use_spent`).
+		var ready := _now_true("era_gate:" + id) and (realms == null or not bool(realms.call(&"use_spent")))
+		if ready and turn < GATE_TURNS:
+			Survival.face(game, TAU * float(turn) / float(GATE_TURNS))
+			turn += 1
+	printerr("tour %s: no way he faces at %s gives it the press" % [_name, id])
+	return false
+
+
 func _stand_at_named(what: String) -> bool:
 	for sys in game.systems:
 		if not sys.has_method(&"tour_place"):
