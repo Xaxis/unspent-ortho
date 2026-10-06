@@ -27,8 +27,8 @@ the web preview that every push to main deploys.
   to 71 and 76 to 48 in the page on this box's software renderer (batch 8).
 - [ ] The web start: 15-18 s of system setup on the main thread, and ~10 s compiling
   the light shaders (`01_warm_lights`) before the first frame.
-- [ ] The lab gate stands inside the yard's raised deck: his head pokes through the
-  floor and no gate is drawn.
+- [x] Every memory gate stands where a body can reach it (`GateStand`): the lab's stood
+  inside the yard's raised deck, his head through the floor (batch 9).
 - [ ] Props stop a body where they are drawn (`fix/house-walls`): today a body walks through
   fallen towers, deck spans and checkpoints, and meets a house as a disc round its eaves.
 - [ ] ★ The owner plays slices 1-3; his notes become the next plan.
