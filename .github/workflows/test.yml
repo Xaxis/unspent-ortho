@@ -1,0 +1,121 @@
+name: test
+
+# Any test filter, on GitHub's runners instead of the box the game is built on:
+# tools/ci-test.sh FILTER [--ref BRANCH] [--parts N] [--repeat N] dispatches this,
+# waits, and prints what tools/test.sh would have printed. Why: the build box is
+# shared with other projects and ran at load 95-130 on 2026-10-06, so a builder's
+# targeted test run there took 3-7 minutes of a slot and timed differently from
+# CI. Standard runners are free for a public repo and run side by side.
+#
+# `parts` splits the filter's comma-separated terms round-robin over that many
+# runners; `repeat` runs every part that many times (a flake reads N of N or not).
+# A part is green only on exit 0, a "passed," line and zero SCRIPT ERROR or LOAD
+# FAIL lines, the same rule tools/preflight.sh applies.
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: "tools/test.sh filter: comma-separated file or file:method substrings"
+        required: true
+      parts:
+        description: "runners to split the filter's terms over (1-8)"
+        required: false
+        default: "1"
+      repeat:
+        description: "times to run each part (1-8), to chase a flake"
+        required: false
+        default: "1"
+      fixed_fps:
+        description: "TEST_FIXED_FPS for the run (played tests on a fixed step); empty for none"
+        required: false
+        default: ""
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      parts: ${{ steps.p.outputs.parts }}
+      rounds: ${{ steps.p.outputs.rounds }}
+    steps:
+      - id: p
+        env:
+          PARTS: ${{ inputs.parts }}
+          REPEAT: ${{ inputs.repeat }}
+        run: |
+          set -euo pipefail
+          case "$PARTS" in [1-8]) ;; *) echo "::error::parts must be 1-8, got '$PARTS'"; exit 1;; esac
+          case "$REPEAT" in [1-8]) ;; *) echo "::error::repeat must be 1-8, got '$REPEAT'"; exit 1;; esac
+          echo "parts=[$(seq -s, 0 $((PARTS - 1)))]" >> "$GITHUB_OUTPUT"
+          echo "rounds=[$(seq -s, 1 "$REPEAT")]" >> "$GITHUB_OUTPUT"
+
+  tests:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ${{ fromJSON(needs.plan.outputs.parts) }}
+        round: ${{ fromJSON(needs.plan.outputs.rounds) }}
+    name: part ${{ matrix.part }} round ${{ matrix.round }}
+    # A hang guard: tools/check.sh's 600 s silence guard is not in this path.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-bin
+          key: godot-${{ env.GODOT_VERSION }}-linux
+
+      - name: Install Godot
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/godot-bin
+          url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -fsSL "$url" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d ~/godot-bin
+          mv ~/godot-bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot-bin/godot
+          chmod +x ~/godot-bin/godot
+
+      - name: Put Godot on PATH
+        run: echo "$HOME/godot-bin" >> "$GITHUB_PATH"
+
+      - name: Import
+        run: tools/_import.sh
+
+      - name: Tests
+        env:
+          FILTER: ${{ inputs.filter }}
+          PARTS: ${{ inputs.parts }}
+          PART: ${{ matrix.part }}
+          FIXED_FPS: ${{ inputs.fixed_fps }}
+        # GitHub runs a step under `bash -e`: a grep that finds no FAIL line on a
+        # green run ended the step red, so -e is off and the verdict is the if below.
+        run: |
+          set +e -uo pipefail
+          IFS=',' read -ra terms <<< "$FILTER"
+          mine=()
+          for i in "${!terms[@]}"; do
+            [ $((i % PARTS)) -eq "$PART" ] && mine+=("${terms[$i]}")
+          done
+          if [ ${#mine[@]} -eq 0 ]; then echo "ci-test part $PART: no terms"; exit 0; fi
+          f=$(IFS=,; echo "${mine[*]}")
+          echo "ci-test part $PART runs: $f"
+          log="$RUNNER_TEMP/test.log"
+          TEST_FIXED_FPS="$FIXED_FPS" tools/test.sh "$f" > "$log" 2>&1; code=$?
+          cat "$log"
+          bad=$(grep -cE 'SCRIPT ERROR|LOAD FAIL' "$log" || true)
+          grep -E '^\s+FAIL ' "$log" | sed 's/%/%25/g; s/^ *//' | head -10 | while IFS= read -r l; do
+            echo "::error title=part $PART round ${{ matrix.round }}::$l"
+          done
+          if [ "$code" -ne 0 ] || [ "$bad" -ne 0 ] || ! grep -qE 'passed,' "$log"; then
+            echo "::error title=part $PART round ${{ matrix.round }}::exit $code, $bad SCRIPT ERROR/LOAD FAIL lines$(grep -qE 'passed,' "$log" || echo ', no summary')"
+            exit 1
+          fi
