@@ -45,8 +45,15 @@ var _dropped_this_hold := false
 
 func setup(g: Game) -> void:
 	super.setup(g)
-	# The way in within a walk of the spawn, where the generator has not put it.
-	Strand.lay(g)
+	# The way in within a walk of the spawn, where the generator has not put it,
+	# and never in a gate's reach (49_cast, set up before this, knows where they
+	# stand).
+	var keep: Array[Vector3] = []
+	var cast := g.get_node_or_null(^"49_cast")
+	if cast != null:
+		for at: Vector2 in cast.call(&"gates_here"):
+			keep.append(Vector3(at.x, at.y, GateStand.REACH))
+	Strand.lay(g, keep)
 	Crafting.bind(g)
 	Survival.epoch_frames = Engine.get_physics_frames()
 	Survival.fixed_now = 0.0 if g.options.hold >= 0.0 else -1.0

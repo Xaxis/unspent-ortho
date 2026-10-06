@@ -10,13 +10,15 @@ extends TestCase
 ## them; in both years, on the gate seeds.
 ##
 ## Everywhere a body stands at a gate, clear of anything solid, and walks on from
-## it. In 2098 the whole of its reach is open ground as the world was grown; what
-## play sets down (the strand's mussel rock and driftwood, laid on the first
-## morning: Strand) keeps off by its own placer's rule, or not. In 2029 the gate
-## is on the same spot, worked out where its place stands, and the Before is
-## dressed otherwise (no plan: the scatter and the landmarks fall differently
-## round a yard; seed 1's at 256 has a landmark's foot 1.3 off its lab gate), so
-## there it is held to what a body needs.
+## it, and nothing that stands on the ground comes within its reach: neither what
+## the world grew nor what the start lays down (the strand's mussel rock stood
+## 0.99 from seed 1's threshold gate at full size). In 2029 the gate is on the
+## same spot, worked out where its place stands, and the Before is dressed
+## otherwise round a 2098 place (seed 1's camp gate stood half under a 2029
+## pine); what of its own stood there is taken before it is drawn
+## (GateStand.clear_before). A wall is no such thing and stays (seed 1's at 256
+## has a landmark's foot 1.3 off its lab gate in 2029), so walls there are held
+## only to what a body needs.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 const SEEDS: Array[int] = [1, 7, 42]
@@ -56,18 +58,18 @@ func test_every_gate_stands_on_open_ground_a_body_walks_to_in_both_years() -> vo
 
 
 ## A body stands at `p`, whole, on dry ground, inside nothing solid, and walks on
-## from it; and where `open`, nothing the world stands, nor any wall, comes within
-## the gate's reach.
-func _stands_open(g: Game, p: Vector2, at: String, open: bool) -> void:
+## from it; no prop comes within the gate's reach; and where `walled`, no wall
+## does either.
+func _stands_open(g: Game, p: Vector2, at: String, walled: bool) -> void:
 	var t := Vector2i(p.floor())
 	check(g.query.standable(t.x, t.y) and not Ground.is_water(g.world.ground_at(t.x, t.y)),
 		"%s: on dry ground a body stands on" % at)
 	check(g.query.body_fits(p, Tuning.PLAYER_RADIUS), "%s: a body fits there whole" % at)
-	var hit := _nearest_solid(g, p, true)
-	check(hit[0] >= Tuning.PLAYER_RADIUS, "%s: inside nothing solid (%s, %.2f off)" % [at, hit[1], hit[0]])
-	if open:
-		var grown := _nearest_solid(g, p, false)
-		check(grown[0] >= REACH, "%s: nothing the world stands within its reach (%s, %.2f off)" % [at, grown[1], grown[0]])
+	var prop := _nearest_solid(g, p, true, false)
+	check(prop[0] >= REACH, "%s: no prop within its reach (%s, %.2f off)" % [at, prop[1], prop[0]])
+	var wall := _nearest_solid(g, p, false, true)
+	check(wall[0] >= (REACH if walled else Tuning.PLAYER_RADIUS), "%s: no wall %s (%.2f off)" % [at,
+		"within its reach" if walled else "where a body stands", wall[0]])
 	check(_walks_out(g, p), "%s: a body walks %.0f tiles on from it" % [at, WALK_OUT])
 
 
@@ -87,21 +89,22 @@ func test_what_a_gate_keeps_clear_of_matches_the_systems() -> void:
 		"a hold's barrier across the road never comes down inside a gate")
 
 
-## [edge distance, what] of the nearest thing that stops a body: a solid prop
-## (only those generation laid, unless `set_down`), a ghost, or any system's wall
+## [edge distance, what] of the nearest thing that stops a body: a solid prop or
+## a ghost, where `props`, whoever laid it; any system's wall, where `walls`
 ## (WorldQuery.blocks_at, stamped into every tile it could stop a body in).
-func _nearest_solid(g: Game, p: Vector2, set_down: bool) -> Array:
+func _nearest_solid(g: Game, p: Vector2, props: bool, walls: bool) -> Array:
 	var best := INF
 	var what := "nothing"
-	for q: WorldProp in g.query.solid_props_near(p, REACH + 1.0):
-		if q.solid <= 0.0 or g.world.depleted.has(q.id):
-			continue
-		if not set_down and (q.id & WorldData.BUILT_BIT) != 0:
-			continue
-		var e := q.pos.distance_to(p) - q.solid
-		if e < best:
-			best = e
-			what = PropKind.NAMES[q.kind] if q.kind < PropKind.NAMES.size() else str(q.kind)
+	if props:
+		for q: WorldProp in g.query.solid_props_near(p, REACH + 1.0):
+			if q.solid <= 0.0 or g.world.depleted.has(q.id):
+				continue
+			var e := q.pos.distance_to(p) - q.solid
+			if e < best:
+				best = e
+				what = PropKind.NAMES[q.kind] if q.kind < PropKind.NAMES.size() else str(q.kind)
+	if not walls:
+		return [best, what]
 	var r := ceili(REACH) + 1
 	for y in range(floori(p.y) - r, floori(p.y) + r + 1):
 		for x in range(floori(p.x) - r, floori(p.x) + r + 1):
