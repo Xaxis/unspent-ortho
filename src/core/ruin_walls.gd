@@ -14,6 +14,7 @@ class_name RuinWalls
 ##   RuinWalls.model(variant, tower) -> Array[Vector3]   (x, z, radius), model space
 ##   RuinWalls.drowned(kind, variant) -> Array[Vector3]  the same, a drowned block or roof
 ##   RuinWalls.of_world(world) -> Array[Vector3]        (x, y, radius), tile space
+##   RuinWalls.of_row(world, row) -> Array[Vector3]     one ruin's, tile space
 
 ## The drowned city's block and roof plans (models/props/drowned_city.gd).
 const DrownedCity := preload("res://src/models/props/drowned_city.gd")
@@ -98,16 +99,27 @@ static func of_world(w: WorldData) -> Array[Vector3]:
 	w.sync_table()
 	var t := w.table
 	for row in t.size():
-		var kind := int(t.kind[row])
-		if not KINDS.has(kind) or w.depleted.has(t.id[row]):
-			continue
-		var pos: Vector2 = t.pos[row]
-		var p := w.prop_at(row)
-		var c := w.built_country(p)
-		var v := PropModels.variant_of(p, w.seed_value, c)
-		var s := float(t.scale[row])
-		var walls := model(v, BiomeDressing.of(c).ruin_form == &"tower") if kind == PropKind.RUIN else drowned(kind, v)
-		for m: Vector3 in walls:
-			var at := pos + Vector2(m.x, m.y).rotated(float(t.rot[row])) * s
-			out.append(Vector3(at.x, at.y, m.z * s))
+		if KINDS.has(int(t.kind[row])) and not w.depleted.has(t.id[row]):
+			out.append_array(of_row(w, row))
+	return out
+
+
+## One ruin's walls in tile space, by its row in the world's table: [] for a row
+## that is no ruin. What `of_world` hands WorldQuery, one ruin at a time, for a
+## reader that wants the walls of the ruins round one spot (GateStand).
+static func of_row(w: WorldData, row: int) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	var t := w.table
+	var kind := int(t.kind[row])
+	if not KINDS.has(kind):
+		return out
+	var pos: Vector2 = t.pos[row]
+	var p := w.prop_at(row)
+	var c := w.built_country(p)
+	var v := PropModels.variant_of(p, w.seed_value, c)
+	var s := float(t.scale[row])
+	var walls := model(v, BiomeDressing.of(c).ruin_form == &"tower") if kind == PropKind.RUIN else drowned(kind, v)
+	for m: Vector3 in walls:
+		var at := pos + Vector2(m.x, m.y).rotated(float(t.rot[row])) * s
+		out.append(Vector3(at.x, at.y, m.z * s))
 	return out

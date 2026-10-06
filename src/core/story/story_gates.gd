@@ -5,11 +5,20 @@ class_name StoryGates
 ##
 ##   StoryGates.all(world)    every gate this world can hold: {id, pos, then, opens, open}
 ##   StoryGates.open(world)   the ones the story has opened by now
+##   StoryGates.stand_of(row) where the gate of a cast slot's row stands
 ##
-## Pure and derived, like casting: where a gate stands is the cast of its 2098
-## slot, and whether it is open is a beat already landed and felt. Nothing here
-## crosses anybody anywhere: the crossing is the realms system's, and so is what
-## a gate looks like. The story says only where, and when.
+## Pure and derived, like casting: where a gate stands is worked out with the cast
+## of its 2098 slot, and whether it is open is a beat already landed and felt.
+## Nothing here crosses anybody anywhere: the crossing is the realms system's, and
+## so is what a gate looks like. The story says only where, and when.
+##
+## A GATE STANDS BESIDE ITS PLACE, NEVER IN IT (GateStand). A slot is cast at its
+## place's heart, which is where the place's own mass stands, and the lab's gate
+## stood in the middle of the yard's raised deck: nothing of it showed under the
+## plate and nobody could walk into its reach. The spot is worked out once, with
+## the surface's casting, and kept in the slot's row; the Before's twin slot is a
+## copy of that row, so the gate is one spot in both years however differently
+## they are dressed.
 
 ## In the order he is walked through them.
 const GATES: Array[Dictionary] = [
@@ -24,9 +33,10 @@ const GATES: Array[Dictionary] = [
 ]
 
 
-## Every gate this world can hold. In the surface world a gate stands where its
-## 2098 place was cast; in the era it stands where its 2029 place was, which is
-## the same tile, and a gate whose place this world does not have is left out.
+## Every gate this world can hold. In the surface world a gate stands beside where
+## its 2098 place was cast; in the era it stands beside where its 2029 place was,
+## which is the same tile and the same spot, and a gate whose place this world
+## does not have is left out.
 static func all(world: WorldData) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if world == null:
@@ -36,7 +46,7 @@ static func all(world: WorldData) -> Array[Dictionary]:
 		var slot: StringName = g.then if world.realm == Realm.ERA else g.at
 		if not placed.has(slot):
 			continue
-		out.append({"id": g.id, "pos": placed[slot].pos, "then": g.then, "opens": g.opens,
+		out.append({"id": g.id, "pos": stand_of(placed[slot]), "then": g.then, "opens": g.opens,
 			"open": StoryPacing.felt(g.opens)})
 	return out
 
@@ -50,3 +60,9 @@ static func open(world: WorldData) -> Array[Dictionary]:
 		if bool(g.open):
 			out.append(g)
 	return out
+
+
+## Where the gate of a cast slot's row stands: its `gate`, worked out with the
+## casting (GateStand.of), or the place itself for a row cast without one.
+static func stand_of(row: Dictionary) -> Vector2:
+	return row.get("gate", row.get("pos", Vector2.INF))

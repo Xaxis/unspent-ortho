@@ -53,10 +53,11 @@ const LOOK_EVERY := 0.2
 ## player through a shaft cannot also take them straight back out of it — and,
 ## through `use_spent()`, cannot be answered a second time by anything else.
 const SETTLE := 0.6
-## How near an era gate a body must be to step through it. Smaller than a shaft's
-## reach: a gate is a patch of another day lying on the ground and you step INTO
-## it, rather than walking up to a mouth and climbing down.
-const GATE_REACH := 1.5
+## How near an era gate a body must be to step through it (GateStand.REACH,
+## which also keeps the ground round a gate open). Smaller than a shaft's reach: a
+## gate is a patch of another day lying on the ground and you step INTO it,
+## rather than walking up to a mouth and climbing down.
+const GATE_REACH := GateStand.REACH
 
 ## This game's shafts, in the realm it is in now.
 var here: Array[Portal] = []
@@ -202,7 +203,7 @@ func _process(delta: float) -> void:
 ## into the day standing on the ground here, or &"". The one answer `_process`
 ## acts on and `use_line` names.
 func _press_goes() -> StringName:
-	# A gate stands on the slot its year's people are cast at (StoryGates), so the
+	# A gate stands beside the slot its year's people are cast at (StoryGates), so the
 	# press beside one of them is theirs (Survival.words_in_front): beside June,
 	# six, in 2029, the gate's reach caught the key and took him back to 2098.
 	if _settle > 0.0 or game.input_blocked() or Survival.ask_pending(game) or Survival.words_in_front(game):
