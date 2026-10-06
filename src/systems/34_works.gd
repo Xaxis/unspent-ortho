@@ -138,22 +138,13 @@ func _read_sites() -> void:
 ## The mass of every depot in this world, handed to the one thing that stops a
 ## body (`WorldQuery.set_blocks`): the deck is a wall to go round and each working
 ## part is a thing to take cover behind, which is what makes breaking one a set
-## piece rather than three keypresses in an open field.
+## piece rather than three keypresses in an open field (Works.walls).
 func _set_walls() -> void:
 	if game.query == null:
 		return
 	var walls: Array[Vector3] = []
 	for s in sites:
-		var along := Vector2.from_angle(s.facing)
-		var across := Vector2(-along.y, along.x)
-		for c: Vector3 in WorksDepot.yard_blocks(_form(s), _cable(s)):
-			var at := s.pos + along * c.x + across * c.y
-			walls.append(Vector3(at.x, at.y, c.z))
-		for i in Works.PART_NAMES.size():
-			var base := s.part(i)
-			for c: Vector3 in WorksDepot.part_blocks(i):
-				var at := base + along * c.x + across * c.y
-				walls.append(Vector3(at.x, at.y, c.z))
+		walls.append_array(Works.walls(game.world, s))
 	game.query.set_blocks(&"works", walls)
 
 
@@ -249,7 +240,7 @@ func _make(s: WorksSite) -> void:
 	var mat := game.view.world_material() if game.view != null else null
 	var st: WorksState = _states.get(s.region, null)
 	var stage := stage_of(s)
-	var yard := WorksDepot.yard(s, stage, mat, _form(s), _cable(s))
+	var yard := WorksDepot.yard(s, stage, mat, Works.form(s), Works.cable(game.world, s))
 	yard.rotation.y = -s.facing
 	yard.visible = false
 	_layer.add_child(yard)
@@ -267,26 +258,6 @@ func _make(s: WorksSite) -> void:
 			WorksDepot.set_broken(node, true)
 		elif st != null and st.broken():
 			WorksDepot.set_dark(node, true)
-
-
-## What a yard is drawn as: its landscape's own depot form (BiomeDef.depot_form).
-func _form(s: WorksSite) -> StringName:
-	var def := BiomeRegistry.get_def(s.land)
-	return def.depot_form if def != null else WorksDepot.DECK
-
-
-## Where a winch house's cable comes down (Works.lip_foot), in the yard's own
-## frame as WorksDepot draws it: along the bearing, up, across. INF where there
-## is no lip by it, and for every other form.
-func _cable(s: WorksSite) -> Vector3:
-	if _form(s) != WorksDepot.WINCH or game.world == null:
-		return Vector3.INF
-	var foot := Works.lip_foot(game.world, s.pos)
-	if not foot.is_finite():
-		return Vector3.INF
-	var along := Vector2.from_angle(s.facing)
-	var v := foot - s.pos
-	return Vector3(v.dot(along), game.world.height_at(foot) - game.world.height_at(s.pos), v.dot(Vector2(-along.y, along.x)))
 
 
 func _drop(s: WorksSite) -> void:
@@ -828,7 +799,7 @@ func _tour_at_yard(what: String) -> Vector2:
 		return Vector2.INF
 	if what == "winch_lip":
 		var foot := Works.lip_foot(game.world, yard.pos)
-		if _form(yard) != WorksDepot.WINCH or not foot.is_finite():
+		if Works.form(yard) != WorksDepot.WINCH or not foot.is_finite():
 			return Vector2.INF
 		# Back from the foot on the terrace, so the eye over his shoulder has the
 		# drop and the cable in front of it rather than the face of the lip.

@@ -146,6 +146,15 @@ static func _cast(world: WorldData, slots: Array[StorySlot], keepers: Array[Vect
 		out[s.id] = place
 		taken.append(place.get("pos", Vector2.ZERO) as Vector2)
 	if world.realm == Realm.SURFACE:
+		# A place of 2098 that a place of 2029 mirrors is where a gate into the
+		# Before stands (StoryGates). Where, off it, is worked out here once and kept
+		# in its row, and the Before's twin rows are copies of these (`_twin`), so a
+		# gate is one spot in both years (GateStand).
+		for s: StorySlot in slots:
+			if s.mirror != &"" and out.has(s.mirror):
+				var row: Dictionary = out[s.mirror]
+				if not row.has("gate"):
+					row["gate"] = GateStand.of(world, row)
 		var key := _key(world)
 		_surface_lock.lock()
 		if _surface.size() >= SURFACE_MOST:
@@ -267,7 +276,7 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 				out.append({"pos": p, "region": -1, "land": _land_at(world, p), "site": StorySlot.VILLAGE})
 		StorySlot.WORKS:
 			for w: WorksSite in Works.sites(world):
-				out.append({"pos": w.pos, "region": w.region, "land": w.land, "site": StorySlot.WORKS})
+				out.append({"pos": w.pos, "region": w.region, "land": w.land, "site": StorySlot.WORKS, "facing": w.facing})
 		StorySlot.LANDMARK:
 			# Every landmark SITED, each saying whether a walker's foot came down on
 			# it (`trodden`): what lies under a crater is no place to stand, and the
@@ -278,7 +287,7 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 				if s.kind != &"" and l.kind != s.kind:
 					continue
 				out.append({"pos": l.pos, "region": l.region, "land": l.land, "site": StorySlot.LANDMARK, "kind": l.kind,
-					"trodden": Landmarks.trodden(world, l.id)})
+					"facing": l.facing, "trodden": Landmarks.trodden(world, l.id)})
 		StorySlot.PORTAL:
 			for pt: Portal in Portals.in_world(world):
 				out.append({"pos": pt.pos, "region": pt.region, "land": _land_at(world, pt.pos), "site": StorySlot.PORTAL})
