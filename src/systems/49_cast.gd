@@ -124,6 +124,7 @@ func _cast() -> void:
 	if game == null or game.world == null:
 		return
 	placed = StoryPlan.cast(game.world).duplicate()
+	_read_gates()
 	_place_crossing()
 	for c: StoryCharacter in StoryCast.all():
 		# Someone with a house of their own is met in it (21_doors wakes them there).
@@ -224,10 +225,11 @@ func _stand_things(from: Vector2) -> void:
 			_mark_stood(slot, Survival.add_prop(game, kind, spot).id)
 
 
-## How far a stood thing keeps from any era gate: past 20_realms' GATE_REACH (1.5)
-## by more than a body standing beside the thing (StoryProps.CLOSE and its own
-## solid), or `use` there crosses into 2029 instead of reading it. The gates
-## stand on the very slots the things are stood at (StoryGates).
+## How far a stood thing keeps from any era gate: past the gate's reach
+## (GateStand.REACH, 1.5) by more than a body standing beside the thing
+## (StoryProps.CLOSE and its own solid), or `use` there crosses into 2029 instead
+## of reading it. The gates stand beside the very slots the things are stood at
+## (GateStand).
 const GATE_CLEAR := 4.0
 
 
@@ -248,12 +250,8 @@ func _thing_spot(at: Vector2, salt: int) -> Vector2:
 				var def := Sentinels.by_id(st.design)
 				if def != null:
 					grounds.append(Vector3(st.lair.x, st.lair.y, def.reach))
-	# The gates stand on 2098's slots, which this system already cast (`placed`):
-	# StoryGates.all would cast the whole world again.
-	for gate: Dictionary in StoryGates.GATES:
-		if placed.has(gate.at):
-			var gp: Vector2 = placed[gate.at].pos
-			grounds.append(Vector3(gp.x, gp.y, GATE_CLEAR))
+	for gp: Vector2 in _gates:
+		grounds.append(Vector3(gp.x, gp.y, GATE_CLEAR))
 	# The people cast at the same slot stand first: `use` beside one of them
 	# speaks to them, so the thing keeps out of their reach.
 	for row: Dictionary in people:
@@ -334,10 +332,11 @@ func _tread_lip(slot: Dictionary) -> Vector2:
 
 ## A standable tile a few paces off the slot, at a bearing of their own, and
 ## never within APART of somebody already cast, so two people cast at one place
-## do not stand in each other — and out of reach of anything with words on it
-## or any door (`_near_words`), or the one `use` key reads the post beside them,
-## or opens the door, instead of speaking to them (a works yard is full of the
-## plan's terminals). THE FALLBACK HONOURS APART TOO:
+## do not stand in each other, nor in a gate's reach (`_taken`) — and out of
+## reach of anything with words on it or any door (`_near_words`), or the one
+## `use` key reads the post beside them, or opens the door, instead of speaking to
+## them (a works yard is full of the plan's terminals). THE FALLBACK HONOURS
+## APART TOO:
 ## at the Holdfast's camp every spot is near a terminal, the fallback was the
 ## first standable tile off the slot, and Vera, Sabine and Teague all stood on
 ## the same one, so `use` at Vera opened whoever the list met first.
@@ -381,11 +380,33 @@ func _clearance(p: Vector2) -> float:
 const APART := 1.9
 
 
+## Whether somebody cast already stands within APART of `spot`, or a gate of this
+## realm stands within GATE_CLEAR of it: a person in a gate's reach takes the press
+## meant for the gate (Survival.words_in_front), and at the Holdfast's camp on
+## seed 1 one of the crew stood in the camp's gate, so no way the tour turned him
+## gave the gate the key.
 func _taken(spot: Vector2) -> bool:
 	for row: Dictionary in people:
 		if (row.pos as Vector2).distance_to(spot) < APART:
 			return true
+	for g: Vector2 in _gates:
+		if g.distance_to(spot) <= GATE_CLEAR:
+			return true
 	return false
+
+
+## The gates of the realm being cast, off the casting this system holds
+## (`placed`): StoryGates.all would cast the whole world again.
+var _gates: Array[Vector2] = []
+
+
+func _read_gates() -> void:
+	_gates.clear()
+	var era := game.world.realm == Realm.ERA
+	for gate: Dictionary in StoryGates.GATES:
+		var slot: StringName = gate.then if era else gate.at
+		if placed.has(slot):
+			_gates.append(StoryGates.stand_of(placed[slot]))
 
 
 ## Whether a thing somebody could read stands within the key's reach of `p`, a

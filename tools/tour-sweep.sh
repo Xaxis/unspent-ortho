@@ -12,16 +12,21 @@
 # Exit status: the number of failed tours (0 is all green).
 set -u
 cd "$(dirname "$0")/.."
-PROOFS="tours/home-coast.tour tours/holdfast.tour"
+PROOFS="tours/home-coast.tour tours/holdfast.tour tours/across.tour"
 if [ "${1:-}" = "--smoke" ]; then
   # A renamed tour must not drop out of the set unseen.
   missing=$(grep -oE '^[a-z0-9_-]+' tours/SMOKE | while read -r t; do [ -f "tours/$t.tour" ] || echo "$t"; done)
   if [ -n "$missing" ]; then echo "tour-sweep --smoke: tours/SMOKE names tours that don't exist: $missing"; exit 1; fi
-  # Two at a time (a tree's share of heavy.sh): each prints its own line.
+  # Two at a time (a tree's share of heavy.sh): each prints its own line as it ends.
+  # They are counted from a file of their own: teed to /dev/stderr into a log, the
+  # summary wrote over the first two (Linux opens /dev/stderr afresh, at offset 0).
+  # A tour that printed no line at all is counted failed, never passed unseen.
+  want=$(grep -cE '^[a-z0-9_-]+' tours/SMOKE)
+  res="$(mktemp "${TMPDIR:-/tmp}/unspent-smoke.XXXXXX")"
   grep -oE '^[a-z0-9_-]+' tours/SMOKE | sed 's|^|tours/|; s|$|.tour|' \
-    | xargs -P 2 -I{} "$0" {} | grep -E '^(PASS|FAIL)' | tee /dev/stderr | grep -c '^FAIL' > /tmp/unspent-smoke.$$ || true
-  f=$(cat /tmp/unspent-smoke.$$); rm -f /tmp/unspent-smoke.$$
-  echo "tour-sweep --smoke: $f failed"
+    | xargs -P 2 -I{} "$0" {} | grep --line-buffered -E '^(PASS|FAIL|SKIP)' | tee "$res"
+  got=$(grep -cE '^(PASS|FAIL|SKIP)' "$res"); f=$(( $(grep -c '^FAIL' "$res") + want - got )); rm -f "$res"
+  echo "tour-sweep --smoke: $f failed of $want$([ "$got" -lt "$want" ] && echo ", $((want - got)) with no result")"
   exit "$f"
 elif [ "${1:-}" = "--since" ]; then
   tours=$( { git diff --name-only "$2"...HEAD -- 'tours/*.tour'; echo "$PROOFS" | tr ' ' '\n'; } | sort -u)
