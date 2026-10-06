@@ -43,7 +43,8 @@ static var lean := false
 ## job(i) for i in [0, count) on the worker pool, waiting for all of them. Called
 ## from inside another group's element (together() of passes that use rows())
 ## it runs inline: a pool thread waiting on a nested group holds its thread, and
-## with few threads (4 on the web build, 4-thread machines) every thread ends up
+## with few threads (4-thread machines, the web on a machine of six cores or
+## fewer: src/boot/shell.html sizes its pool) every thread ends up
 ## waiting on another and world generation never finishes.
 static func parallel(job: Callable, count: int) -> void:
 	var gid := WorkerThreadPool.get_caller_group_id()

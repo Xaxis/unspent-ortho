@@ -60,6 +60,8 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
   const GLYPHS = {"a":[".....",".....",".###.","....#",".####","#...#",".####"],"c":["....","....",".###","#...","#...","#...",".###"],"d":["....#","....#",".####","#...#","#...#","#...#",".####"],"e":[".....",".....",".###.","#...#","#####","#....",".###."],"f":["..##",".#..","####",".#..",".#..",".#..",".#.."],"g":[".....",".....",".####","#...#","#...#","#...#",".####","....#",".###."],"h":["#....","#....","####.","#...#","#...#","#...#","#...#"],"i":["#",".","#","#","#","#","#"],"k":["#...","#...","#..#","#.#.","##..","#.#.","#..#"],"l":["#.","#.","#.","#.","#.","#.",".#"],"n":[".....",".....","####.","#...#","#...#","#...#","#...#"],"o":[".....",".....",".###.","#...#","#...#","#...#",".###."],"p":[".....",".....","####.","#...#","#...#","#...#","####.","#....","#...."],"s":["....","....",".###","#...",".##.","...#","###."],"t":[".#.",".#.","###",".#.",".#.",".#.","..#"],"w":[".....",".....","#...#","#...#","#.#.#","#.#.#",".#.#."]};
   // What a visitor's query may set. Everything else is a tool's option.
   const ALLOWED = { '--seed': /^\d{1,9}$/, '--probe': /^$/, '--scene': /^(title|game)$/ };
+  // The most workers the engine's pool is given, however many cores there are.
+  const POOL_MOST = 12;
 
   const shell = document.getElementById('shell');
   const g = shell.getContext('2d');
@@ -359,6 +361,29 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
     fail('This build needs: ' + missing.join(', ') +
       (GODOT_THREADS_ENABLED ? '. Threads need the page served with Cross-Origin-Opener-Policy: same-origin and Cross-Origin-Embedder-Policy: require-corp, or use the no-threads build.' : ''));
     return;
+  }
+  // THE ENGINE'S WORKER POOL IS SIZED FOR THIS MACHINE, not left at the export's
+  // four (export_presets.cfg threads/godot_pool_size). A new game's island is
+  // raised on that pool: on four workers the web took 80-85 s where the desktop,
+  // with a worker per core, took 43-48. Measured in the page (seed 7, 24 cores,
+  // under load), the island's generation took 87-95 s on four workers and 71 s on
+  // twelve. Natively most of the gain has come by eight workers, so the pool stops
+  // at twelve (POOL_MOST).
+  // The engine cannot size it itself: on the web OS.get_processor_count() is
+  // capped at 2 (godot.js). So the page reads the cores and sets both pools before
+  // the engine starts. Emscripten's pool (the workers the page starts with) keeps
+  // the export's margin over Godot's, which must stay under it or a thread waits
+  // on a worker that never comes. Two cores are left over: the page's own thread
+  // draws the title while the island is raised, and the browser composites on
+  // another.
+  if (GODOT_THREADS_ENABLED) {
+    const base = GODOT_CONFIG.godotPoolSize || 4;
+    const margin = (GODOT_CONFIG.emscriptenPoolSize || 8) - base;
+    const cores = navigator.hardwareConcurrency || 0;
+    const pool = Math.max(base, Math.min(POOL_MOST, cores - 2));
+    GODOT_CONFIG.godotPoolSize = pool;
+    GODOT_CONFIG.emscriptenPoolSize = pool + margin;
+    console.log(`boot pool ${pool} workers (${cores} cores)`);
   }
   const engine = new Engine(GODOT_CONFIG);
   engine.startGame({
