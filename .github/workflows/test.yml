@@ -96,8 +96,10 @@ jobs:
           PARTS: ${{ inputs.parts }}
           PART: ${{ matrix.part }}
           FIXED_FPS: ${{ inputs.fixed_fps }}
+        # GitHub runs a step under `bash -e`: a grep that finds no FAIL line on a
+        # green run ended the step red, so -e is off and the verdict is the if below.
         run: |
-          set -uo pipefail
+          set +e -uo pipefail
           IFS=',' read -ra terms <<< "$FILTER"
           mine=()
           for i in "${!terms[@]}"; do
