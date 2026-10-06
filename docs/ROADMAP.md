@@ -29,6 +29,8 @@ the web preview that every push to main deploys.
   the light shaders (`01_warm_lights`) before the first frame.
 - [ ] The lab gate stands inside the yard's raised deck: his head pokes through the
   floor and no gate is drawn.
+- [ ] Props stop a body where they are drawn (`fix/house-walls`): today a body walks through
+  fallen towers, deck spans and checkpoints, and meets a house as a disc round its eaves.
 - [ ] ★ The owner plays slices 1-3; his notes become the next plan.
 
 ## Slice 1 — the home coast (done but ★)
