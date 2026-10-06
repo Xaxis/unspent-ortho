@@ -80,7 +80,8 @@ var _time := 0.0
 
 ## The lettering being worked out: its inputs, taken on the main thread, and
 ## its answer, written by the worker. Its own object, not the screen, so the
-## screen is never locked by the worker (a free would fail on it).
+## screen is never locked by the worker (a free would fail on it), and bound to
+## the task by value, so the task holds it alive however the screen goes.
 class RegionsJob extends RefCounted:
 	var key: Array = []
 	var world: WorldData
@@ -90,8 +91,9 @@ class RegionsJob extends RefCounted:
 	var out: Array[Dictionary] = []
 	var task := -1
 
-	func run() -> void:
-		out = UiMapScreen.region_labels_of(world, mask, size, revealed)
+
+static func _work_regions(job: RegionsJob) -> void:
+	job.out = UiMapScreen.region_labels_of(job.world, job.mask, job.size, job.revealed)
 
 
 func _init() -> void:
@@ -199,11 +201,14 @@ func warm() -> void:
 	var job := RegionsJob.new()
 	job.key = key
 	job.world = game.world
-	# The mask as it stands: walking on writes a copy of its own.
-	job.mask = explored.mask
+	# A COPY, NOT THE MASK. A packed array is shared by reference, and the Image
+	# the seen texture is made from holds its buffer too: the next tile walked
+	# copied the buffer out from under the worker mid-read, which read as an
+	# out-of-bounds index on CI. 3.4 MB at 1840, a memcpy.
+	job.mask = explored.mask.duplicate()
 	job.size = explored.size
 	job.revealed = explored.revealed
-	job.task = WorkerThreadPool.add_task(job.run, false, "survey lettering")
+	job.task = WorkerThreadPool.add_task(UiMapScreen._work_regions.bind(job), false, "survey lettering")
 	_regions_job = job
 
 
