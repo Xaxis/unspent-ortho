@@ -22,6 +22,10 @@ const DRAINS := [
 const DRAIN := ["res://src/main.gd", "drain_pool"]
 
 
+func teardown() -> void:
+	WorldCache.enabled = true
+
+
 func _body(source: String, fn: String) -> String:
 	var lines := source.split("\n")
 	var out := PackedStringArray()
@@ -91,6 +95,8 @@ func test_a_bake_left_running_is_waited_out_not_abandoned() -> void:
 ## off the raise's own work, not the clock: a 15 s bar read 16.8 s at load 36 for
 ## a drain that had halted (6.9 s alone), and a whole world is 30 s or more.
 func test_the_island_raised_behind_the_title_is_claimed_at_the_drain() -> void:
+	# A raise, not a load: a kept island stands in under a second, whole.
+	WorldCache.enabled = false
 	RealmWorlds.forget()
 	RealmWorlds.settle()
 	# What the raise grew, caught as it hands it back (RealmWorlds throws away a

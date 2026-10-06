@@ -468,7 +468,7 @@ func _start_talk(row: Dictionary) -> void:
 					view.refresh()
 					return
 	# Somebody of a village that has seen him, with a holding of his standing:
-	# he can ask them to come where a yard cannot reach them (46_settlements
+	# he can ask them to come where a yard's snatch cannot reach them (46_settlements
 	# `holding_offer`, Holding). Before the region's own asks, since what he asks
 	# of them is the more pressing thing.
 	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
@@ -741,6 +741,11 @@ func _witness() -> void:
 		Events.message.emit(StoryContent.REPRISAL[&"seen"])
 		if Story.beat(price):
 			Events.message.emit(StoryContent.beat_says(price))
+	# His own holding's beds, burned by a march while he was away: known when he
+	# comes home to them, as a village's price is known at its roofs.
+	var home: StringName = StoryContent.WITNESS_ON[&"holding_burned_seen"]
+	if not Story.landed(home) and _holding_burned_in_sight():
+		_witnessed(home)
 	# The three memories the secret is hidden in, all back, in any order: he holds
 	# it. Which version is decided at the channel, by the order he relives them in.
 	if StorySecret.complete():
@@ -754,6 +759,21 @@ func _burned_in_sight() -> bool:
 		return false
 	for q in game.query.props_near(game.player.pos, BURNED_SIGHT):
 		if q.kind == PropKind.HOUSE_BURNT and q.pos.distance_to(game.player.pos) <= BURNED_SIGHT:
+			return true
+	return false
+
+
+## A holding of his whose beds a march burned (Holding.marched_on, 48_raids)
+## stands within BURNED_SIGHT of him: his own places near him, asked of
+## 46_settlements, never a list of every holding.
+func _holding_burned_in_sight() -> bool:
+	if game.world == null or game.player == null or game.world.realm != Realm.SURFACE:
+		return false
+	var h := game.get_node_or_null(^"46_settlements")
+	if h == null:
+		return false
+	for s: Settlement in h.call(&"at", Realm.SURFACE, game.player.pos, BURNED_SIGHT):
+		if Story.heard(Holding.marched_on(s.id)):
 			return true
 	return false
 

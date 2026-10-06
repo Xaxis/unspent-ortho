@@ -216,7 +216,9 @@ func play(emitted: StringName, at: Vector3 = Vector3.ZERO, extra_db: float = 0.0
 	var cat := SoundBank.category_of(name)
 	var ui := cat == &"ui"
 	var here := at == Vector3.ZERO or ui
-	var d := 0.0 if here else Vector2(at.x, at.z).distance_to(game.player.pos)
+	# Up a walker's leg his own sounds come from where he hangs (Player.hanging),
+	# and are heard from there, not from the land he left.
+	var d := 0.0 if here else Vector2(at.x, at.z).distance_to(game.player.heard_at())
 	var gain := 1.0
 	# A colossus's landing is played for where it came down, kilometres off: its
 	# own falloff, and heard in the middle of the picture, because a point fifty

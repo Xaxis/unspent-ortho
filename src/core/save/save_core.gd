@@ -40,8 +40,10 @@ const BODY_BOOLS: Array[String] = ["lamp_lit", "crouched"]
 
 static func register(game: Game) -> void:
 	SaveGame.register(&"world", func() -> Variant: return save_world(game), func(v: Variant) -> void: load_world(game, v))
-	SaveGame.register(&"clock", func() -> Variant: return {"minutes": game.clock.minutes},
-		func(v: Variant) -> void: game.clock.minutes = SaveCodec.to_num(_d(v).get("minutes"), game.clock.minutes))
+	SaveGame.register(&"clock", func() -> Variant: return {"minutes": game.clock.minutes, "walk_lead": game.clock.walk_lead},
+		func(v: Variant) -> void:
+			game.clock.minutes = SaveCodec.to_num(_d(v).get("minutes"), game.clock.minutes)
+			game.clock.walk_lead = SaveCodec.to_num(_d(v).get("walk_lead"), 0.0))
 	SaveGame.register(&"player", func() -> Variant: return save_player(game), func(v: Variant) -> void: load_player(game, v))
 	SaveGame.register(&"body", func() -> Variant: return save_body(game.body), func(v: Variant) -> void: load_body(game.body, v))
 	SaveGame.register(&"inventory", func() -> Variant: return save_inventory(game.inventory),

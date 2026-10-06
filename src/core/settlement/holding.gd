@@ -50,6 +50,15 @@ static func taken_from_seen(game: Game) -> bool:
 const RAIDED := &"seen:raid_on_holding"
 
 
+## Marked (Story.hear) when a broken yard's march burns the beds of his holding
+## `id` (48_raids `_burn_his`), and only then: a raid's blows, wear and his own
+## hands never mark it, nor a march's wrecking of a camp. 49_story lands
+## `holding_burned` when he next comes in sight of that holding. Story's, so it
+## keeps through a save; a settlement's id is never given out twice.
+static func marched_on(id: int) -> StringName:
+	return StringName("seen:holding_burned:%d" % id)
+
+
 ## Once a raid has been warned on his holding and until the beds there are
 ## shuttered: the goal line's shutters hop (Guide.way_goal).
 static func shutters_wanted(game: Game) -> bool:

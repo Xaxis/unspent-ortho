@@ -4,7 +4,8 @@ extends GameSystem
 ##
 ## A tour is a text file, one command per line, `#` comments:
 ##   at X,Y                 teleport the player (tile space)
-##   at KIND:NAME           stand where a system says (`cast:maren`: beside a named person)
+##   at KIND:NAME           stand where a system says (`cast:maren`: beside a named person);
+##                          at `gate:NAME`, turned until the press is the gate's
 ##   at prop:NAME           stand beside the nearest prop of that kind (PropKind.NAMES,
 ##                          a space written as _), facing it, in reach of `use`: a tour
 ##                          takes from the world without knowing where the world put it
@@ -116,6 +117,15 @@ extends GameSystem
 ##                          pixels of that colour, for a subject the world cannot
 ##                          be asked about (a stolen neon tube is a handful of
 ##                          pixels of a hue nothing else on screen wears).
+##   climb EVENT SECS       up a walker's leg ledge by ledge, as a player climbs it,
+##                          until the climb's EVENT (`onto`: a cable's top hands him
+##                          on; `rode`: a pitch's top lifts him; `at_hub`) comes, or
+##                          fail after SECS: on each ledge it waits until the climb
+##                          is ready (breath back, the leg to stand through the next
+##                          section), holds the move up key to the next ledge and
+##                          lets go, and logs the ledge as N of M, so a pitch of
+##                          eighteen ledges reads as eighteen ledges and never as
+##                          seventeen misses of its top (#98)
 ##   until WHAT SECS        let the world run and STOP the moment WHAT is true, or
 ##                          after SECS; never fails. `wait` is a promise about what
 ##                          the world will not do in that time, and a tour standing
@@ -428,6 +438,8 @@ func _run() -> void:
 					# KIND:NAME that a system owns (`cast:maren`): whichever answers
 					# `tour_place` says where, so the runner knows no story names.
 					ok = _stand_at_named(parts[1])
+					if ok and parts[1].begins_with("gate:"):
+						ok = await _face_the_gate(parts[1].substr(5))
 				else:
 					var p := parts[1].split(",")
 					_teleport(Vector2(p[0].to_float(), p[1].to_float()))
@@ -628,6 +640,8 @@ func _run() -> void:
 				ok = await _await(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
 			"until":
 				await _until(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
+			"climb":
+				ok = await _climb_to(parts[1], parts[2].to_float() if parts.size() > 2 else 600.0)
 			"spawn":
 				if parts.size() > 3 and parts[2] == "beyond":
 					ok = _spawn_beyond(parts[1], parts[3])
@@ -857,6 +871,45 @@ func _until(what: String, secs: float) -> void:
 	_forget(what)
 
 
+## `climb EVENT SECS` (the verb's header line): ledge by ledge until the climb's
+## EVENT, each ledge logged as N of the pitch's M.
+func _climb_to(event: String, secs: float) -> bool:
+	var began := Time.get_ticks_msec()
+	var stepped := Engine.get_physics_frames()
+	var sys := _system("43_climb")
+	var done := "climb:" + event
+	var n := 0
+	_forget("climb:ledge")
+	while _in_budget(began, stepped, secs):
+		var climb: WalkerClimb = sys.get("climb") if sys != null else null
+		if climb == null:
+			break
+		var pitch := climb.pitch
+		var ledges := int(WalkerClimb.PITCHES[pitch].levels) / WalkerClimb.STANCE_EVERY
+		Input.action_release(&"move_up")
+		await _until("climb_ready", 240.0)
+		Input.action_press(&"move_up")
+		var at_ledge := false
+		while not at_ledge and _in_budget(began, stepped, secs):
+			await get_tree().physics_frame
+			at_ledge = _answered("climb:ledge")
+		_forget("climb:ledge")
+		Input.action_release(&"move_up")
+		await get_tree().physics_frame
+		if not at_ledge:
+			break
+		n += 1
+		print("tour %s: ledge %d of %d on the %s (%s)" % [_name, mini(n, ledges), ledges, WalkerClimb.PITCHES[pitch].id,
+			game.clock.label() if game.clock != null else "-"])
+		if _answered(done):
+			_forget(done)
+			return true
+		if climb.pitch != pitch:
+			n = 0
+	printerr("tour %s: no %s within %.1f s, %d ledges climbed" % [_name, done, secs, n])
+	return false
+
+
 func _await(what: String, secs: float) -> bool:
 	var began := Time.get_ticks_msec()
 	var stepped := Engine.get_physics_frames()
@@ -1037,6 +1090,34 @@ func _now_true(what: String) -> bool:
 ## what is built), so a tour names what it wants instead of the tile it lay on
 ## last month. It tries each way round until the prop is the thing under the hand:
 ## what the ruin left beside it can be nearer, and `use` takes what is in front.
+## A gate stands on the slot its year's people are cast at (StoryGates), and the
+## press goes to the words he faces before the gate (Survival.words_in_front): by
+## the lab's gate in 2029 Priya stood in front of him and the press opened her
+## talk. So `at gate:NAME` turns where he stands, as a player does, until the key
+## row names the gate's own verb (20_realms `use_line`); false when no way he
+## faces gives the gate the press.
+const GATE_VERB := "step into it"
+const GATE_TURNS := 16
+
+
+func _face_the_gate(id: String) -> bool:
+	var realms := _system("20_realms")
+	var turn := 0
+	for i in GATE_TURNS * 4:
+		await get_tree().physics_frame
+		await get_tree().process_frame
+		if _now_true("hint:" + GATE_VERB):
+			return true
+		# Turned only once the gate itself would answer: in its reach, and past
+		# the settle a crossing leaves (20_realms `use_spent`).
+		var ready := _now_true("era_gate:" + id) and (realms == null or not bool(realms.call(&"use_spent")))
+		if ready and turn < GATE_TURNS:
+			Survival.face(game, TAU * float(turn) / float(GATE_TURNS))
+			turn += 1
+	printerr("tour %s: no way he faces at %s gives it the press" % [_name, id])
+	return false
+
+
 func _stand_at_named(what: String) -> bool:
 	for sys in game.systems:
 		if not sys.has_method(&"tour_place"):

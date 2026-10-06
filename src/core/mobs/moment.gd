@@ -21,6 +21,10 @@ var cover := 0.0
 ## own. `StealthQuery` cuts their sight by it and refuses them the notice
 ## outright; nothing alive is fooled by a stolen signet.
 var spoofed := false
+## Up a walker's leg (Game.aloft, written by 32_disposition): out of the land's
+## world. No body below notices him (FightSim._notice), as inside a crags ring;
+## one that had him counts him lost and, past its forget, goes back to its rounds.
+var aloft := false
 ## How loud the player is, against a walk on plain ground (StealthNoise.loudness):
 ## 1 walking, about 0.3 standing still, less crouched or on moss, more running
 ## on shingle. It is the whole of what shortens hearing.
