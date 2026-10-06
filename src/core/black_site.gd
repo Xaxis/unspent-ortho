@@ -33,6 +33,9 @@ const WALL := 3.0
 const MOAT := WALL + 1.0
 
 static var _found: Dictionary = {}
+## Locked: a raise asks on its worker (generation, RealmWarm) while the game asks
+## on the main thread.
+static var _found_lock := Mutex.new()
 ## Worlds remembered at once; a test run grows hundreds and a game holds a few.
 const CACHE_MOST := 64
 
@@ -43,12 +46,17 @@ static func site(w: WorldData) -> Vector2:
 	# seed are not one world when a test has narrowed the registry, and a key of
 	# seed, size and realm handed one of them the other's water.
 	var key := w.get_instance_id()
-	if _found.has(key):
-		return _found[key]
+	_found_lock.lock()
+	var had: Variant = _found.get(key)
+	_found_lock.unlock()
+	if typeof(had) == TYPE_VECTOR2:
+		return had as Vector2
+	var out := _look(w)
+	_found_lock.lock()
 	if _found.size() >= CACHE_MOST:
 		_found.clear()
-	var out := _look(w)
 	_found[key] = out
+	_found_lock.unlock()
 	return out
 
 

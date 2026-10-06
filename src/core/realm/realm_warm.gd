@@ -23,6 +23,10 @@ extends RefCounted
 ##   Sentinels.states, Works.sites   every keeper's den and every depot, for the
 ##                         list as it stands: the systems that ask at setup
 ##                         (21_doors, 34_works, 44_sentinels, 49_cast) find them
+##   BlackSite.site        the threshold's water (49_story hands its deck over on
+##                         the press); generation asked it already, but a world
+##                         loaded from WorldCache was never grown here: 0.8-1.3 s
+##                         on the press at load 30 (tests/realm/test_crossing_start)
 ##   StoryPlan.prepare     the story's casting, taken by the first ask of it
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
@@ -60,6 +64,9 @@ static func prepare(w: WorldData) -> void:
 	@warning_ignore("return_value_discarded")
 	Works.sites(w)
 	t = _took(ms, "keepers", t)
+	@warning_ignore("return_value_discarded")
+	BlackSite.site(w)
+	t = _took(ms, "threshold", t)
 	StoryPlan.prepare(w)
 	_took(ms, "cast", t)
 	# Read off a web run's console: this is the raise's time a title has to hide.

@@ -18,7 +18,7 @@ src/audio/sound_scene.gd::levels_over_time::builder WorldQuery.new
 src/audio/sound_scene.gd::render::builder WorldGen.generate
 src/boot/boot_world.gd::sketch::list
 src/boot/boot_world.gd::start_of::builder GenPlaces.find
-src/boot/boot_world.gd::world::builder WorldGen.generate
+src/boot/world_cache.gd::world::builder WorldGen.generate
 src/content/biomes/scrapwood.gd::_closing_corridor::index
 src/core/black_site.gd::_moated::raw
 src/core/black_site.gd::_sea::raw
