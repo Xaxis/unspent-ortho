@@ -12,7 +12,7 @@
 # within --timeout (default 600 s: a hang guard, not a speed bar). The log is
 # read from --log-file as well as stdout: a Windows build is a GUI program with
 # no console, and a release template prints a line as it comes only because
-# project.godot says so (run/flush_stdout_on_print). Its user data is a fresh
+# project.godot says so (run/flush_stdout_on_print.pc). Its user data is a fresh
 # folder (XDG_DATA_HOME, on Linux), so a boot on someone's machine never reads
 # or writes their saves. Prints `boot-check ok ...` or `boot-check FAILED: ...`.
 set -uo pipefail
