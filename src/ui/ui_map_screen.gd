@@ -201,10 +201,11 @@ func warm() -> void:
 	var job := RegionsJob.new()
 	job.key = key
 	job.world = game.world
-	# A COPY, NOT THE MASK. A packed array is shared by reference, and the Image
-	# the seen texture is made from holds its buffer too: the next tile walked
-	# copied the buffer out from under the worker mid-read, which read as an
-	# out-of-bounds index on CI. 3.4 MB at 1840, a memcpy.
+	# AN ARRAY OF ITS OWN, NOT THE MASK. A packed array is shared by reference,
+	# and the Image the seen texture is made from holds its buffer too: the next
+	# tile walked moved the buffer out from under the worker mid-read, which read
+	# as an out-of-bounds index on CI. `duplicate` shares the buffer until the
+	# next write, which then copies it on the main thread's side, once.
 	job.mask = explored.mask.duplicate()
 	job.size = explored.size
 	job.revealed = explored.revealed
