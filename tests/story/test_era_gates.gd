@@ -96,7 +96,6 @@ func test_the_press_beside_somebody_at_a_gate_speaks_to_them() -> void:
 	Story.forget()
 
 
-
 ## HALE WAITS ON THE PLATFORM (docs/STORY.md: THRESHOLD, Hale, on the sea
 ## platform). The threshold is a deck in the sea that stops a body (BlackSite),
 ## and nothing dry lies within the eight tiles a person is looked for in
@@ -137,5 +136,36 @@ func test_hale_waits_on_the_platform_and_is_spoken_to_from_the_water() -> void:
 	Input.action_release(&"use")
 	await frames(3)
 	check(bool(Sx.system(g, "49_story").call(&"tour_seen", &"talking")), "and the press is his")
+
+
+## A PRESS OUT OF A GATE'S REACH IS NOT THE GATE'S. 20_realms looks for the gate
+## a body stands in every LOOK_EVERY, and a press made between two looks, after a
+## step or a warp out of its reach, was answered by the gate he had left:
+## holdfast.tour stood at Oyster Row beside its gate, warped to the driftwood and
+## pressed to gather, and was in 2029. The look is held off here, as it is for up
+## to LOOK_EVERY after any step.
+func test_a_press_out_of_a_gates_reach_stays_in_2098() -> void:
+	Story.forget()
+	Sx.use_root("era-gate-left")
+	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11", "--weather=clear:0", "--beats=body_new"])
+	await process_frames(3)
+	var realms := Sx.system(g, "20_realms")
+	var gate := Vector2.INF
+	for row: Dictionary in StoryGates.all(g.world):
+		if row.id == &"gate_home":
+			gate = row.pos
+	check(gate.is_finite(), "his house's gate stands in 2098")
+	g.view.ensure_near(g.player.place(gate))
+	await tree.create_timer(1.0).timeout
+	eq(realms.get("gate_near"), &"gate_home", "standing in it, he is in its reach")
+	realms.set("_look", 10.0)
+	var out := g.player.place(gate + Vector2(6.0, 0.0))
+	g.view.ensure_near(out)
+	check(out.distance_to(gate) > GateStand.REACH, "and then out of it (%.1f off)" % out.distance_to(gate))
+	Input.action_press(&"use")
+	await process_frames(3)
+	Input.action_release(&"use")
+	await process_frames(3)
+	eq(StringName(realms.get("_realm")), Realm.SURFACE, "a press made out of its reach stays in 2098")
 	Sx.end(g)
 	Story.forget()
