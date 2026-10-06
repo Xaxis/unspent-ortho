@@ -30,6 +30,11 @@ const W := preload("res://src/models/props/works.gd")
 const DECK_LONG := 6.6
 const DECK_WIDE := 3.4
 const DECK_HIGH := 1.15
+## The ramp down off the deck's near end: how far it runs out, and how far in from
+## each long side it starts. Drawn and walked on, never a wall; the story keeps a
+## gate's light off it (GateStand).
+const RAMP_LONG := 1.7
+const RAMP_IN := 0.4
 ## The mast over it: the thing seen from twenty tiles out. The tallest thing the
 ## plan builds outside a stack — half again the height of a fire tower (4.2), so
 ## a depot is a silhouette on the horizon and not a shed in a field.
@@ -293,9 +298,9 @@ static func _deck(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) ->
 			var x := -hl + 0.3 + i * (DECK_LONG - 0.6) / 6.0
 			k.block(x, DECK_HIGH + 0.2, z, 0.07, 0.56, 0.07, PLATE_DARK)
 	# The ramp down off the near end, ruled, with its own kerbs.
-	k.box(Vector3(hl, 0.02, -hw + 0.4), Vector3(hl + 1.7, 0.1, hw - 0.4), PLATE_DARK, PLATE)
-	k.strut(Vector3(hl, DECK_HIGH + 0.14, -hw + 0.5), Vector3(hl + 1.65, 0.08, -hw + 0.5), 0.08, 4, PLATE)
-	k.strut(Vector3(hl, DECK_HIGH + 0.14, hw - 0.5), Vector3(hl + 1.65, 0.08, hw - 0.5), 0.08, 4, PLATE)
+	k.box(Vector3(hl, 0.02, -hw + RAMP_IN), Vector3(hl + RAMP_LONG, 0.1, hw - RAMP_IN), PLATE_DARK, PLATE)
+	k.strut(Vector3(hl, DECK_HIGH + 0.14, -hw + 0.5), Vector3(hl + RAMP_LONG - 0.05, 0.08, -hw + 0.5), 0.08, 4, PLATE)
+	k.strut(Vector3(hl, DECK_HIGH + 0.14, hw - 0.5), Vector3(hl + RAMP_LONG - 0.05, 0.08, hw - 0.5), 0.08, 4, PLATE)
 	# Strips under the deck lip and along the rail: the light that says the thing
 	# is live, and the whole of what lights the ground a player comes up to it
 	# over. STEADY, all of them — a depot whose only light blinks is a depot that
