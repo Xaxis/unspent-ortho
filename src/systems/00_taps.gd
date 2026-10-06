@@ -9,10 +9,14 @@ extends GameSystem
 ## player's quick tap is the same thing whenever a frame takes longer than the
 ## tap.
 ##
-## So a key seen down in an input event or at any physics step since the last
-## frame, and up again by this one, is held down for this one frame and let go
-## at the next. Numbered first, so every system's own edge finds it in that same
-## frame. A key still down (a held press) is never touched.
+## So a key that went down since the last frame (a press event, or seen down at
+## a physics step while that frame had it up) and is up again by this one, is
+## held down for this one frame and let go at the next. Numbered first, so every
+## system's own edge finds it in that same frame. A key still down is never
+## touched, and neither is one the last frame already saw down: a press let go
+## inside a physics step, after this polled it (a tour's `tap`), was pressed again
+## for a frame, and june.tour's `tap inventory` opened the page and shut it
+## (tests/core/test_taps.gd).
 
 ## The game's own actions; the engine's `ui_` ones are the menus' business.
 var _actions: Array[StringName] = []
@@ -20,6 +24,8 @@ var _actions: Array[StringName] = []
 var _seen: Dictionary = {}
 ## Actions this system holds down for this frame, to let go at the next.
 var _holding: Dictionary = {}
+## Actions down when the last frame's systems looked: a press they have seen.
+var _down: Dictionary = {}
 
 
 func setup(g: Game) -> void:
@@ -39,8 +45,9 @@ func _input(event: InputEvent) -> void:
 
 func _physics_process(_delta: float) -> void:
 	for a: StringName in _actions:
-		# What this system holds down is its own press, not one seen.
-		if not _holding.has(a) and Input.is_action_pressed(a):
+		# What this system holds down is its own press, not one seen; and a key the
+		# last frame saw down is a press it has had.
+		if not _holding.has(a) and not _down.has(a) and Input.is_action_pressed(a):
 			_seen[a] = true
 
 
@@ -55,3 +62,7 @@ func _process(_delta: float) -> void:
 			Input.action_press(a)
 			_holding[a] = true
 	_seen.clear()
+	_down.clear()
+	for a: StringName in _actions:
+		if Input.is_action_pressed(a):
+			_down[a] = true
