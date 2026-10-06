@@ -68,6 +68,11 @@ var reachable: Portal = null
 ## this same coast (`Realm.land_realm`) and a way through time that moved you
 ## sideways as well as back would be a different place, not a different year.
 var gate_near: StringName = &""
+## Where `gate_near` stands. The shafts and gates are looked for every LOOK_EVERY,
+## and a press is answered by what is in reach NOW: warped from beside Oyster
+## Row's gate to its driftwood, holdfast.tour's press to gather crossed into
+## 2029 through the gate it had left, and found no wreckage there for its rag.
+var _gate_at := Vector2.INF
 var _gate_nodes: Dictionary = {}
 ## How many times the player has crossed.
 var crossings := 0
@@ -208,9 +213,9 @@ func _press_goes() -> StringName:
 	# six, in 2029, the gate's reach caught the key and took him back to 2098.
 	if _settle > 0.0 or game.input_blocked() or Survival.ask_pending(game) or Survival.words_in_front(game):
 		return &""
-	if reachable != null and _shaft_wins():
+	if reachable != null and reachable.pos.distance_to(game.player.pos) <= Portal.REACH and _shaft_wins():
 		return &"shaft"
-	if gate_near != &"":
+	if gate_near != &"" and _gate_at.distance_to(game.player.pos) <= GATE_REACH:
 		return &"gate"
 	return &""
 
@@ -407,6 +412,7 @@ func _watch_gates() -> void:
 	for g: Dictionary in open:
 		if (g.pos as Vector2).distance_to(at) <= GATE_REACH:
 			gate_near = g.id
+			_gate_at = g.pos
 			if not _taught.has(g.id):
 				_taught[g.id] = true
 				Events.hint.emit(PlayerSettings.spell("Another day is standing on the ground here. %s to step into it.", [&"use"]), PlayerSettings.cap_of(&"use"))
