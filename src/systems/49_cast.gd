@@ -128,14 +128,14 @@ func _process(delta: float) -> void:
 
 ## Where each character stands in this world. Recomputed, never saved: the world
 ## grows the same from its seed, so the casting does too.
-func _cast(people := true) -> void:
+func _cast(with_people := true) -> void:
 	_clear()
 	if game == null or game.world == null:
 		return
 	placed = StoryPlan.cast(game.world).duplicate()
 	_read_gates()
 	_place_crossing()
-	if not people:
+	if not with_people:
 		return
 	for c: StoryCharacter in StoryCast.all():
 		# Someone with a house of their own is met in it (21_doors wakes them there).
