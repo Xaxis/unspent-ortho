@@ -95,6 +95,9 @@ var _rb_task := -1
 var _rb_key := Vector2i.ZERO
 var _rb_mesher: TerrainMesher
 var _rb_out: Array = []
+## The chunk baking was drawn again on the main thread since its bake took its
+## props (`refresh_props`), so the bake is older than what is drawn: dropped.
+var _rb_stale := false
 ## The longest a rebaked chunk's props took to swap in on the main thread, usec.
 var rebake_swap_usec_max := 0
 var _task_chunk: TerrainMesher.Chunk
@@ -1396,14 +1399,20 @@ func refresh_props(prop: WorldProp) -> void:
 		return
 	if not _chunks.has(key):
 		return
+	# Drawn as it is now: a rebake under way took its props before this, and one
+	# waiting would only draw this again.
+	if _rb_task >= 0 and _rb_key == key:
+		_rb_stale = true
+	_rb_wanted.erase(key)
 	var snap := _snapshot(key)
 	_swap_props(key, bake_props(_data.get(key), mesher, snap[0], snap[1]))
 
 
 ## The same, off the main thread: the chunk's props are rebaked on a worker and
-## swapped in when done, the old ones drawn until then. For a change nobody is
-## watching happen (23_hush turns a stone while it is off screen): a chunk's
-## props rebaked on the main thread cost 10 to 20 ms, a dropped frame each.
+## swapped in when done, the old ones drawn until then, a frame or a few. For a
+## change that can be drawn that late: a stone 23_hush turns off screen, and
+## every prop set down in play (Survival.add_prop). A chunk's props rebaked on
+## the main thread cost 10 to 20 ms, and three bakes once its mid models are in.
 func refresh_props_soon(prop: WorldProp) -> void:
 	if not threaded:
 		refresh_props(prop)
@@ -1428,8 +1437,9 @@ func _rebake_step() -> void:
 			return
 		WorkerThreadPool.wait_for_task_completion(_rb_task)
 		_rb_task = -1
-		# Wanted again while it baked: the next bake has the newer props.
-		if _chunks.has(_rb_key) and not _rb_wanted.has(_rb_key):
+		# Wanted again while it baked: the next bake has the newer props. Drawn
+		# again in place while it baked: what is drawn is newer than it.
+		if _chunks.has(_rb_key) and not _rb_wanted.has(_rb_key) and not _rb_stale:
 			var t0 := Time.get_ticks_usec()
 			_swap_props(_rb_key, _rb_out[0], _rb_out[1])
 			rebake_swap_usec_max = maxi(rebake_swap_usec_max, Time.get_ticks_usec() - t0)
@@ -1444,6 +1454,7 @@ func _rebake_step() -> void:
 		_rb_mesher = TerrainMesher.new(world)
 	var snap := _snapshot(key)
 	_rb_key = key
+	_rb_stale = false
 	_rb_task = WorkerThreadPool.add_task(_rebake_worker.bind(_data.get(key), snap[0], snap[1]), false, "props")
 
 
@@ -1487,16 +1498,17 @@ func _swap_props(key: Vector2i, baked: Array, mid: Array = []) -> void:
 ## landscape's stock drew a croft round a tower's wall, and a ruin a croft
 ## round a metropolis stump's.
 static func prop_country_of(w: WorldData, p: WorldProp, ch: TerrainMesher.Chunk) -> int:
-	if ch != null and p.kind != PropKind.PLATFORM and not BUILT.has(p.kind):
+	if ch != null and p.kind != PropKind.PLATFORM and not BUILT.has(p.kind) and not PropWalls.walled(p.kind):
 		var c := ch.country_at(p.pos.x, p.pos.y)
 		if c != Country.SEA:
 			return c
 	return w.built_country(p)
 
 
-## Kinds whose drawn form is what stops a body (their walls or their `solid`
-## come from it), so they are never dressed across an ecotone.
-const BUILT: Array[int] = [PropKind.HOUSE, PropKind.HOUSE_BURNT, PropKind.RUIN, PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF]
+## Kinds whose drawn form is what stops a body (a house's `solid` comes from its
+## form), so they are never dressed across an ecotone; nor is a walled kind
+## (PropWalls), whose walls are fitted to its own land's model.
+const BUILT: Array[int] = [PropKind.HOUSE, PropKind.HOUSE_BURNT]
 
 
 func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
@@ -1647,17 +1659,13 @@ static func prop_xform(p: WorldProp, country: int, seed_value: int, h: float) ->
 		facing = WIND_BEARING + (Rng.hash01(seed_value, p.id, 92) - 0.5) * 0.5
 	# A model faces +X at rotation 0; turning to `facing` is rotation -facing.
 	var rot := Basis(Vector3.UP, -facing)
-	# A field of one model read as a tiled asset field: a dozen identical
-	# drill tripods, thirty identical stumps, an arc of identical debris
-	# (playtest, wave N). So every instance is cast a little differently as
-	# well as turned, in the MODEL's own frame, so a fence still runs along
-	# its line and a sign still faces its way. Masts keep the uniform scale:
-	# their cables hang from points computed at it.
+	# Every instance cast a little differently (PropModels.cast), in the
+	# MODEL's own frame, so a fence still runs along its line and a sign still
+	# faces its way. Masts keep the uniform scale: their cables hang from points
+	# computed at it.
 	var grow := Vector3.ONE
 	if cable_points(p.kind).is_empty():
-		grow = Vector3(1.0 + (Rng.hash01(seed_value, p.id, 93) - 0.5) * 0.22,
-			1.0 + (Rng.hash01(seed_value, p.id, 94) - 0.5) * 0.30,
-			1.0 + (Rng.hash01(seed_value, p.id, 95) - 0.5) * 0.22)
+		grow = PropModels.cast(seed_value, p.id)
 	# Scale first, then turn, so the cast is in the model's own frame.
 	return Transform3D(rot * Basis.from_scale(grow * p.scale), Vector3(p.pos.x, h, p.pos.y))
 

@@ -184,6 +184,7 @@ func _stamp_solids() -> void:
 	var hi := Vector2(ox + _side, oy + _side)
 	_stamp(query.ordinary_rows_in(lo, hi, prop_radius), ox, oy)
 	_stamp(query.wide_rows_in(lo, hi, prop_radius), ox, oy)
+	_stamp_walls(query.wall_rows_in(lo, hi, prop_radius + WorldQuery.BLOCK_SLACK), ox, oy)
 
 
 func _start_dial() -> void:
@@ -291,6 +292,21 @@ func _stamp(rows: PackedInt32Array, ox: int, oy: int) -> void:
 					_p_level[ly * _side + lx] = NOT_GROUND
 
 
+## A walled prop's walls (PropWalls) shut cells as its solid would: what stops a
+## body moving (WorldQuery._fits) is what the field routes round. Each prop's
+## shut tiles are the query's, worked out once per body size (wall_tiles), so a
+## rebuild only lays them.
+func _stamp_walls(rows: PackedInt32Array, ox: int, oy: int) -> void:
+	var n := world.size
+	for row in rows:
+		for k in query.wall_tiles(row, prop_radius):
+			var lx := k % n - ox
+			var ly := k / n - oy
+			if lx < 0 or ly < 0 or lx >= _side or ly >= _side or (absi(lx - RADIUS) <= 1 and absi(ly - RADIUS) <= 1):
+				continue
+			_p_level[ly * _side + lx] = NOT_GROUND
+
+
 ## Cost from this tile to the player's; FAR when there is no way within the radius.
 func steps(tx: int, ty: int) -> int:
 	var lx := tx - centre.x + RADIUS
@@ -375,6 +391,10 @@ static func prop_stands_in(q: WorldQuery, p: Vector2, radius: float, through: Ar
 			continue
 		var rr := solid + radius
 		if t.pos[row].distance_squared_to(p) < rr * rr:
+			return true
+	for c: Vector3 in q.walls_at(p):
+		var rr := c.z + radius
+		if Vector2(c.x, c.y).distance_squared_to(p) < rr * rr:
 			return true
 	return false
 

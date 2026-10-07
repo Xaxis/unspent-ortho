@@ -28,6 +28,14 @@
       "tests": []
     },
     {
+      "id": "cli:boot-check",
+      "kind": "cli",
+      "entry": "tools/boot-check.sh",
+      "reach": "tools/heavy.sh tools/boot-check.sh build/linux/UNSPENT.x86_64",
+      "area": "tools",
+      "tests": []
+    },
+    {
       "id": "cli:canon",
       "kind": "cli",
       "entry": "tools/canon.sh",
@@ -120,6 +128,14 @@
       "kind": "cli",
       "entry": "tools/web.sh",
       "reach": "tools/web.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "job:release",
+      "kind": "job",
+      "entry": ".github/workflows/release.yml",
+      "reach": "env -u GITHUB_TOKEN gh workflow run release.yml --repo Xaxis/unspent-ortho --ref BRANCH -f version=X",
       "area": "tools",
       "tests": []
     },
@@ -444,10 +460,10 @@
       "tests": []
     },
     {
-      "id": "system:23_ruins",
+      "id": "system:23_walls",
       "kind": "system",
-      "entry": "src/systems/23_ruins.gd",
-      "reach": "tools/test.sh test_ruin_walls",
+      "entry": "src/systems/23_walls.gd",
+      "reach": "tools/test.sh test_prop_walls,test_walls_by_cell,test_prop_footprint",
       "area": "world-places",
       "tests": []
     },

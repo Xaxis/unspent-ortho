@@ -8,6 +8,14 @@ config_version=5
 config/name="UNSPENT"
 run/main_scene="res://src/main.tscn"
 config/features=PackedStringArray("4.7")
+; A release template holds printed lines in a buffer until it fills or the game
+; quits. A shipped Linux build booted headless for 600 s on a runner and its log
+; and stdout stayed empty, so tools/boot-check.sh never saw its ready line, and a
+; crashed game's log ends a buffer early. Debug runs flush already; the game
+; prints little in play. Desktop only (`.pc`): the web's console needs no flush,
+; and a threaded page that stalled raising the land (release run 37508087347)
+; is reason enough not to change how its threads print.
+run/flush_stdout_on_print.pc=true
 
 [autoload]
 

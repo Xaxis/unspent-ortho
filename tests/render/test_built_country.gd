@@ -31,8 +31,9 @@ func test_a_house_is_drawn_in_the_form_it_stands_on() -> void:
 		eq(wrong.size(), 0, "seed %d: houses drawn in another form than stops a body: %s" % [s, "; ".join(wrong.slice(0, 6))])
 
 
-## Every ruin drawn in the ruin form whose walls RuinWalls hands the query.
-func test_a_ruin_is_drawn_in_the_form_its_walls_are() -> void:
+## Every walled prop drawn in its own land's model, the one its walls are
+## fitted to (PropWalls).
+func test_a_walled_prop_is_drawn_in_the_form_its_walls_are() -> void:
 	for s in SEEDS:
 		var w := WorldGen.generate(s, SIZE)
 		var m := TerrainMesher.new(w)
@@ -40,16 +41,16 @@ func test_a_ruin_is_drawn_in_the_form_its_walls_are() -> void:
 		var ruins := 0
 		var wrong := 0
 		for p in w.each_prop():
-			if not RuinWalls.KINDS.has(p.kind):
+			if not PropWalls.walled(p.kind):
 				continue
 			ruins += 1
 			var drawn := WorldView.prop_country_of(w, p, _chunk(m, chunks, p.pos))
 			var walled := w.built_country(p)
-			if BiomeDressing.of(drawn).ruin_form != BiomeDressing.of(walled).ruin_form \
-					or PropModels.variant_of(p, w.seed_value, drawn) != PropModels.variant_of(p, w.seed_value, walled):
+			if PropWalls.shape(p.kind, PropModels.variant_of(p, w.seed_value, drawn), drawn) \
+					!= PropWalls.shape(p.kind, PropModels.variant_of(p, w.seed_value, walled), walled):
 				wrong += 1
-		print("  info seed %d: %d ruins, %d drawn in another form than their walls" % [s, ruins, wrong])
-		eq(wrong, 0, "seed %d: ruins drawn in another form than their walls" % s)
+		print("  info seed %d: %d walled props, %d drawn in another form than their walls" % [s, ruins, wrong])
+		eq(wrong, 0, "seed %d: walled props drawn in another form than their walls" % s)
 
 
 ## A house the hunters burn stands on its house's ground, in its house's form.

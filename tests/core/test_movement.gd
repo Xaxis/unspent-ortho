@@ -204,11 +204,11 @@ func test_a_body_is_never_trapped_by_a_corner_it_already_overhangs() -> void:
 
 ## A BIG SOLID STOPS A BODY AT ITS EDGE FROM EVERY SIDE. The search for what a
 ## move pushes into looked two tiles round, so a solid over about 1.72 let a body
-## sink into it: 0.63 at a solid of 2.40, 1.45 at 3.22 (city buildings, the big
-## coastal houses, murals). Walked straight at from 32 bearings, a solid of 3.22
-## stops the body at its own radius plus the body's, whether the world held it
-## when the query was built or it was added after (WorldQuery's wide grid takes
-## it either way), standing across a wide cell's corner.
+## sink into it: 0.63 at a solid of 2.40, 1.45 at 3.22. Walked straight at from
+## 32 bearings, a disc kind's solid of 3.22 stops the body at its own radius plus
+## the body's, whether the world held it when the query was built or it was added
+## after (WorldQuery's wide grid takes it either way), standing across a wide
+## cell's corner.
 func test_a_big_solid_stops_a_body_at_its_edge_from_every_side() -> void:
 	for late: bool in [false, true]:
 		var w := WorldData.new(3, 48)
@@ -217,7 +217,10 @@ func test_a_big_solid_stops_a_body_at_its_edge_from_every_side() -> void:
 			w.ground[i] = Ground.GRASS
 			w.country[i] = Country.COAST
 		var centre := Vector2(24.2, 23.8)
-		var prop := WorldProp.new(w.next_id(), PropKind.HOUSE, centre, 0.0, 3.22 / PropKind.SOLID[PropKind.HOUSE])
+		# A kind still held by its one disc: a walled kind (a house) is stopped at its
+		# drawn walls instead, which test_prop_walls holds (PropWalls).
+		check(not PropWalls.walled(PropKind.BOULDER), "a boulder is a disc kind, the case this holds")
+		var prop := WorldProp.new(w.next_id(), PropKind.BOULDER, centre, 0.0, 3.22 / PropKind.SOLID[PropKind.BOULDER])
 		var q: WorldQuery = null
 		if late:
 			q = WorldQuery.new(w)

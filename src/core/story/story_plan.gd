@@ -160,11 +160,13 @@ static var _ready: Dictionary = {}
 static var _ready_lock := Mutex.new()
 
 
-static func prepare(world: WorldData) -> void:
-	# Not the era's: its casting mirrors the surface's (StoryCasting._twin), and
-	# where that is not cast already it would grow a whole surface on the worker.
-	if world == null or world.realm == Realm.ERA:
-		return
+## Returns the casting, or {} where none was got ready.
+static func prepare(world: WorldData) -> Dictionary:
+	# The era's only where the surface it mirrors is cast already
+	# (StoryCasting._twin): where it is not, it would grow a whole surface on the
+	# worker.
+	if world == null or (world.realm == Realm.ERA and not StoryCasting.has_twin(world)):
+		return {}
 	var got := StoryCasting.cast(world, slots())
 	_ready_lock.lock()
 	for k: int in _ready.keys():
@@ -172,6 +174,7 @@ static func prepare(world: WorldData) -> void:
 			_ready.erase(k)
 	_ready[world.get_instance_id()] = [weakref(world), got]
 	_ready_lock.unlock()
+	return got
 
 
 ## [true, casting] when `world`'s was got ready, taken; else [false, {}].

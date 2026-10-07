@@ -215,7 +215,7 @@ func _press_goes() -> StringName:
 		return &""
 	if reachable != null and reachable.pos.distance_to(game.player.pos) <= Portal.REACH and _shaft_wins():
 		return &"shaft"
-	if gate_near != &"" and _gate_at.distance_to(game.player.pos) <= GATE_REACH:
+	if gate_near != &"" and _gate_at.distance_to(game.player.pos) <= GATE_REACH and _gate_wins():
 		return &"gate"
 	return &""
 
@@ -242,6 +242,16 @@ func _shaft_wins() -> bool:
 	if t == null:
 		return true
 	return reachable.pos.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
+
+
+## A gate yields as a shaft does: it takes the key only when its middle is
+## nearer than whatever is under the hand. Standing in a gate's light facing
+## driftwood, the press took him into 2029 when he meant to gather.
+func _gate_wins() -> bool:
+	var t := Survival.use_target(game)
+	if t == null:
+		return true
+	return _gate_at.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
 
 
 ## THE PRESS THAT CROSSED IS SPENT. A crossing MOVES the player, so the same

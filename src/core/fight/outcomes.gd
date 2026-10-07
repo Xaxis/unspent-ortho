@@ -133,6 +133,9 @@ static func _blocked(query: WorldQuery, at: Vector2, except: WorldProp) -> bool:
 	for q in query.solid_props_near(at, Tuning.PLAYER_RADIUS):
 		if not WorldProp.same(q, except) and q.solid > 0.0 and q.pos.distance_to(at) < q.solid + Tuning.PLAYER_RADIUS:
 			return true
+	for c: Vector3 in query.blocks_at(at):
+		if Vector2(c.x, c.y).distance_to(at) < c.z + Tuning.PLAYER_RADIUS:
+			return true
 	return false
 
 

@@ -163,9 +163,9 @@
   },
   {
    "kind": "system",
-   "label": "23_ruins",
-   "entry": "src/systems/23_ruins.gd",
-   "reach": "tools/test.sh test_ruin_walls",
+   "label": "23_walls",
+   "entry": "src/systems/23_walls.gd",
+   "reach": "tools/test.sh test_prop_walls,test_walls_by_cell,test_prop_footprint",
    "area": "world-places"
   },
   {
@@ -642,6 +642,20 @@
    "label": "deploy",
    "entry": "tools/deploy.sh",
    "reach": "tools/deploy.sh",
+   "area": "tools"
+  },
+  {
+   "kind": "cli",
+   "label": "boot-check",
+   "entry": "tools/boot-check.sh",
+   "reach": "tools/heavy.sh tools/boot-check.sh build/linux/UNSPENT.x86_64",
+   "area": "tools"
+  },
+  {
+   "kind": "job",
+   "label": "release",
+   "entry": ".github/workflows/release.yml",
+   "reach": "env -u GITHUB_TOKEN gh workflow run release.yml --repo Xaxis/unspent-ortho --ref BRANCH -f version=X",
    "area": "tools"
   }
  ],

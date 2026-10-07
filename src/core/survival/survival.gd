@@ -155,10 +155,10 @@ static func now_real() -> float:
 static func stations_near(game: Game) -> Array[StringName]:
 	var p := game.player.pos
 	var found: Array = [] # [distance, StringName]
-	for q in game.query.props_near(p, STATION_REACH + 2.0):
+	for q in game.query.reach_near(p, STATION_REACH + 2.0):
 		if not STATION_KINDS.has(q.kind) or game.world.depleted.has(q.id):
 			continue
-		var d := q.pos.distance_to(p) - q.solid
+		var d := game.query.edge_to(q, p)
 		if d > STATION_REACH:
 			continue
 		for s: StringName in STATION_KINDS[q.kind]:
@@ -237,11 +237,13 @@ static func use_target(game: Game) -> WorldProp:
 	var best_score := INF
 	var state := SurvivalState.of(game)
 	var reach := DARK_REACH if in_the_dark(game) else REACH
-	for q in game.query.props_near(p, REACH + 2.0):
+	for q in game.query.reach_near(p, REACH + 2.0):
 		if not (Takes.workable(q.kind) or state.left.has(q.id)) or game.world.depleted.has(q.id):
 			continue
-		var to := q.pos - p
-		var edge := to.length() - q.solid
+		# Toward its nearest edge: a walled thing's nearest wall (WorldQuery.reach_circle).
+		var c := game.query.reach_circle(q, p)
+		var to := Vector2(c.x, c.y) - p
+		var edge := to.length() - c.z
 		if edge > reach:
 			continue
 		var dot := ahead.dot(to.normalized()) if to.length() > 0.01 else 1.0
@@ -712,6 +714,11 @@ static func build(game: Game, station: StringName, free: bool = false, charge: b
 ## A new prop in the world: data, collision and view. `rot` NAN = turned by its id.
 ## `variant` is given here, not set after: the world keeps a prop as its row, and
 ## a field changed on the returned object afterwards is not on the row.
+##
+## Data and collision now; drawn a frame or a few later, its chunk rebaked on a
+## worker (WorldView.refresh_props_soon). Nothing reads a prop's drawing the
+## frame it is set down, and a chunk rebaked here cost every drop and every
+## build 10 to 60 ms on the main thread.
 static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scale: float = 1.0, variant: int = -1) -> WorldProp:
 	var w := game.world
 	var id := w.next_id()
@@ -720,7 +727,7 @@ static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scal
 	w.add_prop(prop)
 	game.query.add_prop(prop)
 	if game.view != null:
-		game.view.refresh_props(prop)
+		game.view.refresh_props_soon(prop)
 	return prop
 
 
@@ -990,6 +997,11 @@ static func _heap_spot_at(game: Game, p: Vector2, facing: float, scale: float) -
 			if q.pos.distance_to(at) < q.solid + radius + 0.05:
 				clear = false
 				break
+		# A wall stops a heap as it stops a body (a ruin's, a fallen tower's).
+		for c: Vector3 in game.query.blocks_at(at):
+			if Vector2(c.x, c.y).distance_to(at) < c.z + radius + 0.05:
+				clear = false
+				break
 		if clear:
 			return at
 	return Vector2(-INF, -INF)
@@ -1079,10 +1091,10 @@ static func station_prop(game: Game, at: StringName) -> WorldProp:
 	var p := game.player.pos
 	var best: WorldProp = null
 	var best_d := INF
-	for q in game.query.props_near(p, STATION_REACH + 2.0):
+	for q in game.query.reach_near(p, STATION_REACH + 2.0):
 		if not STATION_KINDS.has(q.kind) or game.world.depleted.has(q.id) or not (STATION_KINDS[q.kind] as Array).has(at):
 			continue
-		var d := q.pos.distance_to(p) - q.solid
+		var d := game.query.edge_to(q, p)
 		if d <= STATION_REACH and d < best_d:
 			best_d = d
 			best = q
@@ -1138,7 +1150,7 @@ static func collect(game: Game) -> int:
 			# The station is gone, and what was on it with it.
 			state.cooking.erase(id)
 			continue
-		if float(job.done) > now or prop.pos.distance_to(game.player.pos) - prop.solid > STATION_REACH:
+		if float(job.done) > now or game.query.edge_to(prop, game.player.pos) > STATION_REACH:
 			continue
 		state.cooking.erase(id)
 		Crafting.receive(game.inventory, job.makes)

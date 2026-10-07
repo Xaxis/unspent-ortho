@@ -29,8 +29,12 @@ the web preview that every push to main deploys.
   the light shaders (`01_warm_lights`) before the first frame.
 - [x] Every memory gate stands where a body can reach it (`GateStand`): the lab's stood
   inside the yard's raised deck, his head through the floor (batch 9).
-- [ ] Props stop a body where they are drawn (`fix/house-walls`): today a body walks through
-  fallen towers, deck spans and checkpoints, and meets a house as a disc round its eaves.
+- [x] Props stop a body where they are drawn (prop walls); a gate's 2029 growth, the start's
+  strand and a press out of a gate's reach no longer cross him by accident (20241cc8).
+- [x] The release cycle: a version tag builds Mac, Linux, Windows and web, each booted on its
+  own OS; the stutters on pause, survey, doors, drops and striding walkers are gone (e94706ec).
+- [ ] A tap shorter than a frame is lost on a slow machine (`fix/taps`, 00_taps): its hold must
+  never clear a press made since.
 - [ ] ★ The owner plays slices 1-3; his notes become the next plan.
 
 ## Slice 1 — the home coast (done but ★)

@@ -9,8 +9,12 @@ class_name Strand
 ## fills the gap, and it steps back kind by kind: whatever the generator already
 ## put within reach of the spawn is counted, and only the shortfall is laid.
 ##
-##   Strand.lay(game) -> Array[WorldProp]   lay the shortfall (50_survival calls it at setup)
-##   Strand.plan(game) -> Array[Dictionary] {kind, pos} it would lay, laying nothing
+##   Strand.lay(game, keep) -> Array[WorldProp]   lay the shortfall (50_survival calls it at setup)
+##   Strand.plan(game, keep) -> Array[Dictionary] {kind, pos} it would lay, laying nothing
+##
+## `keep` is ground nothing is laid on, as (x, y, radius): the gates into the
+## Before (49_cast `gates_here`), whose reach must be open ground. A mussel rock
+## laid at the water's edge stood 0.99 from seed 1's threshold gate.
 
 ## Tiles from the spawn that count as within a walk.
 const RADIUS := 34.0
@@ -24,14 +28,14 @@ const SPACING := 2.6
 const SHORE_GROUNDS: Array[int] = [Ground.SAND, Ground.SHINGLE, Ground.MUD]
 
 
-static func lay(game: Game) -> Array[WorldProp]:
+static func lay(game: Game, keep: Array[Vector3] = []) -> Array[WorldProp]:
 	var out: Array[WorldProp] = []
-	for p: Dictionary in plan(game):
+	for p: Dictionary in plan(game, keep):
 		out.append(Survival.add_prop(game, int(p.kind), p.pos, float(p.rot), float(p.scale)))
 	return out
 
 
-static func plan(game: Game) -> Array[Dictionary]:
+static func plan(game: Game, keep: Array[Vector3] = []) -> Array[Dictionary]:
 	var w := game.world
 	var home := w.spawn
 	var laid: Array[Dictionary] = []
@@ -55,9 +59,9 @@ static func plan(game: Game) -> Array[Dictionary]:
 		for t: Dictionary in shore:
 			if int(t.water) <= reach:
 				candidates.append(t)
-		_pick(game, laid, candidates, kind, short, 11 + kind)
+		_pick(game, laid, candidates, kind, short, 11 + kind, keep)
 	if int(have.get(PropKind.TIP, 0)) == 0:
-		_lay_tip(game, laid)
+		_lay_tip(game, laid, keep)
 	return laid
 
 
@@ -88,7 +92,7 @@ static func _shore_tiles(w: WorldData, home: Vector2) -> Array[Dictionary]:
 
 ## Choose `n` of `candidates` for `kind`: nearer home first, shuffled by the seed so
 ## the strand is scattered, never on another prop or on something laid.
-static func _pick(game: Game, laid: Array[Dictionary], candidates: Array, kind: int, n: int, salt: int) -> void:
+static func _pick(game: Game, laid: Array[Dictionary], candidates: Array, kind: int, n: int, salt: int, keep: Array[Vector3]) -> void:
 	var w := game.world
 	var s := w.seed_value
 	var scored: Array = []
@@ -103,7 +107,7 @@ static func _pick(game: Game, laid: Array[Dictionary], candidates: Array, kind: 
 		var tile: Vector2i = (pair[1] as Dictionary).tile
 		var pos := Vector2(tile.x + 0.25 + Rng.hash01(s, tile.x, tile.y, salt + 1) * 0.5,
 			tile.y + 0.25 + Rng.hash01(s, tile.x, tile.y, salt + 2) * 0.5)
-		if not _room(game, laid, pos, PropKind.SOLID[kind], SPACING):
+		if not _room(game, laid, pos, PropKind.SOLID[kind], SPACING, keep):
 			continue
 		laid.append({"kind": kind, "pos": pos, "rot": Rng.hash01(s, tile.x, tile.y, salt + 3) * TAU,
 			"scale": 0.8 + Rng.hash01(s, tile.x, tile.y, salt + 4) * 0.4})
@@ -111,7 +115,7 @@ static func _pick(game: Game, laid: Array[Dictionary], candidates: Array, kind: 
 
 
 ## A tip: a few heaps on flat dry ground that is not beach, a short way inland.
-static func _lay_tip(game: Game, laid: Array[Dictionary]) -> void:
+static func _lay_tip(game: Game, laid: Array[Dictionary], keep: Array[Vector3]) -> void:
 	var w := game.world
 	var s := w.seed_value
 	var home := w.spawn
@@ -133,7 +137,7 @@ static func _lay_tip(game: Game, laid: Array[Dictionary]) -> void:
 			if level <= 0 or Ground.is_water(g) or SHORE_GROUNDS.has(g) or g == Ground.ROAD:
 				continue
 			# Somewhere the whole heap fits: flat for two tiles around, and clear.
-			if not _flat(w, x, y, 2, level) or not _room(game, laid, c, 2.4, 0.0):
+			if not _flat(w, x, y, 2, level) or not _room(game, laid, c, 2.4, 0.0, keep):
 				continue
 			best_score = score
 			best = c
@@ -143,7 +147,7 @@ static func _lay_tip(game: Game, laid: Array[Dictionary]) -> void:
 	for i in TIP_HEAPS:
 		var a := float(i) / TIP_HEAPS * TAU + Rng.hash01(s, i, 43) * 0.8
 		var pos := best + Vector2.from_angle(a) * (0.0 if i == 0 else 2.3 + Rng.hash01(s, i, 44) * 0.4)
-		if i > 0 and not _room(game, laid, pos, solid, 0.0):
+		if i > 0 and not _room(game, laid, pos, solid, 0.0, keep):
 			continue
 		laid.append({"kind": PropKind.TIP, "pos": pos, "rot": Rng.hash01(s, i, 45) * TAU, "scale": 0.85 + Rng.hash01(s, i, 46) * 0.3})
 
@@ -156,8 +160,12 @@ static func _flat(w: WorldData, x: int, y: int, r: int, level: int) -> bool:
 	return true
 
 
-## Nothing standing or already laid within `radius` + its own body + `spacing`.
-static func _room(game: Game, laid: Array[Dictionary], pos: Vector2, radius: float, spacing: float) -> bool:
+## Nothing standing or already laid within `radius` + its own body + `spacing`,
+## and no ground kept (`keep`) under its body.
+static func _room(game: Game, laid: Array[Dictionary], pos: Vector2, radius: float, spacing: float, keep: Array[Vector3] = []) -> bool:
+	for k: Vector3 in keep:
+		if pos.distance_to(Vector2(k.x, k.y)) < k.z + maxf(radius, 0.3):
+			return false
 	for q in game.query.props_near(pos, radius + 3.0):
 		var gap := maxf(q.solid, 0.3) + radius + 0.35
 		if q.kind == PropKind.HOUSE:

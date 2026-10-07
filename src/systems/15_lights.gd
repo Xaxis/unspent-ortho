@@ -1155,10 +1155,13 @@ func _held_off(at: Vector2) -> float:
 		return 1.0
 	var near := HELD_NEAR
 	# Walls handed to the query only (a room's, a landmark's, a depot's deck, a
-	# hatch). A prop is not asked: dimming the lantern beside every boulder and
-	# house at night would change the whole game's night, which is not this rule's
-	# to decide.
+	# hatch, a ruin's: PropWalls.ROOMS). A prop is not asked, a walled one's
+	# walls neither (WorldQuery.stops_bodies_only): dimming the lantern beside
+	# every boulder and house at night would change the whole game's night, which
+	# is not this rule's to decide.
 	for c: Vector3 in game.query.blocks_at(at):
+		if game.query.stops_bodies_only(c):
+			continue
 		near = minf(near, Vector2(c.x, c.y).distance_to(at) - c.z)
 	return held_level(near)
 

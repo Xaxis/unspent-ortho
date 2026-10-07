@@ -43,6 +43,18 @@ var sites: Array[Dictionary] = []
 ## beside it, and a flock that quietly shrank read as nothing at all.
 var refuse_short: Dictionary = {}
 var _props_seen := 0
+## `sites` by SITE_JOIN cell (Vector2i -> PackedVector2Array of site positions),
+## so a heap is joined by asking the cells round it, not every site on the island.
+var _site_grid: Dictionary = {}
+## SITES ARE KEPT PER WORLD. A door puts the game in a pocket world and a shaft
+## in another realm's, each with props of its own. One count for all of them
+## reset on the pocket's smaller one, and coming back out the coast's rows below
+## it were never looked at again, so their refuse lost its gulls; the rows above
+## it were walked as WorldProp views in one frame, 987 ms at 1840. `_sites_of`
+## is the world `sites` was found in; every other world's is set aside here,
+## instance id -> [sites, props seen, grid], until that world is let go.
+var _sites_of := 0
+var _kept_sites: Dictionary = {}
 const REFUSE_KEY := -1000
 const SITE_JOIN := 7.0
 ## How far past a heap's edge a gull may stand and still be working it.
@@ -108,24 +120,79 @@ func _stream_one(key: int, centre: Vector2, at: Vector2, now: bool, populate: Ca
 
 
 ## Gather the tips and wrecks into sites. Props are only ever appended (worldgen,
-## then the strand and whatever is built), so only the new ones are looked at.
+## then the strand and whatever is built), so only the new rows are looked at,
+## and only their kinds: each refuse kind is found along the kind column by the
+## engine, and the rows found are joined in row order, as they always were.
 func _find_sites() -> void:
 	var w := game.world
-	if w.prop_count() < _props_seen:
+	_sites_for(w)
+	w.sync_table()
+	var t := w.table
+	var n := t.size()
+	if n < _props_seen:
+		# Fewer rows than were seen is a world laid again in place.
 		sites.clear()
+		_site_grid.clear()
 		_props_seen = 0
-	for n in range(_props_seen, w.prop_count()):
-		var p := w.prop_at(n)
-		if not REFUSE.has(p.kind):
-			continue
-		var joined := false
-		for site in sites:
-			if (site.pos as Vector2).distance_to(p.pos) < SITE_JOIN:
-				joined = true
-				break
-		if not joined:
-			sites.append({"key": REFUSE_KEY - p.id, "pos": p.pos})
-	_props_seen = w.prop_count()
+	if n == _props_seen:
+		return
+	var rows := PackedInt32Array()
+	var kinds := t.kind
+	for k: int in REFUSE:
+		var at := kinds.find(k, _props_seen)
+		while at >= 0:
+			rows.append(at)
+			at = kinds.find(k, at + 1)
+	rows.sort()
+	for row in rows:
+		var p := t.pos[row]
+		if not _joins(p):
+			sites.append({"key": REFUSE_KEY - t.id[row], "pos": p})
+			var c := _site_cell(p)
+			var cell: PackedVector2Array = _site_grid.get(c, PackedVector2Array())
+			cell.append(p)
+			_site_grid[c] = cell
+	_props_seen = n
+
+
+## Make `w`'s sites the ones in hand, setting the last world's aside.
+func _sites_for(w: WorldData) -> void:
+	var id := w.get_instance_id()
+	if id == _sites_of:
+		return
+	if _sites_of != 0:
+		_kept_sites[_sites_of] = [sites, _props_seen, _site_grid]
+	for old: int in _kept_sites.keys():
+		if not is_instance_id_valid(old):
+			_kept_sites.erase(old)
+	var kept: Array = _kept_sites.get(id, [])
+	_kept_sites.erase(id)
+	_sites_of = id
+	if kept.is_empty():
+		sites = [] as Array[Dictionary]
+		_props_seen = 0
+		_site_grid = {}
+	else:
+		sites = kept[0]
+		_props_seen = kept[1]
+		_site_grid = kept[2]
+
+
+static func _site_cell(p: Vector2) -> Vector2i:
+	return Vector2i(floori(p.x / SITE_JOIN), floori(p.y / SITE_JOIN))
+
+
+## Whether a heap at `p` is within SITE_JOIN of a site already found: one in
+## its cell or the eight round it, which are all a site that near can be in.
+func _joins(p: Vector2) -> bool:
+	var c := _site_cell(p)
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var cell: PackedVector2Array = _site_grid.get(c + Vector2i(dx, dy), PackedVector2Array())
+			for q in cell:
+				if q.distance_to(p) < SITE_JOIN:
+					return true
+	return false
 
 
 ## Build the next queued animal. Returns false when there was none.

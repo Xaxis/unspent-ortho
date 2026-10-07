@@ -1145,6 +1145,55 @@ func test_the_probe_is_cheap_among_houses() -> void:
 	_done()
 
 
+## A WALLED PROP STOPS THE EYE AS HIGH AS IT IS DRAWN. Its walls stop a body
+## (PropWalls); handed to the eye with the walls nobody drew, which reach the sky,
+## a waist-high barricade on the line pulls the eye in as a tower does. A line
+## 0.8 over a barricade's drawn top keeps its whole distance; a line through a
+## house a tile under its top is still stopped by it.
+func test_a_walled_prop_stops_the_eye_as_high_as_it_is_drawn() -> void:
+	var g := await _make()
+	var sys := _system(g)
+	var w := g.world
+	var feet := Vector2(g.player.position.x, g.player.position.z)
+	# Bearings with nothing solid within reach of a line four tiles out.
+	var open: Array[Vector2] = []
+	for k in 16:
+		var dir := Vector2.from_angle(TAU * k / 16.0)
+		var empty := true
+		for q in g.query.props_near(feet + dir * 2.0, 4.0):
+			if q.solid > 0.0:
+				empty = false
+		for i in 9:
+			if not (g.query.blocks_at(feet + dir * 0.5 * i) as Array).is_empty():
+				empty = false
+		if empty:
+			open.append(dir)
+	check(open.size() >= 2, "two open bearings to put things on (%d)" % open.size())
+	if open.size() < 2:
+		_done()
+		return
+	for i: int in [0, open.size() - 1]:
+		var kind := PropKind.BARRICADE if i == 0 else PropKind.HOUSE
+		check(PropWalls.walled(kind), "%s is walled" % PropKind.NAMES[kind])
+		var p := WorldProp.new(w.next_id(), kind, feet + open[i] * 2.0, open[i].angle(), 1.0)
+		w.add_prop(p)
+		g.query.add_prop(p)
+		var top := g.view.surface_height(p.pos) + float(sys.call("_top", p))
+		# The line at the prop (halfway out) stands `over` its drawn top.
+		var over := 0.8 if kind == PropKind.BARRICADE else -1.0
+		var head := Vector3(feet.x, top + over - 0.2, feet.y)
+		var to := feet + open[i] * 4.0
+		var eye := Vector3(to.x, head.y + 0.4, to.y)
+		var share := float(sys.call("room", head, eye))
+		print("  info %s on bearing %.0f deg: top %.2f, head %.2f, share %.3f" % [PropKind.NAMES[kind], rad_to_deg(open[i].angle()), top, head.y, share])
+		if kind == PropKind.BARRICADE:
+			near(share, 1.0, 1e-6, "a line over a barricade's drawn top: the eye keeps its distance")
+		else:
+			gt(head.y, g.view.surface_height(feet) + 1.0, "the line through the house stands off the ground")
+			lt(share, 0.7, "a line through a house: the eye stays out of it")
+	_done()
+
+
 ## The probe asks the drawn ground nothing above a ceiling worked out from the
 ## tile levels. If the drawn surface ever rose past that ceiling, the eye would
 ## stand in a hill with nothing noticing, so it is held across a whole island:
