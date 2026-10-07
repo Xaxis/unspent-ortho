@@ -422,3 +422,47 @@ func test_the_sweep_makes_no_prop_for_what_is_not_due() -> void:
 	eq(WorldProp.made - before, 0, "no view made for 200 things gone for good")
 	eq(w.depleted.size(), 200, "and all of them still gone")
 	Fx.done(g)
+
+
+## A hand reaches a walled thing (PropWalls) across the walls that stop the body,
+## not across its placement `solid`: walked straight at from each side until it
+## stops, in the dark (DARK_REACH, the shortest reach), every walled thing the
+## hand takes from is in front of it, and a house is a bench. An intake's walls
+## held a body further off its middle than its `solid` allowed, and in the dark
+## nothing could be taken from it.
+func test_a_walled_thing_is_reached_at_the_walls_that_stop_the_body() -> void:
+	var missed: Array = []
+	var tried := 0
+	for kind: int in PropWalls.KINDS:
+		if not Takes.workable(kind) and not Survival.STATION_KINDS.has(kind):
+			continue
+		for side in 4:
+			var g := Fx.flat(2 * ceili(PropWalls.kind_reach(kind) + 4.0), 23.0)
+			var at := g.player.pos
+			var prop := Fx.put(g, kind, Vector2.ZERO)
+			var dir := Vector2.from_angle(side * PI * 0.5 + 0.3)
+			var p := at + dir * (PropWalls.kind_reach(kind) + 2.0)
+			for i in 800:
+				# Stopped, not slid round it: a step that goes less than half as far
+				# as it was sent ends the walk where it began.
+				var to := g.query.move_body(p, -dir * 0.05, Tuning.PLAYER_RADIUS)
+				if (to - p).dot(-dir) < 0.025:
+					break
+				p = to
+			if (p - at).dot(dir) < 0.0:
+				# Walked under it (a gantry's legs) or through a gap it draws.
+				Fx.done(g)
+				continue
+			g.player.pos = p
+			g.player.facing = (-dir).angle()
+			check(Survival.in_the_dark(g), "dark")
+			tried += 1
+			var name := "%s from %d" % [PropKind.NAMES[kind], side]
+			if Takes.workable(kind) and not WorldProp.same(Survival.use_target(g), prop):
+				missed.append("%s: stopped %.2f off its middle, %.2f off its walls" % [name, p.distance_to(at), g.query.edge_to(prop, p)])
+			if Survival.STATION_KINDS.has(kind) and not Survival.stations_near(g).has(&"bench"):
+				missed.append("%s is no bench" % name)
+			Fx.done(g)
+	print("  info %d walled approaches" % tried)
+	check(tried > 0, "some walled kind is taken from")
+	eq(missed.size(), 0, "a walled thing is in reach where its walls stop the body: %s" % [missed])

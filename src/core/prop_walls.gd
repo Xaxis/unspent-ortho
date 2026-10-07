@@ -1,0 +1,176 @@
+class_name PropWalls
+extends RefCounted
+## WHAT STOPS A BODY AT A WALLED PROP IS WHAT IT DRAWS (#75). For the kinds in
+## KINDS, a prop's own circle (PropKind.SOLID, the row's `solid`) is worldgen's
+## placement footprint and nothing else: what stops a body is the walls fitted
+## to its model (tools/gd/prop_walls_bake.gd, baked into PropWallsTable), in the
+## prop's own turn and scale, so a ruin's doorway and a fallen tower's length
+## read as they are drawn. WorldQuery files these props by their walls' bounds
+## and hands their circles out with the other blocks; it leaves them out of its
+## solid rows.
+##
+## Contract:
+##   KINDS                          the walled kinds
+##   ROOMS                          those whose walls are walls to more than a body
+##   key(kind, variant, land) -> int
+##   shape(kind, variant, land) -> PackedFloat32Array  (x, z, r) model space
+##   reach(kind, variant, land) -> float  the farthest wall edge from the origin
+##   kind_reach(kind) -> float   the farthest any model of the kind reaches, cast
+##   of_row(world, row) -> Array[Vector3]  (x, y, r) tile space, [] if taken
+##   ids_of(world) -> PackedInt32Array      every walled prop's id
+
+## The kinds whose collision is their walls. A kind joins when one disc misses
+## its drawing by more than the footprint test's TOL and it is not drawn as a
+## disc by nature (tests/render/test_prop_footprint.gd says why for the rest).
+const KINDS: Array[int] = [
+	PropKind.RUIN, PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF,
+	PropKind.FALLEN_TOWER, PropKind.DECK_SPAN, PropKind.CHECKPOINT,
+	PropKind.DEMOLITION_GANTRY, PropKind.ARCH_RIB, PropKind.HOLLOW_WAY,
+	PropKind.HULL, PropKind.LOCK_GATE, PropKind.MURAL, PropKind.DROWNED_TRAM,
+	PropKind.HOUSE, PropKind.HOUSE_BURNT, PropKind.LINTEL, PropKind.SPRAYER_GANTRY,
+	PropKind.INTAKE, PropKind.FROZEN_HULL, PropKind.CISTERN, PropKind.VEHICLE,
+	PropKind.SIGN, PropKind.SHACK, PropKind.BARRICADE, PropKind.TIDE_GAUGE,
+	PropKind.ARCHIVE, PropKind.PUMP_HOUSE, PropKind.FALLEN_SPAN,
+]
+
+## THE WALLED KINDS A BODY STANDS AMONG, AS IN A ROOM: their walls are walls to
+## what reads a room's (`set_blocks`) as well as to a body, the eye of the
+## shoulder camera (41_shoulder) and the held lantern (15_lights). Every other
+## walled kind's walls stop a body only, and those read it as the prop it is:
+## the eye by its drawn model's height, the lantern not at all, so a waist-high
+## barricade does not pull the eye in as a tower does, nor a lantern dim beside
+## every house at night (WorldQuery.stops_bodies_only).
+const ROOMS: Array[int] = [PropKind.RUIN, PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF]
+
+## How far a prop's collision may miss its drawing, both ways, in tiles: the
+## same tolerance the machines' bodies are held to (tests/models/test_hit_shapes).
+const TOL := 0.2
+## The waist of a walking body: drawn mass from here up must stand inside the
+## collision (the footprint test's walk-through measure).
+const WAIST := 0.5
+
+## The most a cast stretches a model (PropModels.cast, x and z).
+const CAST_MOST := 1.11
+
+## THE TABLE'S LOOKUPS ARE MADE WHOLE, ONCE, UNDER A LOCK (`_fill`), and only
+## read after. Casting reads walls on worker threads (GateStand) while the game
+## reads them on the main one, and a Dictionary one thread writes while another
+## reads it is not safe; made whole, they are a few ms once a process.
+static var _filled := false
+static var _fill_lock := Mutex.new()
+## Kind -> 1 when walled.
+static var _walled := PackedByteArray()
+## Shape index -> its (x, z, r) triples as a packed array.
+static var _shapes: Dictionary = {}
+## key() -> the farthest wall edge of that model from its origin.
+static var _reach: Dictionary = {}
+## Kind -> the farthest any of its models reaches, cast at its widest.
+static var _kind_reach: Dictionary = {}
+
+
+static func _fill() -> void:
+	_fill_lock.lock()
+	if not _filled:
+		var walled_of := PackedByteArray()
+		walled_of.resize(PropKind.COUNT)
+		for k in KINDS:
+			walled_of[k] = 1
+		var shapes := {}
+		for i in PropWallsTable.SHAPES.size():
+			shapes[i] = PackedFloat32Array(PropWallsTable.SHAPES[i])
+		var reach_of := {}
+		var most := {}
+		for k: int in PropWallsTable.OF:
+			var sh: PackedFloat32Array = shapes[int(PropWallsTable.OF[k])]
+			var r := 0.0
+			for i in range(0, sh.size(), 3):
+				r = maxf(r, Vector2(sh[i], sh[i + 1]).length() + sh[i + 2])
+			reach_of[k] = r
+			var kind := k / 256 / 64
+			most[kind] = maxf(float(most.get(kind, 0.0)), r)
+		for kind: int in most:
+			most[kind] = float(most[kind]) * CAST_MOST
+		_walled = walled_of
+		_shapes = shapes
+		_reach = reach_of
+		_kind_reach = most
+		_filled = true
+	_fill_lock.unlock()
+
+
+static func key(kind: int, variant: int, land: int) -> int:
+	return (kind * 64 + variant) * 256 + land
+
+
+## The key a model's walls are under: its own land's, else the coast's; -1 for none.
+static func _key_of(kind: int, variant: int, land: int) -> int:
+	var k := key(kind, variant, land)
+	if PropWallsTable.OF.has(k):
+		return k
+	k = key(kind, variant, Country.COAST)
+	return k if PropWallsTable.OF.has(k) else -1
+
+
+static func shape(kind: int, variant: int, land: int) -> PackedFloat32Array:
+	if not _filled:
+		_fill()
+	var k := _key_of(kind, variant, land)
+	if k < 0:
+		return PackedFloat32Array()
+	return _shapes[int(PropWallsTable.OF[k])]
+
+
+static func reach(kind: int, variant: int, land: int) -> float:
+	if not _filled:
+		_fill()
+	var k := _key_of(kind, variant, land)
+	return float(_reach[k]) if k >= 0 else 0.0
+
+
+## Whether `kind` is walled, a lookup a body's every step can afford.
+static func walled(kind: int) -> bool:
+	if not _filled:
+		_fill()
+	return _walled[kind] == 1
+
+
+## The farthest any model of `kind` reaches from its origin at scale 1, cast at
+## its widest: what a prop's walls can touch is filed by this.
+static func kind_reach(kind: int) -> float:
+	if not _filled:
+		_fill()
+	return float(_kind_reach.get(kind, 0.0))
+
+
+## The walls of the prop at `row`, in tile space, as it is drawn there: its
+## land's model, turned, scaled and cast (WorldView.prop_xform); none for a
+## taken one.
+static func of_row(w: WorldData, row: int) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	var t := w.table
+	var id := int(t.id[row])
+	if w.depleted.has(id):
+		return out
+	var p := w.prop_at(row)
+	var land := w.built_country(p)
+	var v := PropModels.variant_of(p, w.seed_value, land)
+	var s := shape(int(t.kind[row]), v, land)
+	var pos: Vector2 = t.pos[row]
+	var rot := float(t.rot[row])
+	var sc := float(t.scale[row])
+	var g := PropModels.cast(w.seed_value, id)
+	var rs := minf(g.x, g.z) * sc
+	for i in range(0, s.size(), 3):
+		var at := pos + Vector2(s[i] * g.x, s[i + 1] * g.z).rotated(rot) * sc
+		out.append(Vector3(at.x, at.y, s[i + 2] * rs))
+	return out
+
+
+static func ids_of(w: WorldData) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	w.sync_table()
+	var t := w.table
+	for row in t.size():
+		if walled(int(t.kind[row])):
+			out.append(t.id[row])
+	return out

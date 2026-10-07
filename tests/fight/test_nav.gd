@@ -71,27 +71,31 @@ func test_a_runner_comes_round_the_wall() -> void:
 	check(reached, "it got to the player, at %s" % r.pos)
 
 
-## A BODY'S FIELD SHUTS THE CELLS ITS OWN MOVE CANNOT STAND IN, WIDE SOLIDS AND
-## ALL. The wide ones (over WorldQuery.ORDINARY: city buildings, the big houses)
-## are stamped into the field once per rebuild by footprint, the ordinary ones
-## asked cell by cell; together they must shut exactly the cells
-## `prop_stands_in` shuts one at a time. Solids of 0.4 to 3.22 strewn across
-## wide-cell corners, the field's edge and its centre, one of a kind the body
-## breaks and one taken.
+## A BODY'S FIELD SHUTS THE CELLS ITS OWN MOVE CANNOT STAND IN, WIDE SOLIDS,
+## WALLS AND ALL. Disc kinds over WorldQuery.ORDINARY are stamped into the field
+## once per rebuild by footprint, the ordinary ones asked cell by cell, and a
+## walled kind's walls (PropWalls: houses, city buildings) by the tiles they shut;
+## together they must shut exactly the cells `prop_stands_in` shuts one at a
+## time. Discs of 0.4 to 3.22 and houses of that solid strewn across wide-cell
+## corners, the field's edge and its centre, one of a kind the body breaks, one
+## disc and one house taken.
 func test_a_bodys_field_shuts_what_its_move_cannot_stand_in() -> void:
 	var w := F.flat_world(96)
 	var props: Array[WorldProp] = []
 	for k in 40:
 		var at := Vector2(20.0 + Rng.hash01(5, k, 0, 1) * 56.0, 20.0 + Rng.hash01(5, k, 0, 2) * 56.0)
 		var solid := 0.4 + Rng.hash01(5, k, 0, 3) * 2.82
-		var kind := PropKind.BARRICADE if k == 7 else PropKind.HOUSE
+		var kind := PropKind.PINE if k == 7 else (PropKind.HOUSE if k % 4 == 1 else PropKind.BOULDER)
 		var p := WorldProp.new(w.next_id(), kind, at, 0.0, solid / PropKind.SOLID[kind])
 		w.add_prop(p)
 		props.append(p)
 	w.depleted[props[11].id] = INF
+	w.depleted[props[13].id] = INF
 	var q := WorldQuery.new(w)
+	check(not PropWalls.walled(PropKind.BOULDER) and not PropWalls.walled(PropKind.PINE), "boulders and pines are disc kinds")
 	check(not q._wide.is_empty(), "some of them are wide")
-	var row := {"breaks": ["barricade"]}
+	check(not q._wall_rows.is_empty(), "some of them are walled")
+	var row := {"breaks": ["pine"]}
 	for target: Vector2 in [Vector2(48.5, 48.5), Vector2(40.2, 55.7), Vector2(63.9, 32.1)]:
 		var field := NavField.for_body(w, q, row, 0.45)
 		field.update(target)
@@ -112,9 +116,10 @@ func test_a_bodys_field_shuts_what_its_move_cannot_stand_in() -> void:
 
 
 ## And on a real city: seed 1's machine city at full size, a harvester's field
-## to the six streets with the most wide solids round them (ranked by how many
-## over WorldQuery.ORDINARY stand within the field), stamped against
-## `prop_stands_in` cell by cell.
+## to the six streets with the most big buildings round them (ranked by how many
+## with a solid over WorldQuery.ORDINARY stand within the field), stamped against
+## `prop_stands_in` cell by cell. The city's buildings are walled kinds, so what
+## these fields must meet is walls; wide discs are the case above.
 func test_a_city_field_shuts_what_its_move_cannot_stand_in() -> void:
 	var w := Worlds.world(1)
 	var q := WorldQuery.new(w)
@@ -147,12 +152,14 @@ func test_a_city_field_shuts_what_its_move_cannot_stand_in() -> void:
 		if centres.size() >= 6:
 			break
 	var wide := 0
+	var walled := 0
 	for centre: Vector2 in centres:
 		var target := Sentinels.stand_near(w, centre, 0.45)
 		var field := NavField.for_body(w, q, row, 0.45)
 		field.update(target)
 		var c := Vector2i(floori(target.x), floori(target.y))
 		wide += q.wide_rows_in(Vector2(c) - Vector2.ONE * NavField.RADIUS, Vector2(c) + Vector2.ONE * NavField.RADIUS, 0.45).size()
+		walled += q.wall_rows_in(Vector2(c) - Vector2.ONE * NavField.RADIUS, Vector2(c) + Vector2.ONE * NavField.RADIUS, 0.45).size()
 		var wrong := 0
 		for ly in field._side:
 			for lx in field._side:
@@ -168,5 +175,5 @@ func test_a_city_field_shuts_what_its_move_cannot_stand_in() -> void:
 				if shut != NavField.prop_stands_in(q, Vector2(x + 0.5, y + 0.5), 0.45, field.breaks):
 					wrong += 1
 		eq(wrong, 0, "the field to %s shuts the cells its move cannot stand in" % target)
-	print("  info its six fields met %d wide solids" % wide)
-	gt(float(wide), 10.0, "the city's fields met wide solids (%d)" % wide)
+	print("  info its six fields met %d walled props and %d wide solids" % [walled, wide])
+	gt(float(walled), 10.0, "the city's fields met walled buildings (%d)" % walled)

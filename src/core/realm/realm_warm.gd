@@ -28,6 +28,9 @@ extends RefCounted
 ##                         loaded from WorldCache was never grown here: 0.8-1.3 s
 ##                         on the press at load 30 (tests/realm/test_crossing_start)
 ##   StoryPlan.prepare     the story's casting, taken by the first ask of it
+##   GateStand.clear_before   in the Before, what of its own stands in a gate's
+##                         reach, taken in the world's own record before any view
+##                         draws it (the gate is worked out on the surface)
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
 
@@ -74,7 +77,9 @@ static func prepare(w: WorldData) -> void:
 	@warning_ignore("return_value_discarded")
 	BlackSite.site(w)
 	t = _took(ms, "threshold", t)
-	StoryPlan.prepare(w)
+	var cast := StoryPlan.prepare(w)
+	if w.realm == Realm.ERA:
+		GateStand.clear_before(w, cast)
 	_took(ms, "cast", t)
 	# Read off a web run's console: this is the raise's time a title has to hide.
 	print("realm warm %s: %s ms" % [w.realm, ms])

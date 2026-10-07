@@ -346,7 +346,8 @@ func _exit_tree() -> void:
 
 ## How far back the eye may stand, for the rig (`CameraRig.sight_room`): the line
 ## from the head to the eye, walked against the drawn land and against everything
-## that stops a body. A solid prop stands as high as its model does; a wall
+## that stops a body. A solid prop stands as high as its model does, a walled
+## one too (PropWalls.ROOMS says which walls are the eye's as well); a wall
 ## somebody else handed the query (`set_blocks`: a landmark's tower, a depot's
 ## deck) is taken as reaching the sky, because nothing records how high it goes
 ## and a camera inside a tower is the failure this exists to prevent.
@@ -386,6 +387,10 @@ func side_room(head: Vector3, to: Vector3) -> float:
 
 ## Everything that stops the eye along the line from `head` to `eye`: solid props
 ## near it, walls the query was handed, and the boxes systems draw (sight_boxes).
+## A walled prop is its drawn model here and its walls only when they are a
+## room's (WorldQuery.stops_bodies_only): taken as reaching the sky, a waist-high
+## barricade's would pull the eye in as a tower does, and every house's are a
+## few dozen more circles for each walk.
 func _gather(head: Vector3, eye: Vector3) -> void:
 	_solids.clear()
 	_boxes.clear()
@@ -436,7 +441,8 @@ func _gather(head: Vector3, eye: Vector3) -> void:
 			if seen.has(c):
 				continue
 			seen[c] = true
-			_solids.append(Vector4(c.x, c.y, c.z, INF))
+			if not game.query.stops_bodies_only(c):
+				_solids.append(Vector4(c.x, c.y, c.z, INF))
 
 
 ## How high a prop's own model stands, off its template (built and cached when

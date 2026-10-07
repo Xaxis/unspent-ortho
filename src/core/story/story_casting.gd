@@ -181,6 +181,16 @@ static func _twin(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	return got
 
 
+## Whether the surface `world` mirrors has been cast in this process already, so
+## casting `world` copies its rows and grows no surface (`_twin`).
+static func has_twin(world: WorldData) -> bool:
+	var key := _key(world)
+	_surface_lock.lock()
+	var had := _surface.has(key)
+	_surface_lock.unlock()
+	return had
+
+
 static func _key(world: WorldData) -> String:
 	var ids := PackedStringArray()
 	for d: BiomeDef in BiomeRegistry.all():

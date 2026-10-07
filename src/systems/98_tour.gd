@@ -1157,14 +1157,13 @@ func _stand_by(name: String) -> bool:
 	# tour that stands where it laid a fire and then claims `station:fire` was
 	# failing two runs in three on a hard-coded spot 1.6 tiles out.
 	var station: Array = Survival.STATION_KINDS.get(kind, [])
-	var reach := best.solid + Tuning.PLAYER_RADIUS + 0.45
 	for turn in 12:
-		var a := TAU * turn / 12.0
-		var spot := best.pos + Vector2.from_angle(a) * reach
+		var dir := Vector2.from_angle(TAU * turn / 12.0)
+		var spot := best.pos + dir * game.query.stand_off(best, dir, Tuning.PLAYER_RADIUS + 0.45)
 		if not game.query.standable(floori(spot.x), floori(spot.y)):
 			continue
 		_teleport(spot)
-		Survival.face(game, (best.pos - spot).angle())
+		_face_edge(best)
 		if not station.is_empty():
 			if Survival.stations_near(game).has(StringName(station[0])):
 				return true
@@ -1175,7 +1174,7 @@ func _stand_by(name: String) -> bool:
 		# A thing with something written on it is a use target too now, and
 		# survival's own use_target never names one: it only ever offered what
 		# could be WORKED (src/systems/49_story.gd, docs/STORY.md).
-		if StoryProps.readable(kind) and best.pos.distance_to(game.player.pos) - best.solid <= StoryProps.REACH:
+		if StoryProps.readable(kind) and game.query.edge_to(best, game.player.pos) <= StoryProps.REACH:
 			return true
 	printerr("tour %s: nothing stands beside the %s at %s" % [_name, name, best.pos])
 	return false
@@ -1213,19 +1212,20 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 	var away := (game.player.pos - found.pos).normalized()
 	if away.length() < 0.5:
 		away = Vector2(1, 0)
-	var reach := found.solid
+	var edge := 0.0
 	for gap: float in gaps:
-		reach = found.solid + maxf(gap, 0.05)
+		edge = maxf(gap, 0.05)
 		for turn in 13:
 			# The side the player is already on first, then round.
-			var spot := found.pos + (away if turn == 0 else Vector2.from_angle(TAU * (turn - 1) / 12.0)) * reach
+			var dir := away if turn == 0 else Vector2.from_angle(TAU * (turn - 1) / 12.0)
+			var spot := found.pos + dir * game.query.stand_off(found, dir, edge)
 			if turn > 0 and not game.query.standable(floori(spot.x), floori(spot.y)):
 				continue
 			_teleport(spot)
-			Survival.face(game, (found.pos - spot).angle())
+			_face_edge(found)
 			await get_tree().physics_frame
 			if only_looked_at:
-				if game.player.pos.distance_to(found.pos) <= reach + 0.35:
+				if game.query.edge_to(found, game.player.pos) <= edge + 0.35:
 					print("tour near %s: standing at it (nothing to do to a %s)" % [said, said])
 					return true
 				continue
@@ -1234,8 +1234,14 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 				print("tour near %s: %s" % [said, Survival.describe_target(game)])
 				return true
 	printerr("tour %s: stood all round the %s at %s and it never came under the hand (reach %.2f, edge %.2f)"
-		% [_name, said, found.pos, hand, reach - found.solid])
+		% [_name, said, found.pos, hand, edge])
 	return false
+
+
+## Face the nearest edge of `q` from where the player stands (WorldQuery.reach_circle).
+func _face_edge(q: WorldProp) -> void:
+	var c := game.query.reach_circle(q, game.player.pos)
+	Survival.face(game, (Vector2(c.x, c.y) - game.player.pos).angle())
 
 
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
@@ -1359,7 +1365,7 @@ func _walk_to_prop(kinds: String, secs: float, run: bool = false, through: bool 
 			game.scripted_seconds = 0.05
 			await get_tree().physics_frame
 			continue
-		if d.length() <= target.solid + hand * 0.7:
+		if game.query.edge_to(target, game.player.pos) <= hand * 0.7:
 			game.scripted_seconds = 0.0
 			game.scripted_move = _keys_toward(d.normalized()) * 0.2
 			game.scripted_seconds = 0.05
@@ -1426,11 +1432,12 @@ func _stand_back(kinds: String, dist: float) -> bool:
 		away = Vector2(1, 0)
 	for turn in 25:
 		var dir := away if turn == 0 else Vector2.from_angle(TAU * (turn - 1) / 24.0)
-		var spot := target.pos + dir * (target.solid + dist)
+		var out := game.query.stand_off(target, dir, 0.0)
+		var spot := target.pos + dir * (out + dist)
 		var clear := true
 		var k := 0.0
 		while k <= dist and clear:
-			var p := target.pos + dir * (target.solid + 0.3 + k)
+			var p := target.pos + dir * (out + 0.3 + k)
 			clear = game.query.standable(floori(p.x), floori(p.y))
 			k += 0.4
 		if not clear:
@@ -2159,10 +2166,10 @@ func _ground_ring(want: Array[int], clear_only: bool) -> Vector2:
 ## with "bench - make" and lay nothing.
 func _hand_is_empty_at(spot: Vector2) -> bool:
 	var clear := Survival.STATION_REACH + 0.6
-	for q: WorldProp in game.query.props_near(spot, clear + 3.0):
+	for q: WorldProp in game.query.reach_near(spot, clear + 3.0):
 		if game.world.depleted.has(q.id):
 			continue
-		if spot.distance_to(q.pos) - q.solid <= clear:
+		if game.query.edge_to(q, spot) <= clear:
 			return false
 	return true
 

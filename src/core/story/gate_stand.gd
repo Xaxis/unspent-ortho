@@ -2,6 +2,7 @@ class_name GateStand
 ## Where a gate into the Before stands off the place it opens from (StoryGates).
 ##
 ##   GateStand.of(world, row) -> Vector2    the spot, for a slot's cast row
+##   GateStand.clear_before(era, cast)      the Before's own things off its gates
 ##
 ## A slot is cast at its place's HEART, and the heart is where the place's own
 ## mass stands: a works yard's raised deck, a landmark's tower, the platform in the
@@ -82,6 +83,51 @@ static func of(world: WorldData, row: Dictionary) -> Vector2:
 					and near.walks_out(p):
 				return p
 	return at
+
+
+## IN THE BEFORE, NOTHING OF ITS OWN STANDS IN A GATE'S REACH. A gate's spot is
+## worked out on the surface, where its place stands (`of`), and the Before is
+## dressed otherwise round a 2098 place (no plan, no yard: seed 1's camp gate
+## stood half under a 2029 pine), while its own world is not grown when the
+## surface is cast. So what the Before's generation stood in a gate's reach is
+## taken in that world's own record (`depleted`, as a tread's pads crush what
+## they come down on: 19_colossi.prepare_world) before any view draws it, and
+## the gate's ground is open in both years. `cast` is the Before's casting: its
+## twin rows carry the gates. A wall (a landmark's mass) is no prop and stays;
+## a body still stands in the gate.
+static func clear_before(w: WorldData, cast: Dictionary) -> void:
+	if w == null or w.realm != Realm.ERA:
+		return
+	var t := w.table
+	var top := (w.size - 1) / WorldSections.SIZE
+	for slot: Variant in cast:
+		var row: Dictionary = cast[slot]
+		if not row.has("gate"):
+			continue
+		var at: Vector2 = row.gate
+		var reach := REACH + 4.0
+		var s0 := WorldSections.of(at - Vector2(reach, reach))
+		var s1 := WorldSections.of(at + Vector2(reach, reach))
+		for sy in range(clampi(s0.y, 0, top), clampi(s1.y, 0, top) + 1):
+			for sx in range(clampi(s0.x, 0, top), clampi(s1.x, 0, top) + 1):
+				for r in WorldSections.rows_in(w, Vector2i(sx, sy)):
+					if (t.id[r] & WorldData.BUILT_BIT) != 0 or t.pos[r].distance_to(at) > reach:
+						continue
+					if _stands_in(w, r, at):
+						w.depleted[t.id[r]] = INF
+
+
+## Whether the prop on table row `r` comes within REACH of `at`: its own circle,
+## or a walled kind's walls (PropWalls), which can reach past it.
+static func _stands_in(w: WorldData, r: int, at: Vector2) -> bool:
+	var t := w.table
+	if t.solid[r] > 0.0 and t.pos[r].distance_to(at) - t.solid[r] < REACH:
+		return true
+	if PropWalls.walled(int(t.kind[r])):
+		for c: Vector3 in PropWalls.of_row(w, r):
+			if Vector2(c.x, c.y).distance_to(at) - c.z < REACH:
+				return true
+	return false
 
 
 ## The place's own mass and what it holds that answers `use`, from its cast row:
@@ -231,7 +277,7 @@ static func _rings() -> Array[Vector2i]:
 
 
 ## What stands round a place, read once for its gate: the solid generated props of
-## the sections the search covers and the ruins' walls (RuinWalls.of_row), filed
+## the sections the search covers and the walled ones' walls (PropWalls.of_row), filed
 ## by tile, the houses' doors, and the place's own walls, so each spot asks only
 ## the tiles round it.
 class _Near:
@@ -264,9 +310,10 @@ class _Near:
 					var solid := t.solid[row]
 					if solid > 0.0:
 						_file(Vector3(p.x, p.y, solid))
-					# A ruin's own circle is half a tile; its walls are a house's.
-					if RuinWalls.KINDS.has(int(t.kind[row])):
-						for c: Vector3 in RuinWalls.of_row(w, row):
+					# A walled prop's own circle is its placement footprint (a ruin's is
+					# half a tile); what stops a body there is its walls.
+					if PropWalls.walled(int(t.kind[row])):
+						for c: Vector3 in PropWalls.of_row(w, row):
 							_file(c)
 					if t.kind[row] == PropKind.HOUSE:
 						# Where Threshold.of_house stands a house's door.

@@ -156,9 +156,9 @@
   },
   {
    "kind": "system",
-   "label": "23_ruins",
-   "entry": "src/systems/23_ruins.gd",
-   "reach": "tools/test.sh test_ruin_walls",
+   "label": "23_walls",
+   "entry": "src/systems/23_walls.gd",
+   "reach": "tools/test.sh test_prop_walls,test_walls_by_cell,test_prop_footprint",
    "area": "world-places"
   },
   {
