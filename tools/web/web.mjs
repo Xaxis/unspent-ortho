@@ -107,10 +107,11 @@ const software = Boolean(opt.swiftshader) || GPU_OFF;
 // new game 790 s after Enter and its warm-up 1003 s after, one frame 15-60 s.
 if (opt.timeout === undefined) opt.timeout = software ? '2400' : '300';
 // The longest one frame may hold the page before a screenshot, a read or a
-// reload counts it as not drawing: a minute on a GPU, five on the CPU, where one
-// frame held the main thread 78 s (the title's first, building its programs) and
-// steady frames 15-60 s at load 75-100 (10-05/06).
-const FRAME_WAIT_S = software ? 300 : 60;
+// reload counts it as not drawing: a minute on a GPU, fifteen on the CPU, where
+// one frame held the main thread 78 s (the title's first, building its programs),
+// steady frames 15-60 s at load 75-100, and at load 100-160 a screenshot waited
+// past 300 s five times in three runs (10-05/06).
+const FRAME_WAIT_S = software ? 900 : 60;
 // --url= proves a build that is already on the internet (tools/deploy.sh) with
 // the same checks a local one gets: the host sends the headers, not us, so a
 // deploy that forgets cross-origin isolation or the wasm type fails here.
