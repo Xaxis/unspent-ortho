@@ -21,6 +21,8 @@ const WATCH := 6.0
 ## never a frame.
 const RECHECK := 0.5
 const Treads := preload("res://src/core/colossus/colossus_treads.gd")
+## The threshold platform's model: its deck's half width and height (BlackSite).
+const Site := preload("res://src/models/props/black_site.gd")
 
 ## One row per placed character: {character, pos, facing, state, trade, model,
 ## made}. The shape 49_story already reads for a villager, plus `character`;
@@ -35,10 +37,21 @@ var placed: Dictionary = {}
 var _since := 0.0
 
 
+## THE PLACES AT SETUP, THE PEOPLE AT THE START. What the start lays down (the
+## strand, 50_survival) keeps out of the gates' reach, and asks this system where
+## they stand (`gates_here`) at its own setup. The people stand once every system
+## has started and the world is as it opens: cast at setup instead, seed 7's
+## Tull stood in his own fire (tests/story/test_tull.gd). A crossing at the
+## start (a save made in another realm, `--realm`) casts again (`realm_changed`).
 func setup(g: Game) -> void:
 	game = g
 	StoryWorld.stood_ids.clear()
 	SaveGame.register(&"stood", _save_stood, _load_stood)
+	_cast(false)
+
+
+func started() -> void:
+	_cast()
 
 
 func _save_stood() -> Variant:
@@ -59,10 +72,6 @@ func _load_stood(v: Variant) -> void:
 func _mark_stood(slot: StringName, id: int) -> void:
 	_stood[slot] = id
 	StoryWorld.stood_ids[id] = slot
-
-
-func started() -> void:
-	_cast()
 
 
 ## Through a door: the outside is kept as it stood (20_realms says why).
@@ -119,23 +128,29 @@ func _process(delta: float) -> void:
 
 ## Where each character stands in this world. Recomputed, never saved: the world
 ## grows the same from its seed, so the casting does too.
-func _cast() -> void:
+func _cast(people := true) -> void:
 	_clear()
 	if game == null or game.world == null:
 		return
 	placed = StoryPlan.cast(game.world).duplicate()
 	_read_gates()
 	_place_crossing()
+	if not people:
+		return
 	for c: StoryCharacter in StoryCast.all():
 		# Someone with a house of their own is met in it (21_doors wakes them there).
 		if not placed.has(c.at) or StoryRooms.keeps_house(c.id):
 			continue
 		var at: Vector2 = placed[c.at].pos
-		var stand := _tread_lip(placed[c.at]) if placed[c.at].get("site", &"") == StorySlot.TREAD else at
-		var pos := _stand_near(stand, c.id)
+		var site: StringName = placed[c.at].get("site", &"")
+		var stand := _tread_lip(placed[c.at]) if site == StorySlot.TREAD else at
+		var on_deck := site == StorySlot.BLACK_SITE
+		var pos := _on_the_deck(at) if on_deck else _stand_near(stand, c.id)
 		var row := {
 			"character": c.id, "pos": pos, "facing": (at - pos).angle(),
 			"state": &"out", "trade": c.trade, "model": null, "made": null,
+			# How far over the ground under them they are drawn: the deck's height.
+			"lift": Site.DECK_Y if on_deck else 0.0,
 		}
 		# THE FIGURE IS MADE HERE, WITH THE WORLD, and not the moment he walks up:
 		# a person's rig is 19 ms to build, and building it on the frame they came
@@ -330,6 +345,30 @@ func _tread_lip(slot: Dictionary) -> Vector2:
 	return Treads.folk_lip(slot.ankle, slot.pads, float(slot.yaw))
 
 
+## THE THRESHOLD PLATFORM IS A DECK IN THE SEA (BlackSite): a wall to a body
+## (BlackSite.blocks), moated by deep water, its ladder on the side the deck was
+## turned to face (GenScatter: the shore it was reached from). Whoever is met
+## there stands on the deck at the ladder's head, drawn at the deck's height
+## (`lift`), and is spoken to from the water below it. `_stand_near` looks only
+## for dry ground within eight tiles, found none, and stood Hale where his slot
+## is: in the sea under the plate.
+const ON_DECK := Site.DECK - 0.6
+
+
+func _on_the_deck(at: Vector2) -> Vector2:
+	var face := 0.0
+	for q: WorldProp in game.query.props_near(at, 1.0):
+		if q.kind == PropKind.PLATFORM:
+			face = q.rot
+	var along := Vector2.from_angle(face)
+	var across := Vector2(-along.y, along.x)
+	for k: float in [0.0, 1.0, -1.0]:
+		var p := at + along * ON_DECK + across * k * APART
+		if not _taken(p):
+			return p
+	return at + along * ON_DECK
+
+
 ## A standable tile a few paces off the slot, at a bearing of their own, and
 ## never within APART of somebody already cast, so two people cast at one place
 ## do not stand in each other, nor in a gate's reach (`_taken`) — and out of
@@ -398,6 +437,12 @@ func _taken(spot: Vector2) -> bool:
 ## The gates of the realm being cast, off the casting this system holds
 ## (`placed`): StoryGates.all would cast the whole world again.
 var _gates: Array[Vector2] = []
+
+
+## Where this realm's gates stand, for what is laid down at the start
+## (50_survival's strand) to keep out of their reach.
+func gates_here() -> Array[Vector2]:
+	return _gates.duplicate()
 
 
 func _read_gates() -> void:
@@ -484,7 +529,7 @@ func _watch(row: Dictionary, from: Vector2) -> void:
 	var to := from - (row.pos as Vector2)
 	if to.length() <= WATCH and to.length() > 0.01:
 		row.facing = to.angle()
-	model.position = game.world.to_3d(row.pos)
+	model.position = game.world.to_3d(row.pos) + Vector3(0.0, float(row.get("lift", 0.0)), 0.0)
 	model.rotation.y = -float(row.facing)
 
 
@@ -522,10 +567,12 @@ func tour_place(what: String) -> Vector2:
 			continue
 		var pos: Vector2 = row.pos
 		var fallback := Vector2.INF
+		# Somebody on the threshold's deck is spoken to from the water below it.
+		var swim := float(row.get("lift", 0.0)) > 0.0
 		for r: float in [1.0, 1.2, 0.8, 1.4]:
 			for i in 12:
 				var p := pos + Vector2.from_angle(TAU * i / 12.0) * r
-				if not game.query.standable(floori(p.x), floori(p.y)):
+				if not game.query.standable(floori(p.x), floori(p.y), null, swim) or (swim and _in_a_wall(p)):
 					continue
 				if fallback == Vector2.INF:
 					fallback = p
@@ -535,6 +582,14 @@ func tour_place(what: String) -> Vector2:
 		_tour_facing = (pos - fallback).angle() if fallback != Vector2.INF else NAN
 		return fallback if fallback != Vector2.INF else pos
 	return Vector2.INF
+
+
+## Whether a wall (WorldQuery.set_blocks) stands within a body's reach of `p`.
+func _in_a_wall(p: Vector2) -> bool:
+	for c: Vector3 in game.query.blocks_at(p):
+		if Vector2(c.x, c.y).distance_to(p) < c.z + Tuning.PLAYER_RADIUS:
+			return true
+	return false
 
 
 ## `at cast:NAME` turns the player to the person it stood them by, so `use`

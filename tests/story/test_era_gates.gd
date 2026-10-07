@@ -96,6 +96,50 @@ func test_the_press_beside_somebody_at_a_gate_speaks_to_them() -> void:
 	Story.forget()
 
 
+## HALE WAITS ON THE PLATFORM (docs/STORY.md: THRESHOLD, Hale, on the sea
+## platform). The threshold is a deck in the sea that stops a body (BlackSite),
+## and nothing dry lies within the eight tiles a person is looked for in
+## (49_cast `_stand_near`), so Hale stood where his slot is: in the sea, under
+## the plate. He stands on the deck now, at the head of its ladder, drawn at the
+## deck's height, and the press from the water below the ladder is his.
+func test_hale_waits_on_the_platform_and_is_spoken_to_from_the_water() -> void:
+	Story.forget()
+	Sx.use_root("era-hale")
+	var g := Sx.game(tree, ["--seed=1", "--realm=era", "--hour=11", "--weather=clear:0", "--beats=body_new"])
+	await frames(3)
+	var cast := Sx.system(g, "49_cast")
+	var site := BlackSite.site(g.world)
+	check(site.is_finite(), "seed 1 has its threshold in 2029")
+	var hale := {}
+	for row: Dictionary in cast.get("people"):
+		if row.character == &"hale":
+			hale = row
+	check(not hale.is_empty(), "Hale is cast in 2029")
+	if hale.is_empty() or not site.is_finite():
+		Sx.end(g)
+		return
+	var at: Vector2 = hale.pos
+	check(at.distance_to(site) < BlackSite.WALL, "he stands on the deck, inside its mass (%.1f off its middle)" % at.distance_to(site))
+	check(float(hale.get("lift", 0.0)) > 1.0, "and is drawn at the deck's height, not the sea's")
+	var from: Vector2 = cast.call(&"tour_place", "cast:hale")
+	check(from.is_finite() and from.distance_to(at) <= 1.5, "a body in the water can come up beside him")
+	var walled := false
+	for c: Vector3 in g.query.blocks_at(from):
+		walled = walled or Vector2(c.x, c.y).distance_to(from) < c.z + Tuning.PLAYER_RADIUS
+	check(not walled, "below the deck, not inside it")
+	g.view.ensure_near(g.player.place(from))
+	Survival.face(g, float(cast.call(&"tour_face", "cast:hale")))
+	await tree.create_timer(1.0).timeout
+	check(bool(Sx.system(g, "49_story").call(&"faces_words")), "and faces him")
+	# Held across process frames, as a hand holds a key: the press is read there.
+	Input.action_press(&"use")
+	await process_frames(3)
+	Input.action_release(&"use")
+	await process_frames(3)
+	check(bool(Sx.system(g, "49_story").call(&"tour_seen", &"talking")), "and the press is his")
+	Sx.end(g)
+	Story.forget()
+
 
 ## A PRESS OUT OF A GATE'S REACH IS NOT THE GATE'S. 20_realms looks for the gate
 ## a body stands in every LOOK_EVERY, and a press made between two looks, after a
@@ -126,5 +170,38 @@ func test_a_press_out_of_a_gates_reach_stays_in_2098() -> void:
 	Input.action_release(&"use")
 	await process_frames(3)
 	eq(StringName(realms.get("_realm")), Realm.SURFACE, "a press made out of its reach stays in 2098")
+	Sx.end(g)
+	Story.forget()
+
+
+## A GATE YIELDS TO WHAT IS UNDER HIS HAND, as a shaft does (20_realms
+## `_shaft_wins`): standing in a gate's reach and facing driftwood, the press is
+## the driftwood's. It took him into 2029 when he meant to gather.
+func test_in_a_gates_reach_the_press_takes_what_is_under_his_hand() -> void:
+	Story.forget()
+	Sx.use_root("era-gate-hand")
+	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11", "--weather=clear:0", "--beats=body_new"])
+	await process_frames(3)
+	var realms := Sx.system(g, "20_realms")
+	var gate := Vector2.INF
+	for row: Dictionary in StoryGates.all(g.world):
+		if row.id == &"gate_home":
+			gate = row.pos
+	check(gate.is_finite(), "his house's gate stands in 2098")
+	var at := g.player.place(gate + Vector2(1.2, 0.0))
+	g.view.ensure_near(at)
+	var wood := Survival.add_prop(g, PropKind.DRIFTWOOD, at + Vector2(0.7, 0.0))
+	Survival.face(g, 0.0)
+	await tree.create_timer(1.0).timeout
+	eq(realms.get("gate_near"), &"gate_home", "he stands in the gate's reach")
+	check(Survival.use_target(g) != null and Survival.use_target(g).id == wood.id, "facing the driftwood under his hand")
+	var had := g.inventory.count(&"driftwood")
+	Input.action_press(&"use")
+	await process_frames(3)
+	Input.action_release(&"use")
+	await process_frames(3)
+	eq(StringName(realms.get("_realm")), Realm.SURFACE, "the press stays in 2098")
+	await tree.create_timer(4.0).timeout
+	gt(g.inventory.count(&"driftwood"), had, "and gathers the driftwood")
 	Sx.end(g)
 	Story.forget()
