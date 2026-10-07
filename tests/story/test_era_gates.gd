@@ -131,11 +131,14 @@ func test_hale_waits_on_the_platform_and_is_spoken_to_from_the_water() -> void:
 	Survival.face(g, float(cast.call(&"tour_face", "cast:hale")))
 	await tree.create_timer(1.0).timeout
 	check(bool(Sx.system(g, "49_story").call(&"faces_words")), "and faces him")
+	# Held across process frames, as a hand holds a key: the press is read there.
 	Input.action_press(&"use")
-	await frames(3)
+	await process_frames(3)
 	Input.action_release(&"use")
-	await frames(3)
+	await process_frames(3)
 	check(bool(Sx.system(g, "49_story").call(&"tour_seen", &"talking")), "and the press is his")
+	Sx.end(g)
+	Story.forget()
 
 
 ## A PRESS OUT OF A GATE'S REACH IS NOT THE GATE'S. 20_realms looks for the gate
@@ -167,5 +170,38 @@ func test_a_press_out_of_a_gates_reach_stays_in_2098() -> void:
 	Input.action_release(&"use")
 	await process_frames(3)
 	eq(StringName(realms.get("_realm")), Realm.SURFACE, "a press made out of its reach stays in 2098")
+	Sx.end(g)
+	Story.forget()
+
+
+## A GATE YIELDS TO WHAT IS UNDER HIS HAND, as a shaft does (20_realms
+## `_shaft_wins`): standing in a gate's reach and facing driftwood, the press is
+## the driftwood's. It took him into 2029 when he meant to gather.
+func test_in_a_gates_reach_the_press_takes_what_is_under_his_hand() -> void:
+	Story.forget()
+	Sx.use_root("era-gate-hand")
+	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11", "--weather=clear:0", "--beats=body_new"])
+	await process_frames(3)
+	var realms := Sx.system(g, "20_realms")
+	var gate := Vector2.INF
+	for row: Dictionary in StoryGates.all(g.world):
+		if row.id == &"gate_home":
+			gate = row.pos
+	check(gate.is_finite(), "his house's gate stands in 2098")
+	var at := g.player.place(gate + Vector2(1.2, 0.0))
+	g.view.ensure_near(at)
+	var wood := Survival.add_prop(g, PropKind.DRIFTWOOD, at + Vector2(0.7, 0.0))
+	Survival.face(g, 0.0)
+	await tree.create_timer(1.0).timeout
+	eq(realms.get("gate_near"), &"gate_home", "he stands in the gate's reach")
+	check(Survival.use_target(g) != null and Survival.use_target(g).id == wood.id, "facing the driftwood under his hand")
+	var had := g.inventory.count(&"driftwood")
+	Input.action_press(&"use")
+	await process_frames(3)
+	Input.action_release(&"use")
+	await process_frames(3)
+	eq(StringName(realms.get("_realm")), Realm.SURFACE, "the press stays in 2098")
+	await tree.create_timer(4.0).timeout
+	gt(g.inventory.count(&"driftwood"), had, "and gathers the driftwood")
 	Sx.end(g)
 	Story.forget()
