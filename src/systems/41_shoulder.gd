@@ -151,9 +151,9 @@ func _process(delta: float) -> void:
 	if _zoom_taken():
 		return
 	var way := 0.0
-	if Input.is_action_pressed(&"zoom_in"):
+	if Keys.down(&"zoom_in"):
 		way -= 1.0
-	if Input.is_action_pressed(&"zoom_out"):
+	if Keys.down(&"zoom_out"):
 		way += 1.0
 	if way != 0.0:
 		_move_back(way * delta)
@@ -205,7 +205,7 @@ func _key(blocked: bool) -> bool:
 	# two comes out right: toggled on and peeked stays on when the button comes
 	# up; toggled off and peeked goes back down; toggled while peeking keeps the
 	# toggle's answer once the peek ends.
-	return on or (InputMap.has_action(PEEK) and Input.is_action_pressed(PEEK))
+	return on or (InputMap.has_action(PEEK) and Keys.down(PEEK))
 
 
 ## The zoom keys belong to the shoulder's distance while it is up, so a press is
@@ -318,7 +318,7 @@ func _given_back_by_the_browser() -> void:
 		return  # asked for, not yet granted: a lock arrives a frame or more later
 	_lock_seen = false
 	_hold_pointer(false)
-	if game.open_screens.has(&"pause") or Input.is_action_pressed(&"pause"):
+	if game.open_screens.has(&"pause") or Keys.down(&"pause"):
 		return
 	for s in game.systems:
 		if s.has_method(&"open_screen") and s.name == "90_ui":

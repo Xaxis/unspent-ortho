@@ -162,7 +162,7 @@ func open(switched: bool = false) -> void:
 	# A key still held from the game that gave way (E on "to the title") is not
 	# a press on the title, or it would continue straight back into a game.
 	for pair: Array in KEYS:
-		_was[pair[0]] = Input.is_action_pressed(pair[0])
+		_was[pair[0]] = Keys.down(pair[0])
 	super(switched)
 
 
@@ -271,7 +271,7 @@ func _process(delta: float) -> void:
 		# Dev mode's app, or the character page, has the keys; what is held is still
 		# noted, or the key that shuts it would read as a fresh press on this list.
 		for pair: Array in KEYS:
-			_was[pair[0]] = Input.is_action_pressed(pair[0])
+			_was[pair[0]] = Keys.down(pair[0])
 	elif not sleeping:
 		_read_keys()
 	var before := awake_for
@@ -293,7 +293,7 @@ func _process(delta: float) -> void:
 ## leave the choice a row from where the player left it.
 func _read_keys() -> void:
 	for pair: Array in KEYS:
-		var now := Input.is_action_pressed(pair[0])
+		var now := Keys.down(pair[0])
 		var went_down: bool = (now and not _was.get(pair[0], false)) or Input.is_action_just_pressed(pair[0])
 		_was[pair[0]] = now
 		if went_down:

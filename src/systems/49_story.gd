@@ -173,7 +173,7 @@ func _exit_tree() -> void:
 ## journal over the world and closes it again. It never opens over a conversation
 ## or another app, whose keys it would take.
 func _read_journal_key() -> void:
-	var now := InputMap.has_action(&"journal") and Input.is_action_pressed(&"journal")
+	var now := InputMap.has_action(&"journal") and Keys.down(&"journal")
 	var pressed := (now and not _journal_down) or (InputMap.has_action(&"journal") and Input.is_action_just_pressed(&"journal"))
 	_journal_down = now
 	if not pressed or journal == null or _ui == null:
@@ -199,7 +199,7 @@ func _process(delta: float) -> void:
 		_witness_in = WITNESS_EVERY
 		_witness()
 	_hear_testimony(delta)
-	var use_down := InputMap.has_action(&"use") and Input.is_action_pressed(&"use")
+	var use_down := InputMap.has_action(&"use") and Keys.down(&"use")
 	var use_pressed := use_down and not _use_down
 	_use_down = use_down
 	if view.showing():
@@ -213,9 +213,9 @@ func _process(delta: float) -> void:
 	# keys are read for their edges, so they are followed while nothing is up
 	# too: the move up key that took him up a walker's last hold opened the
 	# enclave with its cursor wrapped round onto the last reply (43_climb).
-	_up_down = InputMap.has_action(&"move_up") and Input.is_action_pressed(&"move_up")
-	_down_down = InputMap.has_action(&"move_down") and Input.is_action_pressed(&"move_down")
-	_back_down = InputMap.has_action(&"pause") and Input.is_action_pressed(&"pause")
+	_up_down = InputMap.has_action(&"move_up") and Keys.down(&"move_up")
+	_down_down = InputMap.has_action(&"move_down") and Keys.down(&"move_down")
+	_back_down = InputMap.has_action(&"pause") and Keys.down(&"pause")
 	if game.input_blocked():
 		return
 	if use_pressed and not _use_already_spent():
@@ -653,7 +653,7 @@ func read(id: StringName) -> void:
 # --- while it is up -------------------------------------------------------------
 
 func _read_talk_keys(use_pressed: bool) -> void:
-	var back := InputMap.has_action(&"pause") and Input.is_action_pressed(&"pause")
+	var back := InputMap.has_action(&"pause") and Keys.down(&"pause")
 	var back_pressed := back and not _back_down
 	_back_down = back
 	if back_pressed:
@@ -664,8 +664,8 @@ func _read_talk_keys(use_pressed: bool) -> void:
 		if use_pressed:
 			_close()
 		return
-	var up := InputMap.has_action(&"move_up") and Input.is_action_pressed(&"move_up")
-	var down := InputMap.has_action(&"move_down") and Input.is_action_pressed(&"move_down")
+	var up := InputMap.has_action(&"move_up") and Keys.down(&"move_up")
+	var down := InputMap.has_action(&"move_down") and Keys.down(&"move_down")
 	var up_pressed := up and not _up_down
 	var down_pressed := down and not _down_down
 	_up_down = up

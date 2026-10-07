@@ -334,7 +334,7 @@ func stats_line() -> String:
 ## from is nearer -- the rule a shaft and a works housing both go by.
 func _work(delta: float) -> void:
 	var h := _hold_taken()
-	if not Input.is_action_pressed(&"use") or h == null:
+	if not Keys.down(&"use") or h == null:
 		_job = {}
 		return
 	if not Items.hard_enough(game.inventory.held, BREAK_STUFF):

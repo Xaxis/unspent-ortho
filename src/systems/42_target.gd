@@ -109,7 +109,7 @@ static func ensure_cycle_actions() -> void:
 
 
 func _went_down(action: StringName) -> bool:
-	var now := InputMap.has_action(action) and Input.is_action_pressed(action)
+	var now := InputMap.has_action(action) and Keys.down(action)
 	var was: bool = _was.get(action, false)
 	_was[action] = now
 	return (now and not was) or (InputMap.has_action(action) and Input.is_action_just_pressed(action))

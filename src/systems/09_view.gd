@@ -141,9 +141,9 @@ func _process(delta: float) -> void:
 	if game.input_blocked():
 		return
 	var way := 0.0
-	if Input.is_action_pressed(&"zoom_in"):
+	if Keys.down(&"zoom_in"):
 		way -= 1.0
-	if Input.is_action_pressed(&"zoom_out"):
+	if Keys.down(&"zoom_out"):
 		way += 1.0
 	if way != 0.0:
 		var by := pow(RATE, way * delta)

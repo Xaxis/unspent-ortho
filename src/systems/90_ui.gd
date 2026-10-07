@@ -172,7 +172,7 @@ func open_screen(n: StringName, switched: bool = false) -> bool:
 	# A direction already down as the app opens is the walk that was going on, not a
 	# press on the list: its held state is taken now, so only a fresh press moves it.
 	for pair: Array in MOVE_KEYS:
-		_held[pair[0]] = Input.is_action_pressed(pair[0])
+		_held[pair[0]] = Keys.down(pair[0])
 		_seen_down.erase(pair[0])
 	_opened_frame = Engine.get_process_frames()
 	if n == &"pause":
@@ -286,7 +286,7 @@ func _read_keys() -> bool:
 
 func _went_down(action: StringName) -> bool:
 	var just := Input.is_action_just_pressed(action)
-	var now := Input.is_action_pressed(action) or _seen_down.has(action) or just
+	var now := Keys.down(action) or _seen_down.has(action) or just
 	_seen_down.erase(action)
 	var was: bool = _held.get(action, false)
 	_held[action] = now
@@ -301,7 +301,7 @@ func _physics_process(_delta: float) -> void:
 	# Only a press not yet read: a key still held from the last read is not a new one,
 	# or its note would outlive the release and swallow the next tap.
 	for pair: Array in PAGE_KEYS + MOVE_KEYS:
-		if Input.is_action_pressed(pair[0]) and not _held.get(pair[0], false):
+		if Keys.down(pair[0]) and not _held.get(pair[0], false):
 			_seen_down[pair[0]] = true
 
 
@@ -455,7 +455,7 @@ func _repeat(s: UiScreen, r: UiMenu, dir: int, delta: float, neg: StringName, po
 
 
 func _device_dir(neg: StringName, pos: StringName) -> int:
-	return int(Input.is_action_pressed(pos)) - int(Input.is_action_pressed(neg))
+	return int(Keys.down(pos)) - int(Keys.down(neg))
 
 
 func _feed_hud() -> void:

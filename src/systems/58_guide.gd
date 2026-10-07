@@ -214,7 +214,7 @@ func _watch() -> void:
 
 	# Holding the key IS learning it: the lesson is spent the moment the player
 	# does the thing, not when a lock happens to land on something.
-	if not retired.has(&"target") and Input.is_action_pressed(&"target"):
+	if not retired.has(&"target") and Keys.down(&"target"):
 		retired[&"target"] = true
 	if sim != null and not retired.has(&"jump") and sim.hero.airborne:
 		retired[&"jump"] = true

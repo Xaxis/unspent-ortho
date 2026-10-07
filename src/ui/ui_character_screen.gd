@@ -175,7 +175,7 @@ func _on_open() -> void:
 	if standalone:
 		_opened_frame = Engine.get_process_frames()
 		for pair: Array in KEYS:
-			_was[pair[0]] = InputMap.has_action(pair[0]) and Input.is_action_pressed(pair[0])
+			_was[pair[0]] = InputMap.has_action(pair[0]) and Keys.down(pair[0])
 	refresh()
 
 
@@ -252,7 +252,7 @@ func _read_keys(delta: float) -> void:
 	for pair: Array in KEYS:
 		if not InputMap.has_action(pair[0]):
 			continue
-		var now := Input.is_action_pressed(pair[0])
+		var now := Keys.down(pair[0])
 		var went_down: bool = (now and not _was.get(pair[0], false)) or Input.is_action_just_pressed(pair[0])
 		_was[pair[0]] = now
 		if not went_down or not fresh:
@@ -280,8 +280,8 @@ func _step_axis(m: UiMenu, tapped: Dictionary, neg: StringName, pos: StringName,
 
 
 func _axis(neg: StringName, pos: StringName) -> int:
-	var a := 1 if InputMap.has_action(pos) and Input.is_action_pressed(pos) else 0
-	var b := 1 if InputMap.has_action(neg) and Input.is_action_pressed(neg) else 0
+	var a := 1 if InputMap.has_action(pos) and Keys.down(pos) else 0
+	var b := 1 if InputMap.has_action(neg) and Keys.down(neg) else 0
 	return a - b
 
 

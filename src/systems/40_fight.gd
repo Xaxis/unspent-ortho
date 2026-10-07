@@ -83,7 +83,7 @@ var _was_down: Dictionary = {}
 
 
 func _went_down(action: StringName) -> bool:
-	var now := Input.is_action_pressed(action)
+	var now := Keys.down(action)
 	var was: bool = _was_down.get(action, false)
 	_was_down[action] = now
 	return (now and not was) or Input.is_action_just_pressed(action)
@@ -124,7 +124,7 @@ func _read_input(delta: float) -> void:
 	elif _swing_held >= 0.0:
 		_swing_held += delta
 	if _swing_held >= 0.0:
-		if not Input.is_action_pressed(&"swing"):
+		if not Keys.down(&"swing"):
 			_swing_held = -1.0
 			sim.press_swing(game.camera.aim())
 		elif _swing_held * 1000.0 >= FightRules.HEAVY_HOLD_MS:
@@ -134,7 +134,7 @@ func _read_input(delta: float) -> void:
 		sim.press_dodge()
 	# The unbuilder's hands (FightKit.unbuild): use held at an open machine's part
 	# strips it, gathered through its openings.
-	if Input.is_action_pressed(&"use"):
+	if Keys.down(&"use"):
 		var m := _strippable()
 		if m != null:
 			sim.strip(m, delta * 1000.0)

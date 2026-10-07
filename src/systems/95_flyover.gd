@@ -253,7 +253,7 @@ func _process(delta: float) -> void:
 func _pressed(action: StringName) -> bool:
 	if not DevMode.reachable() or not InputMap.has_action(action):
 		return false
-	var down := Input.is_action_pressed(action)
+	var down := Keys.down(action)
 	var was: bool = _seen.get(action, false)
 	_seen[action] = down
 	return down and not was
@@ -298,9 +298,9 @@ func _fly(delta: float) -> void:
 	# time, and the rate is a FACTOR a second so it feels the same far out as it
 	# does close in.
 	var held := 0.0
-	if Input.is_action_pressed(&"dev_fly_out"):
+	if Keys.down(&"dev_fly_out"):
 		held += 1.0
-	if Input.is_action_pressed(&"dev_fly_in"):
+	if Keys.down(&"dev_fly_in"):
 		held -= 1.0
 	if held != 0.0:
 		_zoom_held += delta
@@ -322,7 +322,7 @@ func _fly(delta: float) -> void:
 		# Screen-relative, through the camera's own yaw, for the same reason the
 		# player's keys are: the arrows must match the picture.
 		var go := Player.screen_to_world(input.limit_length(1.0), game.camera.yaw_now())
-		var pace := (CROSS_FAST if Input.is_action_pressed(&"run") else CROSS) * high
+		var pace := (CROSS_FAST if Keys.down(&"run") else CROSS) * high
 		_at += go * pace * delta
 		var n := float(game.world.size)
 		_at.x = clampf(_at.x, 0.0, n - 1.0)

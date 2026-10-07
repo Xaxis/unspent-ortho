@@ -187,8 +187,8 @@ func _on_inventory_changed() -> void:
 ## (Input.action_press, at any point in a frame) take the same path. A press on the
 ## frame a screen opened or closed belongs to that screen.
 func _read_keys() -> void:
-	var use_down := Input.is_action_pressed("use")
-	var craft_down := Input.is_action_pressed("craft")
+	var use_down := Keys.down("use")
+	var craft_down := Keys.down("craft")
 	var use_pressed := use_down and not _use_down
 	var craft_pressed := craft_down and not _craft_down
 	_use_down = use_down
@@ -252,11 +252,11 @@ func _process(delta: float) -> void:
 		Survival.fixed_step = minf(1.0 / 60.0, maxf(0.0, hold - Survival.fixed_now))
 		Survival.fixed_now += Survival.fixed_step
 		Survival.tick(game, Survival.fixed_step)
-	_again((scripted_use_held or Input.is_action_pressed("use")) and not game.input_blocked())
+	_again((scripted_use_held or Keys.down("use")) and not game.input_blocked())
 
 
 func _read_drop(delta: float) -> void:
-	if not InputMap.has_action(&"drop") or not Input.is_action_pressed(&"drop") or game.input_blocked():
+	if not InputMap.has_action(&"drop") or not Keys.down(&"drop") or game.input_blocked():
 		_drop_held = 0.0
 		_dropped_this_hold = false
 		return

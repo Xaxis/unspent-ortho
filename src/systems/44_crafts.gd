@@ -105,7 +105,7 @@ func parked(kind: StringName = &"") -> Array[Craft]:
 func _read_keys() -> void:
 	if not InputMap.has_action(&"ride"):
 		return
-	var down := Input.is_action_pressed(&"ride")
+	var down := Keys.down(&"ride")
 	var pressed := down and not _ride_down
 	_ride_down = down
 	if not pressed or game.input_blocked():

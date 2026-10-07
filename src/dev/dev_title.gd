@@ -61,7 +61,7 @@ func _process(_delta: float) -> void:
 		return
 	if not InputMap.has_action(&"dev_toggle"):
 		return
-	var now := Input.is_action_pressed(&"dev_toggle")
+	var now := Keys.down(&"dev_toggle")
 	# Just pressed too: a key struck and let go inside one frame (a browser delivers
 	# a quick tap that way) is never seen held.
 	var went_down := (now and not _held) or Input.is_action_just_pressed(&"dev_toggle")

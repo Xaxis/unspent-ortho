@@ -280,7 +280,7 @@ func _feet_in_treads() -> Array:
 func _process(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_settle = maxf(0.0, _settle - delta)
-	var use_down := Input.is_action_pressed(&"use")
+	var use_down := Keys.down(&"use")
 	var use_edge := use_down and not _use_was and not Survival.ask_pending(game)
 	_use_was = use_down
 	var c := _colossi()
@@ -328,7 +328,7 @@ func _process(delta: float) -> void:
 ## The move up key, as the climb reads it: held, and on a ledge only once it has
 ## gone down again since he came onto it.
 func _up_key() -> bool:
-	var held := InputMap.has_action(&"move_up") and Input.is_action_pressed(&"move_up") \
+	var held := InputMap.has_action(&"move_up") and Keys.down(&"move_up") \
 		and game.open_screens.is_empty() and not game.talking
 	var edge := held and not _up_was
 	_up_was = held

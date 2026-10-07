@@ -497,7 +497,7 @@ func _process(delta: float) -> void:
 	# Polled and edge-detected here, not taken as an input event: a key, a pad
 	# and a tour's `tap lamp` all arrive this way, however short the press. The
 	# lamp is his own key: lit on a walker's leg too (Game.keys_held).
-	var down := Input.is_action_pressed("lamp")
+	var down := Keys.down("lamp")
 	if down and not _lamp_down and game != null and not game.keys_held():
 		toggle_lantern()
 	_lamp_down = down

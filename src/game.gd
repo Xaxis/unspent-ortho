@@ -190,7 +190,7 @@ func _physics_process(delta: float) -> void:
 		if camera.shoulder:
 			input = Vector2(_walk_apart(&"move_right") - _walk_apart(&"move_left"),
 				_walk_apart(&"move_down") - _walk_apart(&"move_up")).limit_length(1.0)
-		run = Input.is_action_pressed("run")
+		run = Keys.down("run")
 	if Survival.now_real() < body.busy_until:
 		input = Vector2.ZERO
 	# The camera's yaw as it is now, lean and all (CameraRig.yaw_now): the keys

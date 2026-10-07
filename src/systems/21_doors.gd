@@ -227,7 +227,7 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
-	var down := Input.is_action_pressed(&"use")
+	var down := Keys.down(&"use")
 	_use_edge = down and not _use_was
 	_use_was = down
 	if game == null or game.world == null or game.player == null or _swapping:

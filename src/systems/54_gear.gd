@@ -157,7 +157,7 @@ func _physics_process(delta: float) -> void:
 			continue
 		# The press is this system's own edge too (40_fight `_went_down`), read
 		# while a screen is up as well, so a key held through one is not a press.
-		var now := Input.is_action_pressed(a.action)
+		var now := Keys.down(a.action)
 		var went := (now and not bool(_was_down.get(a.action, false))) or Input.is_action_just_pressed(a.action)
 		_was_down[a.action] = now
 		if blocked:

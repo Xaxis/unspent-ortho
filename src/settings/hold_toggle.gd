@@ -8,7 +8,7 @@ class_name HoldToggle
 ##
 ##   HoldToggle.on(&"crouch", &"playing.crouch")
 ##
-## In hold mode this is `Input.is_action_pressed` and nothing more. In toggle mode
+## In hold mode this is `Keys.down` (held, or tapped this frame) and nothing more. In toggle mode
 ## a press flips it and it stays where it was put. The latch is dropped whenever
 ## the game stops asking (`forget`), so a key left on cannot follow the player
 ## into the next game or out of a page.
@@ -23,7 +23,7 @@ static var _flipped: Dictionary = {}
 static func on(action: StringName, setting: StringName) -> bool:
 	if not InputMap.has_action(action):
 		return false
-	var now := Input.is_action_pressed(action)
+	var now := Keys.down(action)
 	if not PlayerSettings.is_set(setting, &"toggle"):
 		_on[action] = now
 		_was[action] = now
@@ -55,7 +55,7 @@ static func forget() -> void:
 	# What is down right now is absorbed rather than forgotten, so a key still
 	# held when everything was let go is not read as a fresh press.
 	for action: StringName in _was.keys():
-		_was[action] = InputMap.has_action(action) and Input.is_action_pressed(action)
+		_was[action] = InputMap.has_action(action) and Keys.down(action)
 
 
 ## Put one latch back where its owner last saw it, after a `forget` it did not
@@ -65,7 +65,7 @@ static func forget() -> void:
 ## `forget` absorbs it, so putting a latch back is never read as a press.
 static func put(action: StringName, on: bool) -> void:
 	_on[action] = on
-	_was[action] = InputMap.has_action(action) and Input.is_action_pressed(action)
+	_was[action] = InputMap.has_action(action) and Keys.down(action)
 
 
 ## Whether anything is latched on, for a system that wants to know.

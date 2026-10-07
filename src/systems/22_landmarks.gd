@@ -252,7 +252,7 @@ func use_spent() -> bool:
 
 ## The press, on its rising edge, whoever else is polling the same key.
 func _use_pressed() -> bool:
-	var down := Input.is_action_pressed(&"use") and not game.input_blocked()
+	var down := Keys.down(&"use") and not game.input_blocked()
 	var edge := down and not _use_was
 	_use_was = down
 	return edge

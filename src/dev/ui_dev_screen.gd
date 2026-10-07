@@ -74,7 +74,7 @@ func _on_open() -> void:
 	if standalone:
 		_opened_frame = Engine.get_process_frames()
 		for pair: Array in KEYS:
-			_was[pair[0]] = InputMap.has_action(pair[0]) and Input.is_action_pressed(pair[0])
+			_was[pair[0]] = InputMap.has_action(pair[0]) and Keys.down(pair[0])
 		_vertical.absorb(_dir(&"move_up", &"move_down"))
 		_horizontal.absorb(_dir(&"move_left", &"move_right"))
 
@@ -344,7 +344,7 @@ func _read_keys(delta: float) -> void:
 	for pair: Array in KEYS:
 		if not InputMap.has_action(pair[0]):
 			continue
-		var now := Input.is_action_pressed(pair[0])
+		var now := Keys.down(pair[0])
 		var went_down: bool = (now and not _was.get(pair[0], false)) or Input.is_action_just_pressed(pair[0])
 		_was[pair[0]] = now
 		# Held state is kept while typing too, or the enter that ends a line would
@@ -383,7 +383,7 @@ func _read_tab_keys() -> void:
 		var action: StringName = pair[0]
 		if not InputMap.has_action(action):
 			continue
-		var now := Input.is_action_pressed(action)
+		var now := Keys.down(action)
 		var went_down: bool = (now and not _was.get(action, false)) or Input.is_action_just_pressed(action)
 		_was[action] = now
 		if went_down and _edit.is_empty() and Engine.get_process_frames() != _opened_frame:
@@ -392,7 +392,7 @@ func _read_tab_keys() -> void:
 
 
 func _dir(neg: StringName, pos: StringName) -> int:
-	return int(Input.is_action_pressed(pos)) - int(Input.is_action_pressed(neg))
+	return int(Keys.down(pos)) - int(Keys.down(neg))
 
 
 # --- drawing -----------------------------------------------------------------------------

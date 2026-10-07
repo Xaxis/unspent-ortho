@@ -330,7 +330,7 @@ func _by_region(region: int) -> WorksSite:
 ## whatever else is under the hand (the same rule a shaft goes by, 20_realms).
 func _work(delta: float) -> void:
 	var taken := _part_taken()
-	if not Input.is_action_pressed(&"use") or taken.is_empty():
+	if not Keys.down(&"use") or taken.is_empty():
 		_drop_job()
 		return
 	var s: WorksSite = taken[0]
