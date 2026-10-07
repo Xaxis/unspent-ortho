@@ -37,14 +37,20 @@ var placed: Dictionary = {}
 var _since := 0.0
 
 
-## CAST AT SETUP, NOT AT THE START: what the start lays down (the strand,
-## 50_survival) keeps out of the gates' reach, and asks this system where they
-## stand (`gates_here`) at its own setup. A crossing at the start (a save made in
-## another realm, `--realm`) casts again (`realm_changed`).
+## THE PLACES AT SETUP, THE PEOPLE AT THE START. What the start lays down (the
+## strand, 50_survival) keeps out of the gates' reach, and asks this system where
+## they stand (`gates_here`) at its own setup. The people stand once every system
+## has started and the world is as it opens: cast at setup instead, seed 7's
+## Tull stood in his own fire (tests/story/test_tull.gd). A crossing at the
+## start (a save made in another realm, `--realm`) casts again (`realm_changed`).
 func setup(g: Game) -> void:
 	game = g
 	StoryWorld.stood_ids.clear()
 	SaveGame.register(&"stood", _save_stood, _load_stood)
+	_cast(false)
+
+
+func started() -> void:
 	_cast()
 
 
@@ -122,13 +128,15 @@ func _process(delta: float) -> void:
 
 ## Where each character stands in this world. Recomputed, never saved: the world
 ## grows the same from its seed, so the casting does too.
-func _cast() -> void:
+func _cast(people := true) -> void:
 	_clear()
 	if game == null or game.world == null:
 		return
 	placed = StoryPlan.cast(game.world).duplicate()
 	_read_gates()
 	_place_crossing()
+	if not people:
+		return
 	for c: StoryCharacter in StoryCast.all():
 		# Someone with a house of their own is met in it (21_doors wakes them there).
 		if not placed.has(c.at) or StoryRooms.keeps_house(c.id):
