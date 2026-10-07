@@ -28,9 +28,6 @@ func _ready() -> void:
 		get_tree().quit(2)
 		return
 	SaveSlots.use_options(options)
-	if OS.has_feature("web"):
-		# A slow renderer must not hold the page (its header): by path, as below.
-		add_child((load("res://src/boot/web_pacer.gd") as GDScript).new() as Node)
 	if options.shot == "":
 		# Every scene that appears (the title, then a game started from it) says when it is up.
 		child_entered_tree.connect(func(n: Node) -> void:

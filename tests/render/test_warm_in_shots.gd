@@ -35,27 +35,3 @@ func test_when_the_warm_up_is_done_no_rack_stands_at_the_player() -> void:
 	eq(_at_player(g), 0, "and on that frame nothing of any rack is left at the player")
 	g.queue_free()
 	await frames(1)
-
-
-func test_a_held_frame_is_not_a_warm_up_frame() -> void:
-	# The web's pacer holds a slow renderer's draws (WebPacer): a warm-up state
-	# stepped through on frames nothing drew builds none of its programs, and the
-	# freeze it was there to take comes back at the first door or fire.
-	var g := Game.new()
-	tree.root.add_child(g)
-	g.setup(BootOptions.parse(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"])))
-	var w := g.get_node("01_warm_lights")
-	await process_frames(2)
-	var at := int(w.get("_frame"))
-	RenderingServer.render_loop_enabled = false
-	await process_frames(5)
-	var held := int(w.get("_frame"))
-	RenderingServer.render_loop_enabled = true
-	eq(held, at, "five held frames step no state")
-	var waited := 0
-	while not bool(w.call("done")) and waited < 60:
-		await process_frames(1)
-		waited += 1
-	check(bool(w.call("done")), "and the warm-up ends once frames are drawn again")
-	g.queue_free()
-	await frames(1)
