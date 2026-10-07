@@ -823,7 +823,7 @@ async function boot(label, from = lines.length) {
   const ready = await waitLine(/^boot ready/, Number(opt.timeout), from);
   if (!ready) {
     failures.push(`no "boot ready" line within ${opt.timeout} s`);
-    await page.screenshot({ path: `${opt.out}_${label}FAILED.png`, timeout: FRAME_WAIT_S * 1000 }).catch(() => {});
+    await page.screenshot({ path: `${opt.out}_${label}FAILED.png`, timeout: 60000 }).catch(() => {}); // evidence only: never a wait of its own
   }
   return ready;
 }
@@ -963,7 +963,7 @@ if (first && !touring && opt['boot-only']) {
     const game = await waitLine(/^boot ready game/, Number(opt.timeout), from);
     if (!game) {
       failures.push('no "boot ready game" line after Enter on the title');
-      await page.screenshot({ path: `${opt.out}_FAILED-play.png`, timeout: FRAME_WAIT_S * 1000 }).catch(() => {});
+      await page.screenshot({ path: `${opt.out}_FAILED-play.png`, timeout: 60000 }).catch(() => {}); // evidence only: never a wait of its own
     } else {
       result.new_game_s = (Date.now() - pressed) / 1000;
       console.log(`web new game drawn ${result.new_game_s.toFixed(2)} s after Enter (${game.text})`);
