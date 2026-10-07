@@ -215,6 +215,17 @@ const DEALT_CAIRNS := 3
 ## nothing was dealt, the one its kind and position hash to (`WorldProp.deal_hash`,
 ## never its id: see there). Every reader — the chunk bake, the lights — asks
 ## here, so a dealt variant reaches all of them.
+## How one prop is cast in its own frame (x, y, z scale, 1 each at the middle):
+## a field of one model read as a tiled asset field (playtest, wave N), so every
+## instance is cast a little differently as well as turned. WorldView.prop_xform
+## draws it so and PropWalls stops a body so; a kind that hangs cables keeps the
+## uniform scale, and is never walled.
+static func cast(seed_value: int, id: int) -> Vector3:
+	return Vector3(1.0 + (Rng.hash01(seed_value, id, 93) - 0.5) * 0.22,
+		1.0 + (Rng.hash01(seed_value, id, 94) - 0.5) * 0.30,
+		1.0 + (Rng.hash01(seed_value, id, 95) - 0.5) * 0.22)
+
+
 static func variant_of(p: WorldProp, seed_value: int, country: int = Country.COAST) -> int:
 	if p.variant >= 0:
 		return clampi(p.variant, 0, variants(p.kind, country) - 1)

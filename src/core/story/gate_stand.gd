@@ -231,7 +231,7 @@ static func _rings() -> Array[Vector2i]:
 
 
 ## What stands round a place, read once for its gate: the solid generated props of
-## the sections the search covers and the ruins' walls (RuinWalls.of_row), filed
+## the sections the search covers and the walled ones' walls (PropWalls.of_row), filed
 ## by tile, the houses' doors, and the place's own walls, so each spot asks only
 ## the tiles round it.
 class _Near:
@@ -264,9 +264,10 @@ class _Near:
 					var solid := t.solid[row]
 					if solid > 0.0:
 						_file(Vector3(p.x, p.y, solid))
-					# A ruin's own circle is half a tile; its walls are a house's.
-					if RuinWalls.KINDS.has(int(t.kind[row])):
-						for c: Vector3 in RuinWalls.of_row(w, row):
+					# A walled prop's own circle is its placement footprint (a ruin's is
+					# half a tile); what stops a body there is its walls.
+					if PropWalls.walled(int(t.kind[row])):
+						for c: Vector3 in PropWalls.of_row(w, row):
 							_file(c)
 					if t.kind[row] == PropKind.HOUSE:
 						# Where Threshold.of_house stands a house's door.

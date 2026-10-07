@@ -29,18 +29,27 @@ var _block_by: Dictionary = {}  # owner -> Array[Vector3]
 ## Tiles of slack when a circle is stamped into the grid, so one tile lookup is
 ## enough for any body narrower than this.
 const BLOCK_SLACK := 1.0
-## AN OWNER WITH A WHOLE ISLAND OF CIRCLES IS STAMPED A CELL AT A TIME, the first
-## time a tile of that cell is asked about (`set_blocks_by_cell`). The ruins were
-## 95k circles stamped into 2.4M tile entries at every new game's start, 0.7-1.7 s
-## and 85 MB on seed 7 at 1840, for tiles nobody went near; a tile that is asked
-## about holds what an eager stamp would have put there, its cell stamped whole.
-## Cells are this many tiles a side, so the first step into the most crowded is
-## a short stamp: on a walk into seed 7's (335 circles) the worst frame spent
-## 1.2-1.6 ms on walls, where 16-tile cells spent 2.6 and stamping cells ahead of
-## him on a 2 ms budget spent more in all and no less in the worst frame.
+## WHAT A WALLED PROP STOPS A BODY WITH IS ITS DRAWN WALLS (PropWalls), never its
+## `solid`: that stays worldgen's placement footprint, and the solid rows below
+## leave the walled kinds out. An island's walls are tens of thousands of circles
+## (the ruins alone were 95k, stamped into 2.4M tile entries at every new game's
+## start, 0.7-1.7 s and 85 MB on seed 7 at 1840, for tiles nobody went near), so
+## they are made and stamped a cell at a time, the first time a tile of the cell
+## is asked about. Each walled prop is filed in every cell its walls could reach,
+## and a cell holds exactly the circles that touch it, so a tile's answer is the
+## same whichever cell was asked first and whether any was asked before. Cells
+## are this many tiles a side, so the first step into the most crowded is a short
+## stamp: on a walk into seed 7's ruins (335 circles) the worst frame spent
+## 1.2-1.6 ms on walls, where 16-tile cells spent 2.6.
 const BLOCK_CELL := 8
-var _cell_circles: Dictionary = {}  # owner -> {cell key -> Array[Vector3]}
-var _cell_waiting: Dictionary = {}  # cell key -> Array of owners not yet stamped there
+var _wall_rows: Dictionary = {}     # cell key -> PackedInt32Array of walled rows
+var _walls_waiting: Dictionary = {} # cell key -> true: walls filed there, not yet stamped
+var _walls_made: Dictionary = {}    # cell key -> Array[Vector3] stamped there
+var _row_walls: Dictionary = {}     # walled row -> Array[Vector3], its walls as they stand
+var _wall_of: Dictionary = {}       # wall circle -> its walled row, for each in _row_walls
+var _row_tiles: Dictionary = {}     # (row, body radius) -> PackedInt32Array of tiles they shut
+## Kind -> 1 when its collision is its walls (PropWalls.walled, as a lookup).
+var _walled_kind := PackedByteArray()
 
 
 ## WHAT STOPS A BODY IS LOOKED FOR IN TWO TIERS. A fixed two-tile search let a
@@ -63,11 +72,17 @@ var _ghost_most := 0.0
 func _init(w: WorldData) -> void:
 	world = w
 	w.sync_table()
+	_walled_kind.resize(PropKind.COUNT)
+	for k in PropWalls.KINDS:
+		_walled_kind[k] = 1
 	var pos := w.table.pos
 	var solid := w.table.solid
+	var kind := w.table.kind
 	for row in w.table.size():
 		_file(floori(pos[row].y) * w.size + floori(pos[row].x), row)
-		if solid[row] > ORDINARY:
+		if _walled_kind[kind[row]] == 1:
+			_file_walls(row)
+		elif solid[row] > ORDINARY:
 			_file_wide(pos[row], row, solid[row])
 
 
@@ -98,7 +113,7 @@ func ordinary_rows_near(p: Vector2, r: float) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	for row in rows_near(p, ORDINARY + r):
 		var solid := t.solid[row]
-		if solid > 0.0 and solid <= ORDINARY:
+		if solid > 0.0 and solid <= ORDINARY and _walled_kind[t.kind[row]] == 0:
 			out.append(row)
 	return out
 
@@ -116,7 +131,7 @@ func ordinary_rows_in(lo: Vector2, hi: Vector2, r: float) -> PackedInt32Array:
 				continue
 			for row: int in _cells[k]:
 				var solid := t.solid[row]
-				if solid > 0.0 and solid <= ORDINARY:
+				if solid > 0.0 and solid <= ORDINARY and _walled_kind[t.kind[row]] == 0:
 					out.append(row)
 	return out
 
@@ -186,41 +201,209 @@ func set_blocks(owner: StringName, circles: Array[Vector3]) -> void:
 		_stamp(_block_by[owner])
 
 
-## `owner`'s circles, stamped cell by cell as `blocks_at` first asks in a cell
-## (BLOCK_CELL), replacing whatever it said before: what was stamped of the last
-## set goes now, and what was still waiting is dropped.
-func set_blocks_by_cell(owner: StringName, circles: Array[Vector3]) -> void:
-	var had: Dictionary = _cell_circles.get(owner, {})
-	for key: int in had:
-		var waiting: Array = _cell_waiting.get(key, [])
-		if waiting.has(owner):
-			waiting.erase(owner)
-			if waiting.is_empty():
-				@warning_ignore("return_value_discarded")
-				_cell_waiting.erase(key)
-		else:
-			_unstamp(had[key] as Array[Vector3], _cell_rect(key))
-	var cells := {}
+## File walled `row` in every cell its walls could reach, to be made there the
+## first time the cell is asked about.
+func _file_walls(row: int) -> void:
+	for key in _wall_cells(row):
+		var rows: PackedInt32Array = _wall_rows.get(key, PackedInt32Array())
+		rows.append(row)
+		_wall_rows[key] = rows
+		_unmake_walls(key)
+
+
+## The cells walled `row`'s walls could reach, cast at their widest, as `_stamp`
+## lays them: a circle's own tile can be a whole tile past `floor(pos)` plus its
+## reach, so one tile more than the reach.
+func _wall_cells(row: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var t := world.table
+	var at: Vector2 = t.pos[row]
+	var r := ceili(PropWalls.kind_reach(int(t.kind[row])) * float(t.scale[row]) + BLOCK_SLACK) + 1
 	var wide := _cells_wide()
-	for c: Vector3 in circles:
-		var r := ceili(c.z + BLOCK_SLACK)
-		var cx := floori(c.x)
-		var cy := floori(c.y)
-		for gy in range(maxi(0, cy - r) / BLOCK_CELL, mini(world.size - 1, cy + r) / BLOCK_CELL + 1):
-			for gx in range(maxi(0, cx - r) / BLOCK_CELL, mini(world.size - 1, cx + r) / BLOCK_CELL + 1):
-				var key := gy * wide + gx
-				if not cells.has(key):
-					cells[key] = [] as Array[Vector3]
-				(cells[key] as Array[Vector3]).append(c)
-	if cells.is_empty():
+	var last := world.size - 1
+	for gy in range(maxi(0, floori(at.y) - r) / BLOCK_CELL, mini(last, floori(at.y) + r) / BLOCK_CELL + 1):
+		for gx in range(maxi(0, floori(at.x) - r) / BLOCK_CELL, mini(last, floori(at.x) + r) / BLOCK_CELL + 1):
+			out.append(gy * wide + gx)
+	return out
+
+
+## The walls touching cell `key`: every circle of every prop filed there whose
+## stamp reaches one of its tiles, as `_stamp` would reach them.
+func _walls_of_cell(key: int) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	var rect := _cell_rect(key)
+	for row in (_wall_rows.get(key, PackedInt32Array()) as PackedInt32Array):
+		for c: Vector3 in walls_of(row):
+			var r := ceili(c.z + BLOCK_SLACK)
+			var cx := floori(c.x)
+			var cy := floori(c.y)
+			if cx + r >= rect.position.x and cx - r < rect.end.x and cy + r >= rect.position.y and cy - r < rect.end.y:
+				out.append(c)
+	return out
+
+
+## Cell `key`'s walls made and stamped now.
+func _make_walls(key: int) -> void:
+	var made := _walls_of_cell(key)
+	_walls_made[key] = made
+	_stamp(made, _cell_rect(key))
+	@warning_ignore("return_value_discarded")
+	_walls_waiting.erase(key)
+
+
+## Cell `key`'s walls taken back, to be made again when it is next asked about.
+func _unmake_walls(key: int) -> void:
+	if _walls_made.has(key):
+		_unstamp(_walls_made[key] as Array[Vector3], _cell_rect(key))
 		@warning_ignore("return_value_discarded")
-		_cell_circles.erase(owner)
-		return
-	_cell_circles[owner] = cells
-	for key: int in cells:
-		if not _cell_waiting.has(key):
-			_cell_waiting[key] = []
-		(_cell_waiting[key] as Array).append(owner)
+		_walls_made.erase(key)
+	_walls_waiting[key] = true
+
+
+## A walled prop fell, was taken or came back: every cell's walls are made again
+## as it is next asked about (only the cells asked about so far hold any).
+func walls_changed() -> void:
+	_row_walls.clear()
+	_wall_of.clear()
+	_row_tiles.clear()
+	for key: int in _walls_made.keys():
+		_unmake_walls(key)
+
+
+## Walled `row`'s walls in tile space as it stands now (PropWalls.of_row), kept
+## until a wall changes.
+func walls_of(row: int) -> Array[Vector3]:
+	if not _row_walls.has(row):
+		var walls := PropWalls.of_row(world, row)
+		_row_walls[row] = walls
+		for c: Vector3 in walls:
+			_wall_of[c] = row
+	return _row_walls[row]
+
+
+## Whether block circle `c` (`blocks_at`) is a wall that stops a body and
+## nothing else: a walled prop's, of a kind outside PropWalls.ROOMS. What reads
+## `blocks_at` as walls nobody drew (no height, no prop) leaves these out.
+func stops_bodies_only(c: Vector3) -> bool:
+	var row: int = _wall_of.get(c, -1)
+	return row >= 0 and not PropWalls.ROOMS.has(int(world.table.kind[row]))
+
+
+## Walled `row`'s walls forgotten, to be worked out again as it stands now.
+func _forget_walls(row: int) -> void:
+	for c: Vector3 in (_row_walls.get(row, []) as Array):
+		@warning_ignore("return_value_discarded")
+		_wall_of.erase(c)
+	@warning_ignore("return_value_discarded")
+	_row_walls.erase(row)
+
+
+## The walled rows whose walls could stop a body of radius `r` in the box
+## `lo`..`hi`, each once.
+func wall_rows_in(lo: Vector2, hi: Vector2, r: float) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	if _wall_rows.is_empty():
+		return out
+	var seen := {}
+	var wide := _cells_wide()
+	var last := world.size - 1
+	for gy in range(maxi(0, floori(lo.y - r)) / BLOCK_CELL, mini(last, maxi(0, floori(hi.y + r))) / BLOCK_CELL + 1):
+		for gx in range(maxi(0, floori(lo.x - r)) / BLOCK_CELL, mini(last, maxi(0, floori(hi.x + r))) / BLOCK_CELL + 1):
+			for row in (_wall_rows.get(gy * wide + gx, PackedInt32Array()) as PackedInt32Array):
+				if not seen.has(row):
+					seen[row] = true
+					out.append(row)
+	return out
+
+
+## The tiles (y * size + x) whose centre lies within a body of radius `r` of one
+## of walled `row`'s walls: what a nav field shuts for it, worked out once per
+## prop and body size until a wall changes.
+func wall_tiles(row: int, r: float) -> PackedInt32Array:
+	var key := row * 64 + clampi(roundi(r * 20.0), 0, 63)
+	if _row_tiles.has(key):
+		return _row_tiles[key]
+	var seen := {}
+	var out := PackedInt32Array()
+	var n := world.size
+	for c: Vector3 in walls_of(row):
+		var rr := c.z + r
+		for ty in range(maxi(0, floori(c.y - rr - 0.5)), mini(n - 1, ceili(c.y + rr - 0.5)) + 1):
+			for tx in range(maxi(0, floori(c.x - rr - 0.5)), mini(n - 1, ceili(c.x + rr - 0.5)) + 1):
+				var k := ty * n + tx
+				if not seen.has(k) and Vector2(tx + 0.5, ty + 0.5).distance_squared_to(Vector2(c.x, c.y)) < rr * rr:
+					seen[k] = true
+					out.append(k)
+	_row_tiles[key] = out
+	return out
+
+
+## The wall circles of the cell `p` stands in, made first: every one that could
+## stop a body narrower than BLOCK_SLACK there.
+func walls_at(p: Vector2) -> Array:
+	var tx := floori(p.x)
+	var ty := floori(p.y)
+	if tx < 0 or ty < 0 or tx >= world.size or ty >= world.size or _wall_rows.is_empty():
+		return []
+	var key := (ty / BLOCK_CELL) * _cells_wide() + tx / BLOCK_CELL
+	if _walls_waiting.has(key):
+		_make_walls(key)
+	return _walls_made.get(key, [])
+
+
+## WHAT A HAND REACHES A THING ACROSS IS WHAT STOPS THE BODY THERE. The circle
+## of `q` whose edge `p` stands nearest, (x, y, r): a walled prop's nearest wall,
+## any other's own (pos, solid). Measured from its `solid`, an intake whose walls
+## held a body further off than that could never be taken from in the dark.
+func reach_circle(q: WorldProp, p: Vector2) -> Vector3:
+	var best := Vector3(q.pos.x, q.pos.y, q.solid)
+	if _walled_kind[q.kind] == 0:
+		return best
+	var row := world.row_of_id(q.id)
+	if row < 0:
+		return best
+	var best_e := INF
+	for c: Vector3 in walls_of(row):
+		var e := p.distance_to(Vector2(c.x, c.y)) - c.z
+		if e < best_e:
+			best_e = e
+			best = c
+	return best
+
+
+## How far `p` stands off `q`'s edge (reach_circle), less than 0 inside it.
+func edge_to(q: WorldProp, p: Vector2) -> float:
+	var c := reach_circle(q, p)
+	return p.distance_to(Vector2(c.x, c.y)) - c.z
+
+
+## How far out along `dir` from `q`'s middle a body stands `gap` off its edge
+## (edge_to): past its solid, or for a walled thing the outermost point that far
+## off its walls. Where something stands beside a thing, as a hand reaches it.
+func stand_off(q: WorldProp, dir: Vector2, gap: float) -> float:
+	if _walled_kind[q.kind] == 0:
+		return q.solid + gap
+	var d := PropWalls.kind_reach(q.kind) * q.scale + gap + 0.5
+	while d > 0.0 and edge_to(q, q.pos + dir * d) > gap:
+		d -= 0.02
+	return maxf(d, 0.0)
+
+
+## Every prop `props_near(p, r)` gives, and every walled one whose walls could
+## stand within r of p though its middle stands further: what a reach measured
+## from an edge (edge_to) searches.
+func reach_near(p: Vector2, r: float) -> Array[WorldProp]:
+	var out := props_near(p, r)
+	var lo := Vector2i(maxi(0, floori(p.x - r)), maxi(0, floori(p.y - r)))
+	var hi := Vector2i(mini(world.size - 1, floori(p.x + r)), mini(world.size - 1, floori(p.y + r)))
+	var pos := world.table.pos
+	for row in wall_rows_in(p, p, r):
+		var at: Vector2 = pos[row]
+		var tx := floori(at.x)
+		var ty := floori(at.y)
+		if tx < lo.x or tx > hi.x or ty < lo.y or ty > hi.y:
+			out.append(world.prop_at(row))
+	return out
 
 
 func _cells_wide() -> int:
@@ -230,15 +413,6 @@ func _cells_wide() -> int:
 func _cell_rect(key: int) -> Rect2i:
 	var wide := _cells_wide()
 	return Rect2i((key % wide) * BLOCK_CELL, (key / wide) * BLOCK_CELL, BLOCK_CELL, BLOCK_CELL)
-
-
-## Every owner still waiting in cell `key`, stamped there now.
-func _stamp_cell(key: int) -> void:
-	var rect := _cell_rect(key)
-	for owner: StringName in (_cell_waiting[key] as Array):
-		_stamp((_cell_circles[owner] as Dictionary)[key] as Array[Vector3], rect)
-	@warning_ignore("return_value_discarded")
-	_cell_waiting.erase(key)
 
 
 ## Every tile a circle could stop a body in, stamped with the circle itself, so
@@ -294,10 +468,10 @@ func blocks_at(p: Vector2) -> Array:
 	var ty := floori(p.y)
 	if tx < 0 or ty < 0 or tx >= world.size or ty >= world.size:
 		return []
-	if not _cell_waiting.is_empty():
+	if not _walls_waiting.is_empty():
 		var key := (ty / BLOCK_CELL) * _cells_wide() + tx / BLOCK_CELL
-		if _cell_waiting.has(key):
-			_stamp_cell(key)
+		if _walls_waiting.has(key):
+			_make_walls(key)
 	return _blocks.get(ty * world.size + tx, [])
 
 
@@ -306,7 +480,11 @@ func add_prop(p: WorldProp) -> void:
 	var row := world.row_of_id(p.id)
 	if row >= 0:
 		_file(k, row)
-		if p.solid > ORDINARY:
+		if _walled_kind[p.kind] == 1:
+			_forget_walls(row)
+			_row_tiles.clear()
+			_file_walls(row)
+		elif p.solid > ORDINARY:
 			_file_wide(p.pos, row, p.solid)
 		return
 	_ghost_most = maxf(_ghost_most, p.solid)
@@ -318,6 +496,16 @@ func add_prop(p: WorldProp) -> void:
 func remove_prop(p: WorldProp) -> void:
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
 	var row := world.row_of_id(p.id)
+	if row >= 0 and _walled_kind[p.kind] == 1:
+		_forget_walls(row)
+		_row_tiles.clear()
+		for key in _wall_cells(row):
+			var rows: PackedInt32Array = _wall_rows.get(key, PackedInt32Array())
+			var wat := rows.find(row)
+			if wat >= 0:
+				rows.remove_at(wat)
+				_wall_rows[key] = rows
+				_unmake_walls(key)
 	if row >= 0 and _cells.has(k):
 		var cell: PackedInt32Array = _cells[k]
 		var at := cell.find(row)
@@ -541,9 +729,16 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 		var at := Vector2(c.x, c.y)
 		var rr := c.z + r
 		var after := at.distance_squared_to(to)
-		if after < rr * rr and after < at.distance_squared_to(from) and after < best_d:
-			best_d = after
-			best = at
+		if after < rr * rr and after < at.distance_squared_to(from):
+			# Inside a walled prop's walls the prop is one disc about its middle.
+			var mid := _held_in(c, from, r)
+			if mid.is_finite():
+				if mid.distance_squared_to(to) >= mid.distance_squared_to(from):
+					continue
+				at = mid
+			if after < best_d:
+				best_d = after
+				best = at
 	return best
 
 
@@ -585,5 +780,32 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 		var rr := c.z + r
 		var after := at.distance_squared_to(to)
 		if after < rr * rr and after < at.distance_squared_to(from):
-			return false
+			var mid := _held_in(c, from, r)
+			if not mid.is_finite() or mid.distance_squared_to(to) < mid.distance_squared_to(from):
+				return false
 	return true
+
+
+## A BODY STANDING IN A WALLED PROP CAN ALWAYS WALK OUT OF IT, as it always could
+## out of one disc. The move lets a body out of a circle it overlaps, but a prop's
+## walls are many circles, and inside them every way out of one was a way into
+## the next: seed 1's salt flats keeper, put down at its lair on its station's
+## pump house, never took a step (tests/core/test_prop_walls.gd). So while a body
+## of radius `r` at `from` stands in any of the walls of the prop wall `c` is
+## one of, that prop holds it as one disc about its middle, which this answers;
+## Vector2.INF when `c` is no prop's wall or the body stands in none of them.
+## Only what overlaps `from` is looked at, so a body walking into a wall from
+## outside, the common case, pays one pass over the walls of its own tile.
+func _held_in(c: Vector3, from: Vector2, r: float) -> Vector2:
+	var row := -1
+	for w: Vector3 in blocks_at(from):
+		var rr := w.z + r
+		if Vector2(w.x, w.y).distance_squared_to(from) >= rr * rr:
+			continue
+		if row < 0:
+			row = _wall_of.get(c, -2)
+			if row < 0:
+				return Vector2.INF
+		if _wall_of.get(w, -1) == row:
+			return world.table.pos[row]
+	return Vector2.INF

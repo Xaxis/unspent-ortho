@@ -317,7 +317,7 @@ func dress_country(x: int, y: int) -> int:
 ## deals its form and sets its `solid` from the village's own stock, and a house
 ## at a border drawn in the stock of the tile under it stood as a croft walled
 ## like a tower (seed 7 at 512: 10 of 97). Anything else is its tile's
-## (`dress_country`), which is what RuinWalls builds a ruin's walls from.
+## (`dress_country`), which is what PropWalls fits a walled prop's walls from.
 func built_country(p: WorldProp) -> int:
 	if p.kind == PropKind.HOUSE or p.kind == PropKind.HOUSE_BURNT:
 		var v := village_of_house(p.pos)

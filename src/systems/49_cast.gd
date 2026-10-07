@@ -369,9 +369,9 @@ func _stand_near(at: Vector2, id: StringName) -> Vector2:
 ## is from `p` (edge to edge).
 func _clearance(p: Vector2) -> float:
 	var best := _door_gap(p)
-	for q: WorldProp in game.query.props_near(p, StoryProps.REACH + 2.0):
+	for q: WorldProp in game.query.reach_near(p, StoryProps.REACH + 2.0):
 		if (StoryProps.readable(q.kind) or Takes.workable(q.kind)) and not game.world.depleted.has(q.id):
-			best = minf(best, q.pos.distance_to(p) - q.solid)
+			best = minf(best, game.query.edge_to(q, p))
 	return best
 
 
@@ -417,8 +417,8 @@ func _read_gates() -> void:
 ## turn of the tree beside her; Dace, cast on the frost sea's frozen hull's
 ## hatch, only ever opened its hold.
 func _near_words(p: Vector2) -> bool:
-	for q: WorldProp in game.query.props_near(p, StoryProps.REACH + 2.0):
-		var edge := q.pos.distance_to(p) - q.solid
+	for q: WorldProp in game.query.reach_near(p, StoryProps.REACH + 2.0):
+		var edge := game.query.edge_to(q, p)
 		if StoryProps.readable(q.kind) and not game.world.depleted.has(q.id) and edge <= StoryProps.REACH:
 			return true
 		if Takes.workable(q.kind) and not game.world.depleted.has(q.id) and edge <= Survival.REACH + 0.6:
@@ -580,8 +580,8 @@ func _stood_at(slot: StringName) -> WorldProp:
 ## scrap trees.
 func _hands_full(p: Vector2, them: Vector2) -> bool:
 	var d := p.distance_to(them)
-	for q: WorldProp in game.query.props_near(p, Survival.REACH + 2.0):
-		if Takes.workable(q.kind) and not game.world.depleted.has(q.id) and q.pos.distance_to(p) - q.solid <= d:
+	for q: WorldProp in game.query.reach_near(p, Survival.REACH + 2.0):
+		if Takes.workable(q.kind) and not game.world.depleted.has(q.id) and game.query.edge_to(q, p) <= d:
 			return true
 	return false
 
