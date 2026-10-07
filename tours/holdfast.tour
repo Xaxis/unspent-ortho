@@ -407,7 +407,10 @@ try 3
   await took:driftwood 4
 end
 # The pick in hand breaks wreckage for plate; with the knife in hand (which it
-# does not cut) his bare hands pull the rag out of it.
+# does not cut) his bare hands pull the rag out of it. Looked for from Oyster
+# Row, a named place, and not from wherever the driftwood left him; and only
+# wreckage, since with the knife held a shack is turned for scrap and the block
+# went round again for the rag.
 tap inventory
 wait 0.5
 choose knife
@@ -415,8 +418,10 @@ tap use
 wait 0.3
 tap inventory
 wait 0.4
+village 0
+wait 0.6
 try 6
-  near shack,wreckage
+  near wreckage
   walk 0,0 0.05
   press use 0.1
   await took:rag 12

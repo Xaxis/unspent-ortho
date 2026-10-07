@@ -636,6 +636,20 @@
    "entry": "tools/deploy.sh",
    "reach": "tools/deploy.sh",
    "area": "tools"
+  },
+  {
+   "kind": "cli",
+   "label": "boot-check",
+   "entry": "tools/boot-check.sh",
+   "reach": "tools/heavy.sh tools/boot-check.sh build/linux/UNSPENT.x86_64",
+   "area": "tools"
+  },
+  {
+   "kind": "job",
+   "label": "release",
+   "entry": ".github/workflows/release.yml",
+   "reach": "env -u GITHUB_TOKEN gh workflow run release.yml --repo Xaxis/unspent-ortho --ref BRANCH -f version=X",
+   "area": "tools"
   }
  ],
  "ignore": [

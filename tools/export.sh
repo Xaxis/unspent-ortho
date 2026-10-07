@@ -2,10 +2,20 @@
 # Export a build with the presets in export_presets.cfg, then print its sizes.
 #   tools/export.sh web             build/web/            threads (needs COOP/COEP: tools/web.sh serves them)
 #   tools/export.sh web-nothreads   build/web-nothreads/  for hosts that cannot send those headers
-#   tools/export.sh mac             build/mac/UNSPENT.app universal, ad-hoc signed, for this machine
+#   tools/export.sh mac             build/mac/UNSPENT.app universal, ad-hoc signed
+#   tools/export.sh linux           build/linux/UNSPENT.x86_64  x86_64, one file (the pck embedded)
+#   tools/export.sh windows         build/windows/UNSPENT.exe   x86_64, one file (the pck embedded), unsigned
 #   tools/export.sh all
 # Add --debug for a debug template. Web builds get .br and .gz siblings of the
 # big files so a server can send them precompressed (tools/web.sh does).
+# --version=X stamps version X over the configuration's own: a release tag names
+# its version (.github/workflows/release.yml).
+#
+# Signing is the owner's call and is not made here. The mac build is ad-hoc
+# signed: it runs, but Gatekeeper refuses it as from an unidentified developer
+# until it is signed with his Developer ID and notarized. The Windows build is
+# unsigned: SmartScreen warns until it carries a code-signing certificate.
+# release.yml signs each one when those secrets exist.
 #
 # --config=NAME makes the build from a master configuration (configs/NAME.json,
 # docs/DESIGN.md). Every build is stamped, with a configuration or without one: the
@@ -17,10 +27,12 @@ cd "$(dirname "$0")/.."
 target="${1:-web}"; shift || true
 mode=release
 config=""
+version=""
 for a in "$@"; do
   case "$a" in
     --debug) mode=debug ;;
     --config=*) config="${a#--config=}" ;;
+    --version=*) version="${a#--version=}" ;;
   esac
 done
 
@@ -68,7 +80,7 @@ stamp_one() {
   [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ] && dirty=(--dirty)
   local out
   out="$(godot --headless --path . -s src/dev/stamp_build.gd -- "--config=$config" "--target=$stamp_target" \
-    "--template=$mode" "--commit=$commit" ${dirty[@]+"${dirty[@]}"} "--out=$STAMP" 2>&1)"
+    "--template=$mode" "--commit=$commit" "--version=$version" ${dirty[@]+"${dirty[@]}"} "--out=$STAMP" 2>&1)"
   if ! grep -q '^stamp ok' <<<"$out"; then
     grep -E 'stamp FAILED|SCRIPT ERROR' <<<"$out" | head -5
     echo "export FAILED: no stamp for $stamp_target${config:+ (config $config)}"
@@ -160,6 +172,11 @@ build_mac() {
   printf "  app %s (pck %s)\n" "$(du -sh "$app" | cut -f1)" "$(human "$(bytes "$app/Contents/Resources/UNSPENT.pck")")"
 }
 
+build_desktop() {
+  export_one "$1" "$2" "$3" || return 1
+  printf "  %s %s (pck embedded)\n" "$(basename "$2")" "$(human "$(bytes "$2")")"
+}
+
 case "$target" in
   web|web-nothreads|all)
     need godot python3 bc gzip
@@ -172,6 +189,9 @@ case "$target" in
   web) build_web "Web" build/web web ;;
   web-nothreads) build_web "Web (no threads)" build/web-nothreads web-nothreads ;;
   mac) build_mac ;;
-  all) build_web "Web" build/web web && build_web "Web (no threads)" build/web-nothreads web-nothreads && build_mac ;;
-  *) echo "usage: tools/export.sh web|web-nothreads|mac|all [--debug] [--config=NAME]"; exit 2 ;;
+  linux) build_desktop "Linux" build/linux/UNSPENT.x86_64 linux ;;
+  windows) build_desktop "Windows Desktop" build/windows/UNSPENT.exe windows ;;
+  all) build_web "Web" build/web web && build_web "Web (no threads)" build/web-nothreads web-nothreads && build_mac \
+    && build_desktop "Linux" build/linux/UNSPENT.x86_64 linux && build_desktop "Windows Desktop" build/windows/UNSPENT.exe windows ;;
+  *) echo "usage: tools/export.sh web|web-nothreads|mac|linux|windows|all [--debug] [--config=NAME] [--version=X]"; exit 2 ;;
 esac
