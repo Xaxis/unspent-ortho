@@ -688,6 +688,8 @@ func _run() -> void:
 					ok = (preload("res://src/systems/tour/stats_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "census":
 					ok = (preload("res://src/systems/tour/census_perf.gd")).perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "cost":
+					ok = await (preload("res://src/systems/tour/cost_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "lit":
 					ok = (preload("res://src/systems/tour/lit_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "lens":
