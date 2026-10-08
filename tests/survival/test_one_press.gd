@@ -17,7 +17,7 @@ const WORDS_AT := 49
 
 
 func test_every_system_that_answers_use_leaves_an_asks_press_alone() -> void:
-	var reads := RegEx.create_from_string("is_action_(just_)?pressed\\(&?\"use\"\\)")
+	var reads := RegEx.create_from_string("(is_action_(just_)?pressed|Keys\\.down)\\(&?\"use\"\\)")
 	var found := 0
 	for f: String in DirAccess.get_files_at(DIR):
 		if not f.ends_with(".gd") or f == OWNER:
@@ -45,7 +45,7 @@ func test_every_system_that_answers_use_leaves_an_asks_press_alone() -> void:
 ## left the press only when the words did not spend it (49_story `use_spent`).
 ## Found by what each script reads, as above.
 func test_every_system_before_the_words_leaves_a_faced_press_to_them() -> void:
-	var reads := RegEx.create_from_string("is_action_(just_)?pressed\\(&?\"use\"\\)")
+	var reads := RegEx.create_from_string("(is_action_(just_)?pressed|Keys\\.down)\\(&?\"use\"\\)")
 	var found := 0
 	for f: String in DirAccess.get_files_at(DIR):
 		if not f.ends_with(".gd") or f.left(2).to_int() >= WORDS_AT:
