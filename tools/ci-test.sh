@@ -46,10 +46,22 @@ while :; do
   [ "$(date +%s)" -lt "$deadline" ] || { echo "ci-test: run $id still '$st' after 120 min"; exit 3; }
   sleep 20
 done
+# A part's log can trail the run's end by seconds, and a fetch that fails must not
+# take the verdict with it: preflight --ci read a green run as red on 2026-10-08
+# (two parts' logs not ready, `set -e` ended this before the verdict line).
+want=$((parts * repeat))
+log=""
+for _ in 1 2 3 4 5 6 7 8 9; do
+  log=$(gh_ run view "$id" --repo "$repo" --log 2>/dev/null || true)
+  got=$(printf '%s\n' "$log" | grep -cE 'ci-test part [0-9]+( runs:|: no terms)' || true)
+  [ "$got" -ge "$want" ] && break
+  sleep 10
+done
 # Each log line is JOB<TAB>STEP<TAB>TIMESTAMP TEXT; keep the job and the text, but
 # not the step's own script, which the log echoes in cyan (gh writes its escape as a literal "^[") before running it.
-gh_ run view "$id" --repo "$repo" --log 2>/dev/null \
+printf '%s\n' "$log" \
   | awk -F'\t' 'index($3, "[36;1m") == 0 && $3 ~ /FAIL |passed,|SCRIPT ERROR|LOAD FAIL|ci-test part|##\[error\]/ { sub(/^[0-9TZ:.-]+ /, "", $3); print $1 " | " $3 }'
+[ "$got" -ge "$want" ] || echo "ci-test: logs for $got of $want parts could be read; the verdict below is GitHub's"
 concl=${st#completed }
 echo "ci-test: $concl"
 [ "$concl" = success ]
