@@ -23,6 +23,11 @@ const AUDIO_WAIT := 30.0
 ## At most this many seconds of test tones after the first gesture.
 const TONE_SECONDS := 8.0
 const TONE_MIN_SECONDS := 2.5
+## ...and for at least this many frames once the first tone plays. On SwiftShader
+## under load (10-06, where one frame held the page past 300 s) the window shut
+## before a frame read the meter while a tone played, and the probe said the tone
+## never reached it while the page's speakers carried it (-14 dBFS at tools/web.sh).
+const TONE_MIN_FRAMES := 10
 const SILENT_DB := -70.0
 ## Engine meta set once a tone has reached the meter in this page.
 const PATH_PROVEN := &"web_probe_audio_path"
@@ -41,6 +46,8 @@ var _proven_before := false
 ## Frames the test tone was seen playing: proof it was asked for and started,
 ## kept apart from whether anything reached the meter.
 var _tone_plays := 0
+## Frames since the first tone was asked for.
+var _tone_frames := 0
 
 
 func _ready() -> void:
@@ -179,7 +186,16 @@ func _process(delta: float) -> void:
 	if not _tone_done:
 		# Tones until the meter sees one, and for TONE_MIN_SECONDS at least, so the page's speakers can be heard too.
 		var proven := Engine.has_meta(PATH_PROVEN)
-		if not _proven_before and since < TONE_SECONDS and (not proven or since < TONE_MIN_SECONDS):
+		# The meter is read before the window is judged: on a slow page the frame
+		# that shows the tone on it can be the first one past the window.
+		if _tone != null and not proven and db > SILENT_DB:
+			Engine.set_meta(PATH_PROVEN, true)
+			proven = true
+			print("web ok audio path: a test tone reached %.1f dB on the master bus %.1f s after the first gesture" % [db, since])
+		if _tone != null:
+			_tone_frames += 1
+		var open := since < TONE_SECONDS or _tone_frames < TONE_MIN_FRAMES
+		if not _proven_before and open and (not proven or since < TONE_MIN_SECONDS):
 			# The engine's own path: a short tone each second on Master must reach the
 			# meter (and, for tools/web.sh listening at the page, the speakers).
 			if _tone == null or _t - _tone_at >= 1.0:
@@ -187,9 +203,6 @@ func _process(delta: float) -> void:
 				_tone_at = _t
 			elif _tone.playing:
 				_tone_plays += 1
-			if not proven and db > SILENT_DB:
-				Engine.set_meta(PATH_PROVEN, true)
-				print("web ok audio path: a test tone reached %.1f dB on the master bus %.1f s after the first gesture" % [db, since])
 			return
 		_tone_done = true
 		# A second after the last tone, the bus holds only the scene's own sound.
@@ -232,6 +245,10 @@ func _play_tone() -> void:
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = rate
 	wav.data = data
+	# Looped (its ends fade to nothing, so it pulses), so it still plays when the
+	# next frame reads the meter however long that frame took.
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_end = n
 	if _tone == null:
 		_tone = AudioStreamPlayer.new()
 		_tone.bus = &"Master"

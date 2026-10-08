@@ -48,6 +48,10 @@ func setup(o: BootOptions) -> void:
 	# The loading page may have made this world (and its view) already.
 	world = BootWorld.world(o.seed_value, o.size)
 	var t1 := Time.get_ticks_msec()
+	# What each part of the setup costs, said on one line: on the web the whole of
+	# it is the press's `start`, seconds on the main thread.
+	var parts := {}
+	var t := Time.get_ticks_usec()
 	query = WorldQuery.new(world)
 	clock = WorldClock.new(o.hour)
 	body = Body.new()
@@ -56,13 +60,16 @@ func setup(o: BootOptions) -> void:
 	inventory.add(&"knife")
 	inventory.set_held(&"knife")
 
+	t = _took(parts, "state", t)
 	sky = SkyLight.new()
 	sky.name = "sky"
 	add_child(sky)
+	t = _took(parts, "sky", t)
 
 	view = BootWorld.view(world)
 	view.name = "world"
 	add_child(view)
+	t = _took(parts, "view", t)
 
 	# One rule for where a game starts, shared with the loading page's first view.
 	var start := BootWorld.start_of(world, o)
@@ -72,6 +79,7 @@ func setup(o: BootOptions) -> void:
 	player.setup(world, query, start, view.world_material())
 	if start == world.spawn:
 		player.facing = world.spawn_facing
+	t = _took(parts, "player", t)
 
 	camera = CameraRig.new()
 	# Set BEFORE it enters the tree: `_ready` chooses the projection from it.
@@ -81,12 +89,15 @@ func setup(o: BootOptions) -> void:
 		camera.view_height = o.zoom
 	add_child(camera)
 	camera.snap_to(player.position)
+	t = _took(parts, "camera", t)
 
 	hud = Hud.new()
 	hud.name = "hud"
 	add_child(hud)
+	t = _took(parts, "hud", t)
 
 	view.ensure_near(player.pos)
+	t = _took(parts, "near", t)
 	sky.set_hour(clock.hour())
 	Events.screen_changed.connect(func(n: StringName, open: bool) -> void:
 		if open:
@@ -94,11 +105,22 @@ func setup(o: BootOptions) -> void:
 		else:
 			open_screens.erase(n))
 	_load_systems(system_files)
+	_took(parts, "systems", t)
 	if o.walk_seconds > 0.0:
 		scripted_move = o.walk
 		scripted_run = o.run
 		scripted_seconds = o.walk_seconds
 	print("world %d gen %d ms, view %d ms" % [o.seed_value, t1 - t0, Time.get_ticks_msec() - t1])
+	var said := PackedStringArray()
+	for k: String in parts:
+		said.append("%s %d" % [k, int(parts[k])])
+	print("boot setup (ms): %s" % ", ".join(said))
+
+
+static func _took(parts: Dictionary, what: String, since: int) -> int:
+	var now := Time.get_ticks_usec()
+	parts[what] = roundi((now - since) / 1000.0)
+	return now
 
 
 func _system_files() -> Array[String]:
@@ -118,7 +140,8 @@ const SLOW_SYSTEM_MS := 50
 
 
 func _load_systems(files: Array[String]) -> void:
-	var slow := PackedStringArray()
+	var cost := {}
+	var setup_usec := 0
 	for f in files:
 		var t := Time.get_ticks_usec()
 		var path := "res://src/systems/" + f
@@ -130,17 +153,26 @@ func _load_systems(files: Array[String]) -> void:
 		add_child(sys)
 		sys.setup(self)
 		systems.append(sys)
-		var ms := (Time.get_ticks_usec() - t) / 1000
-		if ms >= SLOW_SYSTEM_MS:
-			slow.append("%s %d" % [sys.name, ms])
+		var us := Time.get_ticks_usec() - t
+		setup_usec += us
+		cost[String(sys.name)] = us
+	var started_usec := 0
 	for sys in systems:
 		var t := Time.get_ticks_usec()
 		sys.started()
-		var ms := (Time.get_ticks_usec() - t) / 1000
-		if ms >= SLOW_SYSTEM_MS:
-			slow.append("%s started %d" % [sys.name, ms])
-	if not slow.is_empty():
-		print("boot systems slow (ms): %s" % ", ".join(slow))
+		var us := Time.get_ticks_usec() - t
+		started_usec += us
+		cost["%s started" % sys.name] = us
+	# Every system is in the totals and the slow ones are named, slowest first: on
+	# the web this is most of the press's main-thread wait (the page's `start`).
+	var names := cost.keys()
+	names.sort_custom(func(a: String, b: String) -> bool: return int(cost[a]) > int(cost[b]))
+	var slow := PackedStringArray()
+	for n: String in names:
+		if int(cost[n]) >= SLOW_SYSTEM_MS * 1000:
+			slow.append("%s %d" % [n, int(cost[n]) / 1000])
+	print("boot systems %d ms (setup %d, started %d), %d at %d ms or more: %s" % [(setup_usec + started_usec) / 1000,
+		setup_usec / 1000, started_usec / 1000, slow.size(), SLOW_SYSTEM_MS, ", ".join(slow)])
 
 
 ## True while somebody is being talked to: a conversation is not a screen (it is

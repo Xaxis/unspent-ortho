@@ -7,8 +7,9 @@
 #   tools/web.sh --swiftshader       render on the CPU (no GPU on the host; very slow)
 # On Linux every run renders on the CPU, and --gpu is refused before anything is
 # exported: on 2026-10-03 a Vulkan Chromium reset the GPU and took the owner's
-# desktop session with it (tools/web/web.mjs GPU_OFF). On the CPU a run proves a
-# boot and a title (--quick); a full new game cannot raise its island in time.
+# desktop session with it (tools/web/web.mjs GPU_OFF). On the CPU the whole flow
+# runs, slowly: each wait is up to 2400 s and a frame up to 900 (web.mjs
+# `software`), and at load 120-160 a run took an hour (10-06).
 #   tools/web.sh --config=NAME       export from configs/NAME.json (tools/export.sh); a tool run in
 #                                    it (a tour) still needs --args=--config=NAME to open dev mode
 # Anything else goes to tools/web/web.mjs (e.g. --args=--seed=3, --after=6, --headed).
