@@ -648,6 +648,26 @@ func body_fits(p: Vector2, r: float, on: CraftRide = null, swims: bool = false, 
 	return true
 
 
+## Whether a body of radius `r` at `p` stands clear of every prop: its solid disc,
+## a building's footprint (ghosts) and the walls a prop is drawn with. `body_fits`
+## asks the ground alone, on purpose (a body may always walk out of a prop); this
+## is for choosing where somebody is PUT or heads for: a named person stood inside
+## a house's wall, and a villager's wander target could be in one.
+func clear_of_props(p: Vector2, r: float) -> bool:
+	var t := world.table
+	for row in solid_rows_near(p, r):
+		var solid := t.solid[row]
+		if solid > 0.0 and not world.depleted.has(t.id[row]) and t.pos[row].distance_to(p) < solid + r:
+			return false
+	for q in solid_ghosts_near(p, r):
+		if q.solid > 0.0 and q.pos.distance_to(p) < q.solid + r:
+			return false
+	for c: Vector3 in blocks_at(p):
+		if Vector2(c.x, c.y).distance_to(p) < c.z + r:
+			return false
+	return true
+
+
 ## Where a body of radius `r` is put when something puts it at `p` (a start, a
 ## load, a door, a respawn, a warp, a tour): `p` itself if it stands whole there
 ## (`body_fits`), else the nearest spot within `reach` tiles that does, else `p`

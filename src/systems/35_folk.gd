@@ -772,7 +772,7 @@ func _step(f: Dictionary, delta: float, night: bool) -> void:
 					var h := Rng.hash01(int(f.t * 10.0), int(f.home.x), int(f.home.y))
 					var r := 3.5 if f.role == &"walk" else 2.5
 					var next: Vector2 = (f.home as Vector2) + Vector2(cos(h * TAU), sin(h * TAU)) * r * (0.4 + h * 0.6)
-					if _standable(next) and game.query.body_fits(next, BODY_R):
+					if _standable(next) and game.query.body_fits(next, BODY_R) and game.query.clear_of_props(next, BODY_R):
 						f.target = next
 					f.wait = (1.5 + h * 3.0) if f.role == &"walk" else h * 0.6
 				else:
