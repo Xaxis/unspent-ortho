@@ -228,7 +228,12 @@ footer a { color: var(--dim); }
 
 /* --- Narrow screens: the same sizes halved, still on the grid --- */
 @media (max-width: 900px) {
-  .hero .slate { margin: 0 20px 40px; padding: 30px 20px 20px; max-width: calc(100vw - 40px); }
+  /* On a phone the frame is shown whole, the slate under it: cropped to a tall
+     box, the people at the fire fell behind the slate. */
+  .hero { display: block; min-height: 0; }
+  .hero picture, .hero img.frame { position: relative; display: block; height: auto; aspect-ratio: 16 / 9; }
+  .hero::after { display: none; }
+  .hero .slate { margin: -30px 20px 40px; padding: 30px 20px 20px; max-width: calc(100vw - 40px); }
   .hero h1 { font-size: 60px; line-height: 60px; margin-left: -3px; }
   .hero .line { font-size: 20px; line-height: 30px; }
   .section { padding: 80px 20px 0; }
