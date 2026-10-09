@@ -243,7 +243,11 @@ static func tip(k: Kit, v: int, _c: int) -> void:
 	k.clump(0, -0.12, 0, 1.3, 0.72, s, P.STONE[1], 10)
 	k.clump(0.45, 0.1, -0.3, 0.75, 0.55, s + 1, P.EARTH[1], 8)
 	k.clump(-0.7, -0.1, 0.5, 0.5, 0.3, s + 2, P.STONE[2], 7)
-	for i in 9:
+	# Picked over (WorldProp.picked): the plate, the wheel and most of the scrap
+	# are gone, and the spoil they were dug out of lies turned beside the heap.
+	if k.picked:
+		k.clump(0.62, -0.08, 0.55, 0.42, 0.2, s + 3, P.EARTH[2], 7)
+	for i in (3 if k.picked else 9):
 		var a := float(i) * 2.39996 + v
 		var r := 0.3 + fmod(float(i) * 0.19, 0.8)
 		var y := _heap_y(cos(a) * r, sin(a) * r)
@@ -252,13 +256,15 @@ static func tip(k: Kit, v: int, _c: int) -> void:
 		k.chamfer(0, 0, 0, 0.36 + fmod(i * 0.13, 0.25), 0.05 + (i % 3) * 0.04, 0.24 + fmod(i * 0.09, 0.2), 0.03, col)
 		k.found.pop()
 	# A wheel, and cable in loops.
-	k.found.push(Transform3D(Basis(Vector3.RIGHT, 1.2), Vector3(-0.5, 0.45, 0.45)))
-	k.found.prism(0, -0.05, 0, 0.26, 0.05, 0.26, 12, P.INK[2], P.STONE[2])
-	k.found.prism(0, 0.05, 0, 0.07, 0.09, 0.07, 8, P.STONE[3])
-	k.found.pop()
+	if not k.picked:
+		k.found.push(Transform3D(Basis(Vector3.RIGHT, 1.2), Vector3(-0.5, 0.45, 0.45)))
+		k.found.prism(0, -0.05, 0, 0.26, 0.05, 0.26, 12, P.INK[2], P.STONE[2])
+		k.found.prism(0, 0.05, 0, 0.07, 0.09, 0.07, 8, P.STONE[3])
+		k.found.pop()
 	k.cable(Vector3(-0.9, 0.1, -0.4), Vector3(0.3, 0.7, 0.2), -0.1, 5, 0.025, P.INK[2])
-	k.cable(Vector3(0.3, 0.7, 0.2), Vector3(1.1, 0.05, 0.6), 0.1, 4, 0.025, P.INK[2])
-	if v % 2 == 1:
+	if not k.picked:
+		k.cable(Vector3(0.3, 0.7, 0.2), Vector3(1.1, 0.05, 0.6), 0.1, 4, 0.025, P.INK[2])
+	if v % 2 == 1 and not k.picked:
 		k.chamfer(0.2, _heap_y(0.2, 0.1), 0.1, 0.9, 0.05, 0.6, 0.06, P.PLATE[3], P.PLATE[4])
 
 
