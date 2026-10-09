@@ -17,7 +17,8 @@ gh_() { env -u GITHUB_TOKEN gh "$@"; }
 
 git fetch -q origin main --tags
 head=$(git rev-parse origin/main)
-last=$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)
+# No tags yet is an empty answer, not a failure (grep finding nothing exits 1).
+last=$(git tag --list 'v[0-9]*' --sort=-v:refname | { grep -v -- - || true; } | head -1)
 if [ $# -gt 0 ]; then
   v="${1#v}"
 elif [ -z "$last" ]; then
