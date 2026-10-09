@@ -60,6 +60,11 @@ const PACE := 1.5
 const BODY_R := Tuning.PLAYER_RADIUS
 ## Held by a wall or a body this long, a walker gives up on where it was going.
 const STUCK_S := 1.2
+## Walls and bodies are asked for within this many tiles of the player: a person
+## nobody can see walks straight, and where they are going already fits a body
+## (`body_fits`), so nobody is found inside a wall. Every walker asking the world
+## every frame, island-wide, took a crowded holding's tour down to 1 fps.
+const RULES_REACH := 40.0
 const TREES: Array[int] = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.SNOW_PINE]
 const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
 const GREEN: Array[int] = [PropKind.REEDS, PropKind.BUSH, PropKind.GORSE]
@@ -811,8 +816,10 @@ func _walk_to(f: Dictionary, target: Vector2, pace: float, delta: float) -> floa
 	if d.length() < 0.05:
 		return 0.0
 	var step := d.normalized() * minf(d.length(), pace * delta)
-	var to := game.query.move_body(from, step, BODY_R, null, false, FightSim.HERO_TALL)
-	to = _keep_off(f, from, to)
+	var to := from + step
+	if game.player == null or from.distance_squared_to(game.player.pos) < RULES_REACH * RULES_REACH:
+		to = game.query.move_body(from, step, BODY_R, null, false, FightSim.HERO_TALL)
+		to = _keep_off(f, from, to)
 	f.pos = to
 	var moved := to - from
 	f.stuck = 0.0 if moved.length_squared() >= step.length_squared() * 0.04 else float(f.get("stuck", 0.0)) + delta
@@ -821,12 +828,14 @@ func _walk_to(f: Dictionary, target: Vector2, pace: float, delta: float) -> floa
 	return moved.length() / maxf(delta, 1e-5)
 
 
-## The step, refused where it would walk into the player or another person.
+## The step, refused where it would walk into the player or another person of
+## their own village (the only ones near enough to meet).
 func _keep_off(f: Dictionary, from: Vector2, to: Vector2) -> Vector2:
 	if game.player != null:
 		to = WorldQuery.keep_off(from, to, game.player.pos, BODY_R + Tuning.PLAYER_RADIUS)
+	var v: int = f.get("village", -1)
 	for o: Dictionary in folk:
-		if o == f or o.state == &"in":
+		if o == f or o.state == &"in" or int(o.get("village", -2)) != v:
 			continue
 		var op: Vector2 = o.pos
 		if absf(op.x - to.x) < 1.0 and absf(op.y - to.y) < 1.0:
