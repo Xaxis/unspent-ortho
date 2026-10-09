@@ -1,0 +1,70 @@
+# THE SITE'S FRAMES (unspent.world, site/frames/): the moments the landing page
+# shows, each taken with the slate's edge hidden so the frame is the world alone.
+# Not a proof: a camera. tools/site/frames.py turns what it shoots into the
+# page's images; run both again when the look moves on.
+#
+#   TOUR_TIMEOUT=900 TOUR_FIXED_FPS=60 tools/tour.sh tours/site.tour --scene=title --seed=1
+# Options: --scene=title --seed=1
+#
+# From the title as a player starts (home-coast.tour's opening), for the wake and
+# the first sight of the Tether, which only a new game stages.
+await title 40
+tap use
+await character 8
+key move_up
+key use
+await game 120
+hud hidden
+await waking 5
+wait 0.4
+hud hidden
+shot 01-surf with waking
+await woken 10
+await staging:tether 6
+wait 1.2
+hud hidden
+shot 02-tether with staging:tether
+wait 4.0
+# What's left of the town by day, from above, then over his shoulder: the rest
+# is shot from there, the view a player turns to for a look round.
+coast calm
+at cast:maren
+hour 10
+wait 1.0
+hud hidden
+shot 03-town with cast:maren
+tap shoulder
+await shoulder 20
+wait 1.2
+hud hidden
+shot 04-town-shoulder with shoulder
+# The Tide Reaper at its work, under a low sun.
+near keeper
+hour 17
+wait 1.5
+hud hidden
+shot 05-reaper with shoulder
+# The drowned city at the end of the afternoon.
+place drowned_city
+hour 17.5
+wait 1.5
+hud hidden
+shot 06-drowned with shoulder,land:drowned_city
+# The coast's open water at dusk.
+place coast
+hour 19.2
+wait 1.5
+hud hidden
+shot 07-coast-dusk with shoulder,land:coast
+# The town after dark, its fire and lamps.
+at cast:maren
+hour 21.5
+wait 1.5
+hud hidden
+shot 08-town-night with shoulder
+# The crew's camp after dark, last: it stages by Rook, who may not stand there
+# yet on a new game, and a staging that fails ends the run after every frame above.
+at cast:rook
+wait 1.5
+hud hidden
+shot 09-camp-night with shoulder,cast:rook
