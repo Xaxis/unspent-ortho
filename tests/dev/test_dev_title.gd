@@ -75,6 +75,28 @@ func test_new_game_from_the_title_starts_as_the_configuration_says() -> void:
 	GameConfig.clear()
 
 
+## A tour measures a game begun on the title with `perf stats` windows, which
+## refuse a game booted without --stats (tools/perf-real.sh's first run did).
+func test_a_game_from_the_title_keeps_the_stats_asked_for() -> void:
+	GameConfig.clear()
+	var holder := Node.new()
+	tree.root.add_child(holder)
+	var t := UiTitle.new()
+	holder.add_child(t)
+	t.setup(BootOptions.parse(["--size=48", "--seed=6", "--stats"]))
+	t._start_game()
+	await tree.process_frame
+	var game: Game = null
+	for c in holder.get_children():
+		if c is Game:
+			game = c
+	check(game != null, "a game took the title's place")
+	if game != null:
+		check(game.options.stats, "and it keeps --stats")
+	holder.free()
+	GameConfig.clear()
+
+
 func test_the_key_that_shuts_dev_mode_is_not_a_press_on_the_title() -> void:
 	var was_asked := DevMode.asked
 	DevMode.asked = true
