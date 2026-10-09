@@ -53,6 +53,13 @@ const STREET_OUT := 11.0
 const DUSK := Weather.DUSK_END
 const DAWN := Weather.DAWN_END - 0.5
 const PACE := 1.5
+## A person is the player's size, and walks by his rules: the walls props are drawn
+## with, rooms, water and drops (WorldQuery.move_body), and no walking into him or
+## into each other (WorldQuery.keep_off). They used to be moved in a straight line
+## through all of it (owner, playtest 2026-10-09).
+const BODY_R := Tuning.PLAYER_RADIUS
+## Held by a wall or a body this long, a walker gives up on where it was going.
+const STUCK_S := 1.2
 const TREES: Array[int] = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.SNOW_PINE]
 const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
 const GREEN: Array[int] = [PropKind.REEDS, PropKind.BUSH, PropKind.GORSE]
@@ -373,8 +380,8 @@ func _populate(index: int, centre: Vector2) -> void:
 		var door := home
 		if not houses.is_empty():
 			var house := houses[n % houses.size()]
-			var out := Vector2(sin(house.rot), cos(house.rot))
-			door = house.pos + out * (house.solid + 0.3)
+			var out := Vector2.from_angle(house.rot)
+			door = house.pos + out * (house.solid + 0.4)
 			home = house.pos + out * (2.0 + h)
 			home += Vector2(cos(h * TAU), sin(h * TAU)) * 0.7
 		if n >= PER_VILLAGE:
@@ -731,7 +738,7 @@ func _step(f: Dictionary, delta: float, night: bool) -> void:
 	var to_player := player_pos - (f.pos as Vector2)
 	if f.state == &"home":
 		speed = _walk_to(f, f.door, PACE, delta)
-		if speed == 0.0 or not _seen(f.pos):
+		if (f.pos as Vector2).distance_to(f.door) < 0.3 or not _seen(f.pos) or float(f.get("stuck", 0.0)) > STUCK_S:
 			f.state = &"in"
 			model.visible = false
 			return
@@ -760,11 +767,14 @@ func _step(f: Dictionary, delta: float, night: bool) -> void:
 					var h := Rng.hash01(int(f.t * 10.0), int(f.home.x), int(f.home.y))
 					var r := 3.5 if f.role == &"walk" else 2.5
 					var next: Vector2 = (f.home as Vector2) + Vector2(cos(h * TAU), sin(h * TAU)) * r * (0.4 + h * 0.6)
-					if _standable(next):
+					if _standable(next) and game.query.body_fits(next, BODY_R):
 						f.target = next
 					f.wait = (1.5 + h * 3.0) if f.role == &"walk" else h * 0.6
 				else:
 					speed = _walk_to(f, target, PACE if f.role == &"walk" else 4.8, delta)
+					if float(f.get("stuck", 0.0)) > STUCK_S:
+						f.target = f.pos
+						f.stuck = 0.0
 			&"work":
 				if (f.pos as Vector2).distance_to(f.job_pos) > 0.05:
 					if f.wait > 0.0:
@@ -796,14 +806,32 @@ func _step(f: Dictionary, delta: float, night: bool) -> void:
 ## One step toward `target` at `pace` tiles/s, turning to face the way. Returns
 ## the speed moved (0 once there).
 func _walk_to(f: Dictionary, target: Vector2, pace: float, delta: float) -> float:
-	var d := target - (f.pos as Vector2)
+	var from: Vector2 = f.pos
+	var d := target - from
 	if d.length() < 0.05:
-		f.pos = target
 		return 0.0
 	var step := d.normalized() * minf(d.length(), pace * delta)
-	f.pos = (f.pos as Vector2) + step
-	f.facing = lerp_angle(float(f.facing), step.angle(), 1.0 - exp(-10.0 * delta))
-	return step.length() / maxf(delta, 1e-5)
+	var to := game.query.move_body(from, step, BODY_R, null, false, FightSim.HERO_TALL)
+	to = _keep_off(f, from, to)
+	f.pos = to
+	var moved := to - from
+	f.stuck = 0.0 if moved.length_squared() >= step.length_squared() * 0.04 else float(f.get("stuck", 0.0)) + delta
+	if moved.length_squared() > 1e-10:
+		f.facing = lerp_angle(float(f.facing), moved.angle(), 1.0 - exp(-10.0 * delta))
+	return moved.length() / maxf(delta, 1e-5)
+
+
+## The step, refused where it would walk into the player or another person.
+func _keep_off(f: Dictionary, from: Vector2, to: Vector2) -> Vector2:
+	if game.player != null:
+		to = WorldQuery.keep_off(from, to, game.player.pos, BODY_R + Tuning.PLAYER_RADIUS)
+	for o: Dictionary in folk:
+		if o == f or o.state == &"in":
+			continue
+		var op: Vector2 = o.pos
+		if absf(op.x - to.x) < 1.0 and absf(op.y - to.y) < 1.0:
+			to = WorldQuery.keep_off(from, to, op, BODY_R * 2.0)
+	return to
 
 
 ## Put `f`'s figure where its row now says it is (a body moved, not walked).
