@@ -21,13 +21,13 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "site/frames"
 # page image -> the shot in tours/site.tour it is made from
 FRAMES = {
-    "hero": "02-tether",
-    "surf": "01-surf",
-    "town": "03-town",
+    "hero": "08-town-night",
+    "tether": "02-tether",
+    "shore": "04-town-shoulder",
     "reaper": "05-reaper",
-    "camp": "11-camp-night",
-    "coast": "10-coast-dusk",
-    "drowned": "09-drowned-shoulder",
+    "surf": "01-surf",
+    "drowned": "06-drowned",
+    "camp": "09-camp-night",
 }
 WIDTHS = (2560, 1280)
 

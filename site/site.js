@@ -47,6 +47,7 @@
       var builds = (rel && rel.builds) || {};
       document.querySelectorAll(".build[data-system]").forEach(function (el) {
         var sys = el.getAttribute("data-system");
+        if (!NAMES[sys]) return; // the browser card is always the live build at /play
         var b = builds[sys];
         var btn = el.querySelector(".btn");
         var meta = el.querySelector(".meta");
