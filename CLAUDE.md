@@ -115,7 +115,7 @@ No `Co-Authored-By`, no generated-by line, no attribution of any kind. Messages 
 with why, in short sentences.
 
 Remote: `github.com/Xaxis/unspent-ortho`. A push to main runs the CI gate and
-deploys a preview. Production (`tools/deploy.sh --prod`) is deliberate.
+deploys production: unspent.world serves main. Land only gated heads on main.
 `VERCEL_TOKEN` lives in `.env` and is never committed. With `gh`, use
 `env -u GITHUB_TOKEN gh`.
 

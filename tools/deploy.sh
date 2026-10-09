@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Put the web build on Vercel and prove it runs there.
 #   tools/deploy.sh                 a preview URL, for looking at
-#   tools/deploy.sh --prod          the one the domain points at
+#   tools/deploy.sh --prod          the one the domain points at (every push to main
+#                                   does this in CI: .github/workflows/deploy.yml)
 #   tools/deploy.sh --no-export     deploy what is already in build/web
 #   tools/deploy.sh --no-check      skip the browser proof (not advised)
 #   tools/deploy.sh --dir=DIR       deploy a build from elsewhere (a kept build: build/kept/<id>/web);
@@ -127,6 +128,24 @@ if [ $code -ne 0 ] || [ -z "$url" ]; then
 fi
 rm -f "$log"
 echo "deploy ok $url"
+# Production is only shipped once the domain serves this build: the deploy can
+# succeed while the alias still points at the last one. Not a browser proof (the
+# check below is); what the domain answers, from anywhere, CI included.
+if [ "$prod" = 1 ]; then
+  domain="${UNSPENT_DOMAIN:-https://www.unspent.world}"
+  served=""
+  for _ in $(seq 1 30); do
+    served="$(curl -s -o /dev/null -w '%{redirect_url}' "$domain/")"
+    case "$served" in */b/$sha/) break ;; esac
+    sleep 4
+  done
+  case "$served" in
+    */b/$sha/) echo "deploy live $domain -> /b/$sha/" ;;
+    *) echo "deploy FAILED: $domain serves '${served:-nothing}', not /b/$sha/"; exit 1 ;;
+  esac
+  isolated="$(curl -s -D - -o /dev/null "$domain/b/$sha/" | tr -d '\r' | grep -ciE '^cross-origin-(opener|embedder)-policy:')"
+  [ "$isolated" = 2 ] || { echo "deploy FAILED: $domain/b/$sha/ is not cross-origin isolated (the threaded build will not start)"; exit 1; }
+fi
 if [ -f "$dir/build.json" ]; then
   python3 - "$dir/build.json" "$url" "$prod" <<'PY' || true
 import json, sys, time

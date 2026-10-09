@@ -37,4 +37,4 @@ The loop scripts.
 - Cost tests (`TestCase.yard_lt`, the absolute `TestCase.cost_lt`, `TestCase.ratio_lt` for two timings from one run; never a bare `lt`, and `test_cost_bars` in preflight fails on one) are judged alone after the shards (`== costs, alone`), because beside siblings a cost reads up to 2.2x. A miss there is real; its log is `shots/check/costs.log`.
 - Write the load (`sysctl -n vm.loadavg`) beside every frame-cost number; this box swings from 10 to 100.
 - Never pipe a gate through `tail` in a way that hides its exit code.
-- `tools/deploy.sh --prod` is deliberate; a push to main deploys a preview. Deploys export `--config=playtest` unless told otherwise (`--prod` too, and CI), so a deployed build has dev mode behind the chord.
+- A push to main deploys production (`tools/deploy.sh --prod` in CI), and the deploy fails unless www.unspent.world then serves that build, cross-origin isolated. Deploys export `--config=playtest` unless told otherwise (`--prod` too, and CI), so a deployed build has dev mode behind the chord.
