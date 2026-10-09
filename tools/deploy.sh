@@ -20,12 +20,16 @@
 # build.json itself is not deployed: it names the configuration it was made from.
 # Needs VERCEL_TOKEN, from .env here or from the environment (CI). Never commit it.
 #
-# The build goes under /b/<sha>/ and / redirects to it, so every file can be
-# cached forever and a player who comes back after a deploy can never end up
-# running a new pack against an old engine. The threaded build needs the page to
-# be cross-origin isolated, so the headers below are not optional: without them
-# the engine refuses to start, which is why the proof at the end loads the real
-# URL in a real browser rather than trusting that we sent them.
+# The site (site/: the landing page, its face and frames) is served at /, and the
+# build goes under /b/<sha>/ with /play redirecting to it, so every file of a
+# build can be cached forever and a player who comes back after a deploy can
+# never end up running a new pack against an old engine. The threaded build needs
+# its page to be cross-origin isolated, so the headers below are not optional:
+# without them the engine refuses to start, which is why the proof at the end
+# loads the real URL in a real browser rather than trusting that we sent them.
+# Only /b/ is isolated: the site links out (GitHub's downloads) and needs none of it.
+# The download cards read /releases/latest.json, written here from the newest
+# published release (tools/site/latest.py).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -70,7 +74,9 @@ print("-".join(p for p in parts if p))' "$dir/build.json" 2>/dev/null)"
 fi
 
 rm -rf .vercel/output
-mkdir -p ".vercel/output/static/b/$sha"
+mkdir -p ".vercel/output/static/b/$sha" .vercel/output/static/releases
+cp -R site/. .vercel/output/static/
+python3 tools/site/latest.py .vercel/output/static/releases/latest.json || { echo "deploy FAILED: the release manifest"; exit 1; }
 # The .br and .gz siblings are for a server that negotiates; Vercel does its own.
 for f in "$dir"/*; do
   case "$f" in *.br|*.gz|*/build.json) continue ;; esac
@@ -81,22 +87,26 @@ cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
   "routes": [
-    { "src": "/", "status": 308, "headers": { "Location": "/b/$sha/" } },
+    { "src": "/play/?", "status": 308, "headers": { "Location": "/b/$sha/" } },
     { "src": "/(.*)",
+      "headers": { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin" },
+      "continue": true },
+    { "src": "/b/(.*)",
       "headers": {
         "Cross-Origin-Opener-Policy": "same-origin",
         "Cross-Origin-Embedder-Policy": "require-corp",
         "Cross-Origin-Resource-Policy": "same-origin",
-        "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer"
       },
       "continue": true },
     { "src": "/b/([^/]+)/(.*)",
       "headers": { "Cache-Control": "public, max-age=31536000, immutable" },
       "continue": true },
+    { "src": "/releases/(.*)", "headers": { "Cache-Control": "no-cache" }, "continue": true },
     { "src": "/b/([^/]+)/?$", "dest": "/b/\$1/index.html" },
     { "handle": "filesystem" },
-    { "src": "/(.*)", "status": 308, "headers": { "Location": "/b/$sha/" } }
+    { "src": "/b/(.*)", "status": 308, "headers": { "Location": "/b/$sha/" } },
+    { "src": "/(.*)", "status": 308, "headers": { "Location": "/" } }
   ]
 }
 EOF
@@ -135,14 +145,17 @@ if [ "$prod" = 1 ]; then
   domain="${UNSPENT_DOMAIN:-https://www.unspent.world}"
   served=""
   for _ in $(seq 1 30); do
-    served="$(curl -s -o /dev/null -w '%{redirect_url}' "$domain/")"
+    served="$(curl -s -o /dev/null -w '%{redirect_url}' "$domain/play")"
     case "$served" in */b/$sha/) break ;; esac
     sleep 4
   done
   case "$served" in
-    */b/$sha/) echo "deploy live $domain -> /b/$sha/" ;;
-    *) echo "deploy FAILED: $domain serves '${served:-nothing}', not /b/$sha/"; exit 1 ;;
+    */b/$sha/) echo "deploy live $domain/play -> /b/$sha/" ;;
+    *) echo "deploy FAILED: $domain/play leads to '${served:-nothing}', not /b/$sha/"; exit 1 ;;
   esac
+  page="$(curl -s -w '\n%{http_code}' "$domain/")"
+  [ "${page##*$'\n'}" = 200 ] && grep -q '<h1>UNSPENT</h1>' <<<"$page" \
+    || { echo "deploy FAILED: $domain/ is not the landing page"; exit 1; }
   isolated="$(curl -s -D - -o /dev/null "$domain/b/$sha/" | tr -d '\r' | grep -ciE '^cross-origin-(opener|embedder)-policy:')"
   [ "$isolated" = 2 ] || { echo "deploy FAILED: $domain/b/$sha/ is not cross-origin isolated (the threaded build will not start)"; exit 1; }
 fi
@@ -156,6 +169,12 @@ json.dump(d, open(path, "w"), indent="\t", sort_keys=True)
 PY
 fi
 
+# The landing page as the host serves it, in a real browser. It draws no WebGL,
+# so this runs wherever the browser is installed, CI's runner included.
+if [ -d tools/web/node_modules/playwright ]; then
+  node tools/site/check.mjs "$url/" --out=shots/site/deploy || { echo "deploy FAILED: the landing page at $url/"; exit 1; }
+fi
+
 if [ "$do_check" = 1 ]; then
   # The same proof a local build gets, against what the host actually serves:
   # the title, a new game played through the loading page, and a reload that
@@ -165,7 +184,7 @@ if [ "$do_check" = 1 ]; then
     npx --prefix tools/web playwright install chromium-headless-shell >/dev/null 2>&1 || true
   fi
   mkdir -p shots/export
-  node tools/web/web.mjs --url="$url" --out=shots/export/deploy --play --reload || {
+  node tools/web/web.mjs --url="$url/b/$sha" --out=shots/export/deploy --play --reload || {
     echo "deploy FAILED: the build does not run at $url"; exit 1; }
 fi
 echo "deploy done $url"

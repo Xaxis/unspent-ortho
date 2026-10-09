@@ -90,12 +90,22 @@ jobs:
       - name: Prove the web build boots (CPU WebGL)
         run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=400
 
+      # The landing page draws nothing on WebGL, so this runner proves it whole,
+      # before it goes out: the game's face, every frame, no console error.
+      - name: Prove the landing page
+        run: |
+          python3 -m http.server 8763 --bind 127.0.0.1 -d site > /dev/null 2>&1 &
+          sleep 1
+          node tools/site/check.mjs http://127.0.0.1:8763/ --out=shots/site
+
       - name: Keep what the browser saw
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: web-proof
-          path: shots/export/
+          path: |
+            shots/export/
+            shots/site/
           if-no-files-found: ignore
 
       - name: Deploy
@@ -103,6 +113,8 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          # tools/site/latest.py reads the newest release through GitHub's API.
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           # The browser proof needs a GPU this runner does not have; the machine

@@ -1,14 +1,16 @@
 name: release
 
 # One version tag makes the game for macOS, Linux, Windows and the web, proves
-# each build boots on its own OS, and puts them on a DRAFT GitHub Release. The
-# repo is public and a draft is seen by its collaborators only: publishing it is
-# the owner's act, as is a production deploy (tools/deploy.sh --prod), and this
-# does neither.
+# each build boots on its own OS, and PUBLISHES them as a GitHub Release, the
+# latest one unless the version is a pre-release (0.3.0-rc.1). unspent.world's
+# download cards read the latest release (tools/site/latest.py), so the release
+# then redeploys the site and checks every download answers with its full size.
+# Publishing on a tag is the owner's ruling (2026-10-09: downloads that work on
+# the site); a tag is the deliberate act, and a run by hand only ever drafts.
 #
-#   git tag v0.3.0 && git push origin v0.3.0           the release of 0.3.0
+#   git tag v0.3.0 && git push origin v0.3.0           the release of 0.3.0, published
 #   gh workflow run release.yml --ref BRANCH -f version=0.3.0-rc.1
-#                                                      the same from any branch, untagged
+#                                                      the same from any branch, as a draft
 # GitHub dispatches only a workflow the default branch holds ("release.yml not
 # found on the default branch"), so until this file is on main a branch proves
 # it with a test-only tag (v0.0.0-test.N) and deletes the tag and its draft after.
@@ -299,12 +301,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with: { name: web-proof, path: shots/export/, if-no-files-found: ignore }
 
-  draft:
+  release:
     needs: [export, boot-linux, boot-windows, boot-macos, boot-web]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: write
+      actions: write
     steps:
       # The signed builds where signing ran, else the exports as they were booted.
       - uses: actions/download-artifact@v4
@@ -315,7 +318,7 @@ jobs:
         with: { name: macos, path: dist }
       - uses: actions/download-artifact@v4
         with: { name: web, path: dist }
-      - name: Draft release
+      - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
           V: ${{ needs.export.outputs.version }}
@@ -339,8 +342,10 @@ jobs:
             echo
             echo "Each \`.build.json\` is the stamp its build carries: configuration, version, commit and sizes."
           } > notes.md
-          # Never a published release: a re-run refreshes its own draft, and a tag
-          # that is already published is left alone.
+          # A tag publishes; a run by hand drafts. A re-run refreshes its own draft,
+          # and a release that is already published is never touched again.
+          publish=false; [ "$GITHUB_EVENT_NAME" = push ] && publish=true
+          pre=false; [[ "$V" == *-* ]] && pre=true
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft > /tmp/draft 2>/dev/null; then
             [ "$(cat /tmp/draft)" = true ] || { echo "::error::$tag is already published; this never touches a published release"; exit 1; }
             gh release upload "$tag" dist/* --clobber --repo "$GITHUB_REPOSITORY"
@@ -349,5 +354,36 @@ jobs:
             gh release create "$tag" dist/* --draft --target "$GITHUB_SHA" --title "UNSPENT $V" \
               --notes-file notes.md --repo "$GITHUB_REPOSITORY"
           fi
+          if [ "$publish" = true ]; then
+            if [ "$pre" = true ]; then
+              gh release edit "$tag" --draft=false --prerelease --repo "$GITHUB_REPOSITORY"
+            else
+              gh release edit "$tag" --draft=false --latest --repo "$GITHUB_REPOSITORY"
+            fi
+          fi
           gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,url,assets \
             --jq '"draft=\(.isDraft) \(.url)", (.assets[] | "  \(.name) \(.size)")'
+
+      # What a player gets: every asset's public link answers with the bytes the
+      # release lists. Only a published release has public links.
+      - name: Every download answers
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.export.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release view "v$V" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | "\(.size) \(.url)"' > /tmp/assets
+          bad=0
+          while read -r size url; do
+            got=$(curl -sL -o /dev/null -w '%{http_code} %{size_download}' "$url")
+            [ "$got" = "200 $size" ] && echo "ok $url" || { echo "::error::$url answered '$got', not '200 $size'"; bad=1; }
+          done < /tmp/assets
+          exit $bad
+
+      # The site's download cards come from the latest release at deploy time.
+      - name: Put it on unspent.world
+        if: github.event_name == 'push' && !contains(needs.export.outputs.version, '-')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main -f target=production
