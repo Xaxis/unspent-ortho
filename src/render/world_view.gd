@@ -1715,7 +1715,9 @@ static func _slice_arrays(arrays: Array, a: int, b: int) -> Array:
 	out.resize(Mesh.ARRAY_MAX)
 	for k in arrays.size():
 		var v: Variant = arrays[k]
-		if v != null:
+		# typeof, not `!= null`: this runs on the bake's worker, where an operator
+		# on an untyped value is ruled out (test_worker_types).
+		if typeof(v) != TYPE_NIL:
 			out[k] = v.slice(a, b)
 	return out
 
