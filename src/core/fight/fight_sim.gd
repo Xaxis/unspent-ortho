@@ -1228,14 +1228,16 @@ func _move_mob(m: MobState, dt: float) -> void:
 					v = Vector2.from_angle(m.facing) * m.quick * over if over > 0.0 else v * 0.3
 	m.commanded = v.length()
 	v += m.throw_velocity(now)
-	# Hostiles keep a tile apart from each other; never from the player.
+	# Hostiles keep apart from each other by their size, a tile at the least; never
+	# from the player. A flat tile let two wide machines stand inside each other.
 	for o in mobs:
 		if o == m or not o.alive or o.removed:
 			continue
 		var sep := m.pos - o.pos
 		var d := sep.length()
-		if d < 1.0 and d > 1e-4:
-			v += sep / d * (1.0 - d) * 4.0
+		var apart := maxf(1.0, m.radius + o.radius)
+		if d < apart and d > 1e-4:
+			v += sep / d * (apart - d) * 4.0
 	if not m.row.get("through", false):
 		var to := hero.pos - m.pos
 		var d := to.length()
