@@ -183,7 +183,7 @@ func _first_sight() -> void:
 	var stage := get_tree().get_first_node_in_group(&"stage")
 	var orbit: Node = null
 	for s: Node in game.systems:
-		if s.name == "19_orbit" and s.is_processing():
+		if s.name == "19_orbit" and bool(s.call(&"drawn")):
 			orbit = s
 	if stage == null or orbit == null:
 		return

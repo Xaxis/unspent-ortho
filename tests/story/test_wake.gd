@@ -152,7 +152,18 @@ func test_only_the_record_speaks_while_the_wake_holds_the_glass() -> void:
 
 
 func test_the_first_sight_turns_the_view_to_the_tether_and_back() -> void:
-	var g := Sx.game(tree, ARGS)
+	await _first_sight(ARGS)
+
+
+## Under --stats as well: 12_landscape holds every system's process flag then, and
+## the wake read the orbit's flag as "no sky", so a measured run never turned to
+## the Tether (tools/perf-real.sh on home-coast).
+func test_the_first_sight_comes_in_a_measured_run_too() -> void:
+	await _first_sight(ARGS + ["--stats"])
+
+
+func _first_sight(args: Array) -> void:
+	var g := Sx.game(tree, args)
 	var stage: Node = tree.get_first_node_in_group(&"stage")
 	var saw: Array[StringName] = []
 	stage.looked.connect(func(w: StringName) -> void: saw.append(w))

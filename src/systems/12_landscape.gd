@@ -117,9 +117,12 @@ func started() -> void:
 ## `_process` and is neither driven nor timed. That is exactly the population
 ## that could be the cost, so `_proc_line` prints how many nodes it is actually
 ## driving. An instrument that quietly covers most of the candidates reads the
-## same as one that covers all of them.
+## same as one that covers all of them. And a driven node that switches itself
+## off in play is still run here: its process flag is this file's.
 func _gather_process(n: Node) -> void:
-	if n != self:
+	# A node already switched off (an orbit, a fall, the colossi asked off) stays
+	# off: driving it would time a cost no played frame has.
+	if n != self and n.is_processing():
 		var src: Script = n.get_script()
 		if src != null:
 			for m: Dictionary in src.get_script_method_list():
@@ -258,7 +261,9 @@ func _process(_delta: float) -> void:
 	# Driven FIRST, and before the early return, because a frame this file bails
 	# out of is still a frame every other node has to run in.
 	for i in _pdriven.size():
-		if not is_instance_valid(_pdriven[i]):
+		# One that switched itself back on (a system out of a door, a rotor set
+		# turning) is run by the engine again; driven too, it ran twice a frame.
+		if not is_instance_valid(_pdriven[i]) or _pdriven[i].is_processing():
 			continue
 		var began := Time.get_ticks_usec()
 		_pdriven[i].call(&"_process", _delta)
