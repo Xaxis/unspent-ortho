@@ -9,14 +9,23 @@
 # box fell to ~57 MB free (2026-09-28) and the owner's own apps began failing writes;
 # with one slot, one hour-long proof tour stalled every other job behind it.
 # Only a godot binary counts as a running job, matched by process name: a waiter
-# whose own command line mentions godot must not count itself. Other projects'
+# whose own command line mentions godot must not count itself. The name starts
+# with godot, not equals it: the box's `godot` wrapper execs godot-bin. Other projects'
 # browsers (soniq's playwright checks, Rider's cef) cycle all day; our own browser
 # runs take a slot, and the memory floor covers everyone else's load.
 # HEAVY_ALONE=1 waits for a quiet box (no godot at all) and takes every slot: for
 # timings that other jobs would spoil (web A/B, perf).
 # Gives up after HEAVY_WAIT seconds (default 10800) with exit 2; a HEAVY_ALONE claim
 # after HEAVY_ALONE_WAIT (default 600) with exit 3.
+# First it waits for a slot in claude-core's box-wide pool (bin/heavy), which
+# gates every project's jobs on the load: counted alone, this game's tours ran at
+# 1 fps beside other projects' encodes (load 95-157, 2026-10-08). Nice 0, since
+# what runs here is a real-time game run that fails when starved.
 set -u
+pool="$HOME/.claude/claude-core/bin/heavy"
+if [ -z "${BOX_HEAVY_HELD:-}" ] && [ -x "$pool" ]; then
+  BOX_HEAVY_NICE=${BOX_HEAVY_NICE:-0} exec "$pool" "$0" "$@"
+fi
 cores=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 12)
 slots=${HEAVY_SLOTS:-$(( cores / 6 > 2 ? cores / 6 : 2 ))}
 end=$(( $(date +%s) + ${HEAVY_WAIT:-10800} ))
@@ -36,7 +45,7 @@ cwd_of() {
 # imports (Reelwright's cycled all day, 2026-09-30) held six of our jobs 40 min
 # with no slot taken; their memory is the floor's business, not a slot's.
 ours() {
-  pgrep -ix godot | while read -r p; do
+  pgrep -i '^godot' | while read -r p; do
     c=$(cwd_of "$p")
     [ -n "$c" ] && [ -f "$c/tools/heavy.sh" ] && [ -f "$c/src/main.tscn" ] && echo "$p"
   done
