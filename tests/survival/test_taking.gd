@@ -491,10 +491,13 @@ func test_a_spent_bush_is_picked_over_until_it_grows_back() -> void:
 ## The picked-over form is a different model: a bush without its berries, a
 ## mussel rock stripped to a few stragglers, cached apart from the whole one.
 func test_a_picked_over_thing_is_drawn_without_what_was_taken() -> void:
-	for kind: int in [PropKind.MUSSEL_ROCK]:
-		var whole := PropModels.build_kit(kind, 0, Country.COAST)
-		var picked := PropModels.build_kit(kind, 0, Country.COAST, PropModels.WHOLE, true)
-		lt(float(picked.made.vertex_count()), float(whole.made.vertex_count()), "%s picked over has less on it" % PropKind.NAMES[kind])
+	for kind: int in [PropKind.MUSSEL_ROCK, PropKind.TIP]:
+		for v in PropModels.variants(kind):
+			var whole := PropModels.build_kit(kind, v, Country.COAST)
+			var picked := PropModels.build_kit(kind, v, Country.COAST, PropModels.WHOLE, true)
+			lt(float(picked.made.vertex_count() + picked.found.vertex_count()),
+				float(whole.made.vertex_count() + whole.found.vertex_count()),
+				"%s %d picked over has less on it" % [PropKind.NAMES[kind], v])
 	# Berries are a landscape's (BiomeDressing.berry); a land that has them loses them.
 	var berried := -1
 	for c in BiomeRegistry.SLOTS:
