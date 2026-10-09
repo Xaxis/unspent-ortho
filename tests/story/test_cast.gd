@@ -83,6 +83,21 @@ func test_no_two_of_the_cast_stand_in_each_other() -> void:
 	Sx.end(g)
 
 
+
+## NOBODY NAMED STANDS INSIDE WHAT IS DRAWN THERE (owner, playtest 2026-10-09:
+## people stood in walls). Every named person is put down clear of every prop's
+## disc, footprint and walls (WorldQuery.clear_of_props), on both seeds.
+func test_no_one_named_stands_inside_a_wall() -> void:
+	for s: int in SEEDS:
+		var g := Sx.game(tree, ["--seed=%d" % s, "--hour=11"])
+		await frames(3)
+		var inside := PackedStringArray()
+		for row: Dictionary in Sx.system(g, "49_cast").get("people"):
+			if not g.query.clear_of_props(row.pos, Tuning.PLAYER_RADIUS):
+				inside.append("%s at %s" % [row.character, row.pos])
+		eq(inside.size(), 0, "seed %d: nobody named inside a prop (%s)" % [s, ", ".join(inside)])
+		Sx.end(g)
+
 func test_a_named_person_is_there_and_answers_the_use_key() -> void:
 	Story.forget()
 	var g := Sx.game(tree, ["--seed=1", "--size=%d" % SIZE, "--hour=11"])

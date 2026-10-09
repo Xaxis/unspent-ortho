@@ -393,7 +393,9 @@ func _stand_near(at: Vector2, id: StringName) -> Vector2:
 			if not game.query.standable(floori(p.x), floori(p.y)) or Ground.is_water(game.world.ground_at(floori(p.x), floori(p.y))):
 				continue
 			var spot := Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
-			if _taken(spot):
+			# Clear of what is drawn there: a named person stood inside a house's
+			# wall (owner, playtest 2026-10-09).
+			if _taken(spot) or not game.query.clear_of_props(spot, Tuning.PLAYER_RADIUS):
 				continue
 			if not _near_words(spot):
 				return spot
