@@ -27,6 +27,10 @@ extends RefCounted
 ## found and `limb` is made, and `_rope_over` in `remains.gd` draws what a player
 ## reads as rope entirely in found stock.
 
+## Taken from and left standing (WorldProp.picked): a builder that has a picked-
+## over form draws it (a bush without its berries, a mussel rock stripped), and
+## one that has none draws itself as it was.
+var picked := false
 var made := MeshKit.new()
 var found := MeshKit.new()
 ## The third pen: LEAVES. Not a lobed solid but many small cards at many angles,

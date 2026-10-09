@@ -710,8 +710,9 @@ static func mussel_rock(k: Kit, v: int, _c: int) -> void:
 	k.stone(0, -0.1, 0, 0.55, 0.36, s, P.SLATE[1], 7, 0.1, P.SLATE[2])
 	if v % 3 == 1:
 		k.stone(0.44, -0.1, 0.26, 0.3, 0.26, s + 1, P.SLATE[1], 6, 0.2)
-	# Mussels in clumps: small dark blue-black shells, a few gaping.
-	for i in 18:
+	# Mussels in clumps: small dark blue-black shells, a few gaping. Picked over,
+	# a few stragglers are left on bare rock.
+	for i in (4 if k.picked else 18):
 		var a := float(i) * 2.39996
 		var r := 0.18 + fmod(float(i) * 0.137, 0.3)
 		var y := 0.2 - r * 0.28

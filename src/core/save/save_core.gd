@@ -243,6 +243,12 @@ static func load_world(game: Game, v: Variant) -> void:
 	var spent := _d(d.get("spent"))
 	for k: String in spent:
 		state.spent[_rekey(k, remap)] = SaveCodec.to_num(spent[k])
+	# Picked over comes back from the spent takes, as `shown` does from the taken.
+	for k: String in state.spent:
+		var q := w.prop(k.get_slice(":", 0).to_int())
+		if q != null and not q.picked:
+			w.set_picked(q, true)
+			touched.append(q)
 	state.built.clear()
 	for e: Variant in d.get("built", []):
 		var q := w.prop(remap.call(SaveCodec.to_int(e, -1)))

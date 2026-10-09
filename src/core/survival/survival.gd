@@ -587,6 +587,10 @@ static func finish_work(game: Game) -> bool:
 		var back := INF if float(o.regrow) < 0.0 else now + float(o.regrow) * 60.0
 		if o.keep and not Sentinels.feeds_a_keeper(game.world, prop):
 			state.spent[k] = back
+			# Drawn picked over until it grows back (WorldProp.picked).
+			game.world.set_picked(prop, true)
+			if game.view != null:
+				game.view.refresh_props(prop)
 		else:
 			# Taken away, or a keeper's own feed robbed out: gone from the world,
 			# where the keeper's hunger reads it (44_sentinels look_at).
@@ -1174,6 +1178,16 @@ static func _clock(minutes: float) -> String:
 
 
 ## Once a second: things grow back, weather and water wet you, fires dry you.
+## Whether any of `id`'s takes is still spent (a thing with two takes is picked
+## over while either is).
+static func _spent_any(state: SurvivalState, id: int) -> bool:
+	var head := "%d:" % id
+	for k: String in state.spent:
+		if k.begins_with(head):
+			return true
+	return false
+
+
 static func sweep(game: Game, _delta: float) -> void:
 	var state := SurvivalState.of(game)
 	var now := game.clock.minutes
@@ -1203,6 +1217,11 @@ static func sweep(game: Game, _delta: float) -> void:
 		if float(state.spent[k]) <= now:
 			state.spent.erase(k)
 			state.taken.erase(k)
+			var grown := w.prop(k.get_slice(":", 0).to_int())
+			if grown != null and grown.picked and not _spent_any(state, grown.id):
+				w.set_picked(grown, false)
+				if game.view != null:
+					game.view.refresh_props(grown)
 	burn_lamp(game)
 	var p := game.player.pos
 	var g := w.ground_at(floori(p.x), floori(p.y))

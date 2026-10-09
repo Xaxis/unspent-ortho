@@ -1593,7 +1593,8 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			var worked := Broken.bucket(p.shown)
 			# A thing somebody is working down keeps its full model at any range: the
 			# far models are of whole things, and there are only ever a handful.
-			var tpl := PropModels.template(p.kind, variant, country, worked) if level < 0 or worked != PropModels.WHOLE \
+			var tpl := PropModels.template(p.kind, variant, country, worked, p.picked) \
+				if level < 0 or worked != PropModels.WHOLE or p.picked \
 				else FarModels.template(p.kind, variant, country, level)
 			var xf := prop_xform(p, country, world.seed_value, _height(ch, m, p.pos))
 			# Normals take the turn only: a face keeps the light band the model was

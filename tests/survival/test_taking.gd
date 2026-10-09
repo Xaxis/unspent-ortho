@@ -466,3 +466,42 @@ func test_a_walled_thing_is_reached_at_the_walls_that_stop_the_body() -> void:
 	print("  info %d walled approaches" % tried)
 	check(tried > 0, "some walled kind is taken from")
 	eq(missed.size(), 0, "a walled thing is in reach where its walls stop the body: %s" % [missed])
+
+
+## PICKED OVER IS DRAWN, AND REMEMBERED (owner, playtest 2026-10-09: everything
+## dug or mined should show it is picked over). A thing taken from and left
+## standing is WorldProp.picked until it grows back: its row keeps the mark, so a
+## prop made from the row again (streamed back in) is still picked over.
+func test_a_spent_bush_is_picked_over_until_it_grows_back() -> void:
+	var g := Fx.flat()
+	var bush := Fx.put(g, PropKind.BUSH, Vector2(0.9, 0))
+	check(not bush.picked, "a bush nobody has touched is whole")
+	var guard := 0
+	while Fx.take(g) and guard < 8:
+		guard += 1
+	gt(float(guard), 0.0, "it gave something")
+	check(not g.world.depleted.has(bush.id), "and still stands")
+	check(g.world.prop(bush.id).picked, "picked over, read back off its row")
+	g.clock.skip(30.0 * 24.0 * 60.0)
+	Survival.sweep(g, 1.0)
+	check(not g.world.prop(bush.id).picked, "and whole again once it has grown back")
+	Fx.done(g)
+
+
+## The picked-over form is a different model: a bush without its berries, a
+## mussel rock stripped to a few stragglers, cached apart from the whole one.
+func test_a_picked_over_thing_is_drawn_without_what_was_taken() -> void:
+	for kind: int in [PropKind.MUSSEL_ROCK]:
+		var whole := PropModels.build_kit(kind, 0, Country.COAST)
+		var picked := PropModels.build_kit(kind, 0, Country.COAST, PropModels.WHOLE, true)
+		lt(float(picked.made.vertex_count()), float(whole.made.vertex_count()), "%s picked over has less on it" % PropKind.NAMES[kind])
+	# Berries are a landscape's (BiomeDressing.berry); a land that has them loses them.
+	var berried := -1
+	for c in BiomeRegistry.SLOTS:
+		var whole := PropModels.build_kit(PropKind.BUSH, 0, c)
+		var picked := PropModels.build_kit(PropKind.BUSH, 0, c, PropModels.WHOLE, true)
+		if picked.made.vertex_count() < whole.made.vertex_count():
+			berried = c
+			break
+	check(berried >= 0, "some land's bushes carry berries that picking takes")
+

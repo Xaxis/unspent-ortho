@@ -540,7 +540,20 @@ func _view(i: int) -> WorldProp:
 	p.solid = table.solid[i]
 	p.variant = table.variant[i]
 	p.shown = float(table.shown.get(i, 1.0))
+	p.picked = table.picked.has(i)
 	return p
+
+
+## Whether `p` is picked over (WorldProp.picked), kept on its row too.
+func set_picked(p: WorldProp, v: bool) -> void:
+	p.picked = v
+	var at := _row_of(p)
+	if at < 0:
+		return
+	if v:
+		table.picked[at] = true
+	else:
+		table.picked.erase(at)
 
 
 ## How much of `p` is left (Harvest.shown), kept on its row too.

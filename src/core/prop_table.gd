@@ -21,6 +21,8 @@ var solid := PackedFloat64Array()
 var variant := PackedInt32Array()
 ## Row -> the share of the prop still there, for rows under 1.
 var shown := {}
+## Rows picked over (WorldProp.picked): sparse, a handful.
+var picked := {}
 
 
 static func of(props: Array[WorldProp]) -> PropTable:
@@ -71,3 +73,7 @@ func _write(i: int, p: WorldProp) -> void:
 		shown[i] = p.shown
 	else:
 		shown.erase(i)
+	if p.picked:
+		picked[i] = true
+	else:
+		picked.erase(i)

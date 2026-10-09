@@ -134,6 +134,8 @@ func _take_for_shot(prop: WorldProp) -> void:
 	var state := SurvivalState.of(game)
 	for j in opts.size():
 		state.spent[SurvivalState.key(prop.id, j)] = INF
+	game.world.set_picked(prop, true)
+	game.view.refresh_props(prop)
 
 
 func _face_nearest_workable() -> void:
