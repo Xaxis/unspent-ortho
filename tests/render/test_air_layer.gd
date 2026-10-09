@@ -37,6 +37,17 @@ func _sky_with_camera(back: float, tier: StringName = &"high") -> Array:
 	return [sky, cam]
 
 
+## THE AIR KEEPS NO HISTORY. Under the orthographic camera the fog's temporal
+## reprojection carried light from frames the camera had left into a hard-edged
+## block: a warm square stood by a house at the spawn at night until the fog was
+## switched off and on (canon 13-spawn-night).
+func test_the_air_keeps_no_light_from_frames_it_has_left() -> void:
+	Quality._now = &"high"
+	var e := SkyLight.build_environment()
+	check(e.volumetric_fog_enabled, "the high tier draws volumetric air")
+	check(not e.volumetric_fog_temporal_reprojection_enabled, "and reprojects none of it from earlier frames")
+	Quality._now = &""
+
 func _layer(sky: SkyLight) -> FogVolume:
 	for c: Node in sky.get_children():
 		if c is FogVolume:

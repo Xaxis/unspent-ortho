@@ -580,6 +580,12 @@ static func build_environment() -> Environment:
 	e.volumetric_fog_anisotropy = VOLUME_ANISOTROPY
 	e.volumetric_fog_length = 48.0
 	e.volumetric_fog_gi_inject = 0.0
+	# No temporal reprojection. Under the orthographic play camera it kept the
+	# fog's light from frames the camera had already left, in a hard-edged
+	# block: after a jump a warm square stood by a house at the spawn at night,
+	# and switching the fog off and on cleared it (canon 13-spawn-night,
+	# render_probe `perf features`, 2026-10-09).
+	e.volumetric_fog_temporal_reprojection_enabled = false
 	e.ssao_enabled = bool(q.get("ssao", false))
 	e.ssao_radius = 0.7
 	e.ssao_intensity = 1.9
