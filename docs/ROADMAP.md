@@ -33,8 +33,10 @@ the web preview that every push to main deploys.
   strand and a press out of a gate's reach no longer cross him by accident (20241cc8).
 - [x] The release cycle: a version tag builds Mac, Linux, Windows and web, each booted on its
   own OS; the stutters on pause, survey, doors, drops and striding walkers are gone (e94706ec).
-- [ ] A tap shorter than a frame is lost on a slow machine (`fix/taps`, 00_taps): its hold must
-  never clear a press made since.
+- [x] A tap shorter than a frame is no longer lost on a slow machine, and no hold clears a
+  press made since: 00_taps never writes the engine's input state (batch 11, 8f33b907).
+- [x] unspent.world: a landing page that plays the build at /play and offers each release's
+  downloads; every push to main deploys it to production (batch 12).
 - [ ] ★ The owner plays slices 1-3; his notes become the next plan.
 
 ## Slice 1 — the home coast (done but ★)
