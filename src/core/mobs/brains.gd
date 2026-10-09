@@ -23,9 +23,8 @@ const BLOCKED_SHARE := 0.35
 ## for, and how long it keeps to that way before it flees straight again.
 const FLEE_REACH := 16.0
 const FLEE_WAY_MS := 3000.0
-## How long a body stopped by a prop's walls keeps to its way round after the
-## line to the player was last seen crossed (Brains._seek).
-const ROUND_MS := 1000.0
+## How far along its line to the player a chaser asks for props' walls (tiles).
+const PROPS_AHEAD := 6.0
 ## Radians off its facing a machine's close bite may be thrown at.
 const FACING_BITE := 0.6
 ## A worker goes round someone standing on its round this far ahead (tiles),
@@ -727,31 +726,22 @@ static func _seek(m: MobState, sim: FightSim, target: Vector2, speed: float) -> 
 		m.want = Vector2.ZERO
 		return
 	var dir := to.normalized()
-	# Going for the player where the straight line meets a cliff or the sea: take
-	# the ground's way round instead.
-	if sim.nav != null and target.distance_squared_to(sim.hero.pos) < 0.25 \
-			and not NavField.line_walkable(sim.world, m.pos, sim.hero.pos, minf(m.radius, 0.45)):
-		sim.refresh_nav()
-		var way := sim.nav.direction(m.pos)
-		if way != Vector2.ZERO:
-			m.want = way * speed
-			m.aim = way.angle()
-			return
-	# Stopped against the walls props are drawn with (a house between it and the
-	# player, owner's playtest 2026-10-09), it takes its own way round, and keeps
-	# to it while the line stays crossed. Asked only once it is stopped or already
-	# going round: props asked on every think rerouted a crowd's approach past
-	# rocks on open ground, and three harvesters circled (test_ploughshare).
-	var stopped := m.want.length() > 0.1 and m.pos.distance_to(m.last_think_pos) < speed * 0.064 * BLOCKED_SHARE
-	if (stopped or sim.now < m.round_until) and sim.query != null \
-			and target.distance_squared_to(sim.hero.pos) < 0.25 \
-			and not NavField.props_clear(sim.query, m.pos, target, FightSim.move_radius(m), NavField.breaks_of(m.row)):
-		var way := sim.route(m, target)
-		if way != Vector2.ZERO:
-			m.round_until = sim.now + ROUND_MS
-			m.want = way * speed
-			m.aim = way.angle()
-			return
+	# Going for the player round whatever stands between: a cliff, the sea, and the
+	# walls props are drawn with. The straight line was tested against the ground
+	# alone, so a machine pressed into a house's wall and shuffled there (owner,
+	# playtest 2026-10-09). Props are asked PROPS_AHEAD tiles along the line, not
+	# all of it: two queries a tile on every think, and a wall farther on is met
+	# when it is nearer. On open ground the approach is the straight one.
+	if target.distance_squared_to(sim.hero.pos) < 0.25 and sim.nav != null and sim.query != null:
+		var r := FightSim.move_radius(m)
+		var near := m.pos + (target - m.pos).limit_length(PROPS_AHEAD)
+		if not NavField.line_walkable(sim.world, m.pos, target, r) \
+				or not NavField.props_clear(sim.query, m.pos, near, r, NavField.breaks_of(m.row)):
+			var way := sim.route(m, target)
+			if way != Vector2.ZERO:
+				m.want = way * speed
+				m.aim = way.angle()
+				return
 	if sim.now < m.detour_until:
 		dir = (dir * 0.4 + m.detour).normalized()
 	elif m.want.length() > 0.1 and m.pos.distance_to(m.last_think_pos) < speed * 0.064 * BLOCKED_SHARE:
