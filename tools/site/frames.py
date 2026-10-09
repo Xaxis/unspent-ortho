@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """The landing page's images, from the frames tours/site.tour shoots.
 
-    tools/heavy.sh tools/gpu.sh tools/tour.sh tours/site.tour    shoot (header has the options)
-    tools/site/frames.py [SHOTS_DIR]                             default shots/tour/site
+    tools/site/frames.py [SHOTS_DIR]       default shots/tour/site
 
 Each page image is one shot, scaled from the tour's 3840x2160 to 2560 and 1280
 wide WebP (the page's srcset), and the hero also as the 1200x630 JPEG a link

@@ -84,9 +84,6 @@ extends GameSystem
 ##   weather KIND:S[:bolt][:wind=W]  force the sky as --weather does (`weather rules`
 ##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
-##   hud hidden|shown       the slate's edge off or on, held as dev mode's switch
-##                          holds it (DevSession.hud_hidden): for a frame of the
-##                          world alone (tours/site.tour)
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
 ##   drive READER SECS [UNTIL] [lure]  hand the keys to a reader script (res://tests/fight/,
 ##                          a player-like driver with `act()` over the fight) for
@@ -568,11 +565,6 @@ func _run() -> void:
 					view_sys.call(&"set_height", parts[1].to_float())
 				else:
 					game.camera.view_height = parts[1].to_float()
-			"hud":
-				ok = parts.size() > 1 and parts[1] in ["hidden", "shown"]
-				if ok:
-					DevSession.hud_hidden = parts[1] == "hidden"
-					game.hud.visible = not DevSession.hud_hidden and game.open_screens.is_empty()
 			"weather":
 				var sky_sys := _system("10_sky")
 				ok = sky_sys != null and bool(sky_sys.call("apply_weather", parts[1]))
