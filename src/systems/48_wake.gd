@@ -151,6 +151,12 @@ func _send_maren_home() -> void:
 	_maren_home = Vector2.INF
 
 
+## While he rises out of the surf the view looks down on him, even in a game that
+## opens over the shoulder (41_shoulder asks): the shoulder's eye sat on the water.
+func keeps_view_down() -> bool:
+	return _first and not _staged.is_empty() and game.player != null and game.player.sunk > 0.0
+
+
 ## THE WAKE HOLDS THE GLASS from the moment he is put in the surf until it is
 ## over (he has met Maren, or walked off): no goal line, no key hint and no line
 ## but the record's over his first breath (58_guide asks, and 90_ui and the Hud

@@ -139,6 +139,12 @@ func _process(delta: float) -> void:
 		_zoomed = 0
 	_key_was = key
 	cam.shoulder = Shoulder.wanted(opens_over, key) if _zoomed == 0 else _zoomed > 0
+	# A game that opens over the shoulder still shows its first moment from above:
+	# rising out of the surf, the eye over his shoulder sat on the water with his
+	# head filling the frame. Whatever stages that moment says so (48_wake), and
+	# the view glides down behind him as he stands.
+	if cam.shoulder and opens_over and _key_was == false and _held_down():
+		cam.shoulder = false
 	_hold_pointer(Shoulder.capture(cam.shoulder, blocked, _tool, _focused()))
 	cam.shoulder_clear = Shoulder.CLEAR_TIP if _person_on_the_line(cam) else 0.0
 	if blocked or not cam.shoulder:
@@ -195,6 +201,14 @@ func _view_from_zoom(on: bool) -> void:
 	else:
 		_zoomed = 1 if on else -1
 	game.camera.shoulder = on
+
+
+## Something staging the picture wants the view looking down for now.
+func _held_down() -> bool:
+	for s in game.systems:
+		if s.has_method(&"keeps_view_down") and bool(s.call(&"keeps_view_down")):
+			return true
+	return false
 
 
 ## The eye in or out along the view by `by` (seconds' worth of a held zoom key).
