@@ -163,14 +163,15 @@ func test_a_burned_village_comes_out_one_short() -> void:
 	var went_in := 0
 	for d in doors_before:
 		for h in houses:
-			if d.distance_to(h.pos) <= h.solid + 0.35:
+			# A villager's door is the house's own (Threshold.of_house, solid + 0.4).
+			if d.distance_to(h.pos) <= h.solid + 0.45:
 				went_in += 1
 	gt(float(went_in), 0.0, "the day before, people went in at those doors")
 	queue.clear()
 	folk.call(&"_populate", village, centre)
 	for r: Dictionary in queue:
 		for h in houses:
-			check((r.door as Vector2).distance_to(h.pos) > h.solid + 0.35, "nobody goes in at a burned door")
+			check((r.door as Vector2).distance_to(h.pos) > h.solid + 0.45, "nobody goes in at a burned door")
 	g.queue_free()
 	await frames(1)
 
