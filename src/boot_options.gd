@@ -273,6 +273,10 @@ var screen := ""
 var explore := 0
 var ui_demo := false
 var tour := ""
+## A game a shot or a tour started from the title. Its options are the title's
+## fresh ones (no `shot`, no `tour`), but it is still a tool run, and a tool run
+## opens at the shipped zoom and writes nothing back (09_view). Never parsed.
+var tool := false
 ## Save slot to boot, or -1. SaveSlots.options_for fills seed, size, at and hour from it.
 var load_slot := -1
 ## Arguments that could not be read as ONE option, said in words. Several
