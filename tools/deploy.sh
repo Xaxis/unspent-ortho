@@ -76,6 +76,7 @@ fi
 rm -rf .vercel/output
 mkdir -p ".vercel/output/static/b/$sha" .vercel/output/static/releases
 cp -R site/. .vercel/output/static/
+rm -f .vercel/output/static/.gdignore
 python3 tools/site/latest.py .vercel/output/static/releases/latest.json || { echo "deploy FAILED: the release manifest"; exit 1; }
 # The .br and .gz siblings are for a server that negotiates; Vercel does its own.
 for f in "$dir"/*; do
