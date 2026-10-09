@@ -12,6 +12,10 @@ extends GameSystem
 ## - a fire you build goes up in a ring of dust; a thing that grows back is
 ##   announced by a few green specks;
 ## - what taking leaves stays marked while it is gone (RemnantModels);
+## - a thing taken from and left standing (berries, mussels, deadfall, scrap
+##   turned over) shivers, sheds a burst of its own stuff, and its picked-over
+##   mark grows in at its foot rather than popping in (owner, playtest 2026-10-09:
+##   everything dug or mined should show it is picked over);
 ## - every fire nearby burns (FireModel).
 ## Every mark is sized in screen pixels through the camera (_px), so a stroke is a
 ## stroke at the 640x360 the game is played at: ticks at least a pixel and a half
@@ -84,6 +88,12 @@ var _job_prop: WorldProp = null
 ## The work that ended most recently, and on which frame: what a took event came from.
 var _ended_prop: WorldProp = null
 var _ended_frame := -1
+## Prop id -> the `_time` it was picked over: its mark grows in from then.
+var _fresh: Dictionary = {}
+var _picked_frame := -1
+var _job_verb := &""
+## How long a picked-over mark takes to grow in, in drawn frames.
+const GROW_FRAMES := 4.0
 var _job_t := 0.0
 var _blow := 0
 var _anims: Array[Dictionary] = []
@@ -176,6 +186,12 @@ func _process(delta: float) -> void:
 	if not _ring.is_empty() and not Survival.build_asked(game).is_finite():
 		_clear_ring()
 	_scan_in -= delta
+	if not _fresh.is_empty():
+		for id: int in _fresh.keys():
+			if _time - float(_fresh[id]) > (GROW_FRAMES + 1.0) / FPS:
+				_fresh.erase(id)
+		_remnant_sig = ""
+		_refresh_remnants()
 	if _scan_in <= 0.0:
 		_scan_in = 0.5
 		_scan_fires()
@@ -248,6 +264,7 @@ func _follow_job(delta: float) -> void:
 		return
 	_job_t += delta
 	var verb: StringName = job.option.verb
+	_job_verb = verb
 	while _blow < BLOWS.size() and _job_t >= BLOWS[_blow] * Survival.WORK_SECONDS:
 		_blow += 1
 		_strike(prop, verb, job.get("tool", &"") != &"")
@@ -549,6 +566,30 @@ func _give_out(prop: WorldProp) -> void:
 	_step_anim(_anims[-1], 0.0)
 
 
+## TAKEN FROM AND LEFT STANDING. The thing is baked into its chunk and cannot
+## move, so a drawn copy of it, a hair larger to cover it, shivers in stepped
+## frames and sheds a burst of its own stuff; then the copy is gone and what
+## stands is the baked thing, worked down a step or marked at its foot.
+func _show_picked(prop: WorldProp) -> void:
+	var node := MeshInstance3D.new()
+	node.mesh = PropModels.mesh(prop.kind)
+	node.material_override = _found_mat if SCRAP.has(prop.kind) else _mat
+	var leaves := PropModels.leaf_node(prop.kind)
+	if leaves != null:
+		node.add_child(leaves)
+	var pivot := Node3D.new()
+	pivot.position = game.world.to_3d(prop.pos)
+	pivot.add_child(node)
+	node.rotation.y = prop.rot
+	node.scale = Vector3.ONE * prop.scale
+	add_child(pivot)
+	_fresh[prop.id] = _time
+	_remnant_sig = ""
+	_anims.append({"pivot": pivot, "t": 0.0, "kind": &"picked", "away": Vector2.ZERO, "prop": prop, "stage": 0,
+		"frame": Engine.get_process_frames(), "verb": _job_verb})
+	_step_anim(_anims[-1], 0.0)
+
+
 func _step_anims(dt: float) -> void:
 	for i in range(_anims.size() - 1, -1, -1):
 		var a := _anims[i]
@@ -602,6 +643,22 @@ func _step_anim(a: Dictionary, _dt: float) -> bool:
 				pivot.visible = false
 				_along_trunk(prop, away, 22, _dust_colors(prop.kind), 0.22, 0.8)
 			return t >= gone + 0.05
+		&"picked":
+			var f := mini(int(t * FPS), 3)
+			var shake: Array[float] = [0.05, -0.04, 0.03, -0.015]
+			pivot.position = base + _page_basis().x * shake[f] * prop.scale
+			pivot.scale = Vector3.ONE * (1.05 - 0.01 * f)
+			if int(a.stage) == 0:
+				a.stage = 1
+				var salt := prop.id * 17 + 3
+				var at := base + Vector3(0, 0.25 * prop.scale, 0) + _toward_eye() * 0.25
+				_ink_burst(at, 5, 10.0 * prop.scale, salt)
+				var toward := game.world.to_3d(game.player.pos) - base
+				toward.y = 0.0
+				_knock_flecks(at, toward.normalized() if toward.length() > 0.01 else Vector3.LEFT, 5,
+					_colors(prop.kind, a.get("verb", &"")), salt, 0.45, SCRAP.has(prop.kind))
+				_dust(base + Vector3(0, 0.05, 0), 10, 0.5 * prop.scale, _dust_colors(prop.kind), salt, 0.2, 0.6)
+			return t >= GROW_FRAMES / FPS
 		&"split":
 			# Drawn frames: it cracks wider, slumps, and is gone in a burst of its own pieces.
 			var k := clampf(floorf(t * FPS) / FPS / 0.2, 0.0, 1.0)
@@ -657,6 +714,12 @@ func _hands() -> Vector3:
 func _on_took(item: StringName, n: int) -> void:
 	if n > 0:
 		_pending.append({"item": item, "n": n, "made": false})
+	# Taken from the thing being worked, and it is still standing: picked over.
+	# One show per take, however many items it gave.
+	var frame := Engine.get_process_frames()
+	if n > 0 and _job_prop != null and frame != _picked_frame and not game.world.depleted.has(_job_prop.id):
+		_picked_frame = frame
+		_show_picked(_job_prop)
 
 
 func _on_made(item: StringName, n: int) -> void:
@@ -806,6 +869,9 @@ func _refresh_remnants() -> void:
 		for j in list.size():
 			var p: WorldProp = list[j]
 			var s := p.scale * (1.3 if p.kind == PropKind.BROADLEAF else 1.0)
+			if _fresh.has(p.id):
+				# Grown in over GROW_FRAMES drawn frames, stepped like the rest.
+				s *= clampf(floorf((_time - float(_fresh[p.id])) * FPS + 1.0) / GROW_FRAMES, 0.2, 1.0)
 			# A tap mark faces the camera's side of the trunk (south-east), where it can be seen.
 			var turn := -PI * 0.25 if name == &"tapped" else p.rot
 			mm.set_instance_transform(j, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * s), w.to_3d(p.pos)))
