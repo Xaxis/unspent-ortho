@@ -33,17 +33,21 @@ uniform float mark_halo = 1.0;
 varying vec3 wp;
 """
 
-const _BILLBOARD := """
+## A mark either faces the camera (over, among) or lies as its quad is turned
+## (flat, ground). One vertex stage for both, picked by `billboard`, so the
+## twelve-mode mark body is compiled twice (depth-tested or not), not four times:
+## each build of it cost 550-950 ms of the boot's main thread on this box, warm
+## shader cache or not, and the web pays it again in WebGL.
+const _VERTEX := """
+uniform bool billboard = false;
 void vertex() {
-	vec3 s = vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
-	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0] * s.x, INV_VIEW_MATRIX[1] * s.y, INV_VIEW_MATRIX[2] * s.z, MODEL_MATRIX[3]);
-	wp = MODEL_MATRIX[3].xyz;
-}
-"""
-
-const _FLAT := """
-void vertex() {
-	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	if (billboard) {
+		vec3 s = vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
+		MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0] * s.x, INV_VIEW_MATRIX[1] * s.y, INV_VIEW_MATRIX[2] * s.z, MODEL_MATRIX[3]);
+		wp = MODEL_MATRIX[3].xyz;
+	} else {
+		wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	}
 }
 """
 
@@ -710,6 +714,12 @@ static var _quad: QuadMesh
 
 
 static func _shader(key: StringName) -> Shader:
+	# A flat mark is the facing one's shader and a ground mark the among one's:
+	# `billboard` picks the vertex stage, so only depth tells two shaders apart.
+	if key == &"flat":
+		key = &"over"
+	elif key == &"among":
+		key = &"ground"
 	if _shaders.has(key):
 		return _shaders[key]
 	var s := Shader.new()
@@ -720,13 +730,9 @@ static func _shader(key: StringName) -> Shader:
 		PEN, BURST_OPEN, VAPOUR_SUN, VAPOUR_DARK, VAPOUR_WHOLE, BURST_STROKES, BURST_ROOT, BURST_TIP, BURST_SHORT, MARK_HALO]
 	match key:
 		&"over":
-			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _BILLBOARD + _MARKS
-		&"flat":
-			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _FLAT + _MARKS
+			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _VERTEX + _MARKS
 		&"ground":
-			s.code = "shader_type spatial;\n" + (_COMMON % "") + open + _FLAT + _MARKS
-		&"among":
-			s.code = "shader_type spatial;\n" + (_COMMON % "") + open + _BILLBOARD + _MARKS
+			s.code = "shader_type spatial;\n" + (_COMMON % "") + open + _VERTEX + _MARKS
 		&"swing":
 			s.code = "shader_type spatial;\n" + open + _SWING
 		&"line":
@@ -756,6 +762,7 @@ static func _mark(parent: Node, at: Vector3, size: float, mode: int, shader: Str
 		_quad.size = Vector2(2, 2)
 	var mat := ShaderMaterial.new()
 	mat.shader = _shader(shader)
+	mat.set_shader_parameter(&"billboard", shader == &"over" or shader == &"among")
 	mat.set_shader_parameter(&"mode", mode)
 	mat.set_shader_parameter(&"seed", float(posmod(seed_value, 997)) * 0.731)
 	mat.set_shader_parameter(&"col_a", _v3(a))

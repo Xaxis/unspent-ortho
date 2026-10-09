@@ -135,7 +135,7 @@ func setup(g: Game) -> void:
 		preload("res://src/render/depth/flier_shade.gdshader"),
 		preload("res://src/render/foliage/grass.gdshader"),
 	]
-	for key: StringName in [&"over", &"flat", &"ground", &"among", &"swing", &"line"]:
+	for key: StringName in [&"over", &"ground", &"swing", &"line"]:
 		shared.append(MobFx._shader(key))
 	for sh: Shader in shared:
 		var m := ShaderMaterial.new()

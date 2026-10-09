@@ -11,6 +11,26 @@ func _marks_source() -> String:
 	return MobFx._MARKS
 
 
+# --- The twelve-mode mark body is compiled twice, not four times ---------------
+
+## Each build of it cost 550-950 ms of the boot's main thread (01_warm_lights
+## draws every one), warm shader cache or not. Facing the camera or lying flat is
+## a uniform; only whether depth hides a mark needs a shader of its own.
+func test_the_marks_are_two_shaders_by_depth() -> void:
+	check(MobFx._shader(&"flat") == MobFx._shader(&"over"), "flat and facing marks share a shader")
+	check(MobFx._shader(&"among") == MobFx._shader(&"ground"), "and the depth-tested pair theirs")
+	check(MobFx._shader(&"over") != MobFx._shader(&"ground"), "two shaders, by depth")
+	check(MobFx._shader(&"over").code.contains("depth_test_disabled"), "the facing one drawn over")
+	check(not MobFx._shader(&"ground").code.contains("depth_test_disabled"), "the ground one hidden")
+	var holder := Node3D.new()
+	tree.root.add_child(holder)
+	for pair: Array in [[&"over", true], [&"among", true], [&"flat", false], [&"ground", false]]:
+		var mi := MobFx._mark(holder, Vector3.ZERO, 1.0, MobFx.BURST, pair[0], 1, Color.WHITE, Color.WHITE)
+		eq((mi.material_override as ShaderMaterial).get_shader_parameter(&"billboard") == true, pair[1],
+			"a %s mark faces the camera: %s" % pair)
+	holder.free()
+
+
 # --- A blow whitens the part it struck, not the machine -------------------------
 
 func _one_part(mat: Material) -> MeshInstance3D:
