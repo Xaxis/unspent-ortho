@@ -67,6 +67,12 @@ static func _card_area(v: PackedVector3Array) -> float:
 	return a
 
 
+## The first cell's `part` of a chunk that has one (the built things are cut by cell).
+static func _first(node: Node, part: String) -> GeometryInstance3D:
+	var all := WorldView.parts(node, part)
+	return all[0] if not all.is_empty() else null
+
+
 ## A flat plain at level 2, four chunks across.
 static func _plain() -> WorldData:
 	var w := WorldData.new(3, 128)
@@ -124,9 +130,9 @@ func test_leaf_cards_cast_close_in_and_the_shade_crowns_past_it() -> void:
 	view.ensure_near(Vector2(76, 64))
 	await process_frames(2)
 	var node: Node3D = view._chunks[Vector2i(3, 2)]
-	var leaf := node.get_node_or_null("props_leaf_casts") as GeometryInstance3D
-	var made := node.get_node_or_null("props_casts") as GeometryInstance3D
-	var shade := node.get_node_or_null("shade_leaf_casts") as GeometryInstance3D
+	var leaf := _first(node, "props_leaf_casts")
+	var made := _first(node, "props_casts")
+	var shade := _first(node, "shade_leaf_casts")
 	check(leaf != null and made != null and shade != null, "the leaves, the trunks and the shade crowns each cast by a twin")
 	if leaf != null and made != null and shade != null:
 		near(leaf.visibility_range_end, minf(WorldView.LEAF_SHADOW, WorldView.SHADOW_FULL), 1e-3, "leaf cards cast to LEAF_SHADOW")
@@ -155,7 +161,7 @@ func test_the_desktop_tier_holds_eye_level_shadows_to_its_reach() -> void:
 	var reach := float(Quality.row(&"high").eye_shadow_reach)
 	var node: Node3D = view._chunks[Vector2i(3, 2)]
 	var land := node.get_node_or_null("terrain_casts") as GeometryInstance3D
-	var shade := node.get_node_or_null("shade_casts") as GeometryInstance3D
+	var shade := _first(node, "shade_casts")
 	check(land != null and shade != null, "the ground and the shade models cast by twins")
 	if land != null and shade != null:
 		near(land.visibility_range_end, reach, 1e-3, "the ground casts out to the tier's reach and no further")
@@ -177,14 +183,14 @@ func test_the_hand_over_is_the_eyes_and_never_the_top_down_games() -> void:
 	await process_frames(2)
 	var node: Node3D = view._chunks[Vector2i(3, 2)]
 	check(node.get_node_or_null("mid_done") != null, "an eye bakes the chunk's mid models")
-	var props := node.get_node("props_leaf") as GeometryInstance3D
+	var props := _first(node, "props_leaf")
 	eq(props.visibility_range_end, WorldView.MID_FROM, "and its full props hand over to them at MID_FROM")
-	check((node.get_node("mid_leaf") as GeometryInstance3D).visible, "which are drawn past it")
+	check(_first(node, "mid_leaf").visible, "which are drawn past it")
 	# With the fade off a range margin is hysteresis on each half of the pair, so
 	# the mid models must be shown by the time the full ones may still be hidden:
 	# otherwise a chunk in the band is drawn by neither (the roofs sixty tiles out
 	# lost every tank and mast that way).
-	var mid := node.get_node("mid_leaf") as GeometryInstance3D
+	var mid := _first(node, "mid_leaf")
 	check(mid.visibility_range_begin + mid.visibility_range_begin_margin
 		<= props.visibility_range_end - props.visibility_range_end_margin, "no band where neither half draws")
 	var top := Camera3D.new()
@@ -195,7 +201,10 @@ func test_the_hand_over_is_the_eyes_and_never_the_top_down_games() -> void:
 	await process_frames(2)
 	for key: Vector2i in view._chunks:
 		var n: Node3D = view._chunks[key]
-		for part: Node in n.get_children():
+		var pieces: Array[Node] = n.get_children()
+		for c: Node3D in WorldView.cells(n):
+			pieces.append_array(c.get_children())
+		for part: Node in pieces:
 			check(not part.name.ends_with("_casts"), "no shadow twin under the top-down camera (%s)" % part.name)
 			if part is GeometryInstance3D and not str(part.name).begins_with("mid") and not str(part.name).begins_with("shade"):
 				var gi := part as GeometryInstance3D

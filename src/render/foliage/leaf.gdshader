@@ -304,18 +304,21 @@ void fragment() {
 	vec2 px = matter_px(world_pos);
 	// A fight is never hidden: stipple, never a fade.
 	// For a close eye, every card in the line of sight to a body, and that cone
-	// replaces the ring round the body (world.gdshader says why).
-	vec3 eye = INV_VIEW_MATRIX[3].xyz;
-	float close = PROJECTION_MATRIX[3][3] < 0.5 ? sight_close(eye, crown_clear[0]) : 0.0;
-	float cut = crown_cut(world_pos, sway_w) * (1.0 - close);
-	if (close > 0.0) {
-		for (int i = 0; i < CROWN_CLEAR; i++) {
-			cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
+	// replaces the ring round the body (world.gdshader says why). For the camera
+	// only: a thinned crown still shades the ground under it (world.gdshader).
+	if (!IN_SHADOW_PASS) {
+		vec3 eye = INV_VIEW_MATRIX[3].xyz;
+		float close = PROJECTION_MATRIX[3][3] < 0.5 ? sight_close(eye, crown_clear[0]) : 0.0;
+		float cut = crown_cut(world_pos, sway_w) * (1.0 - close);
+		if (close > 0.0) {
+			for (int i = 0; i < CROWN_CLEAR; i++) {
+				cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
+			}
+			cut = max(cut, sight_near(world_pos, eye, crown_clear[0]) * close);
 		}
-		cut = max(cut, sight_near(world_pos, eye, crown_clear[0]) * close);
-	}
-	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
-		discard;
+		if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
+			discard;
+		}
 	}
 	int code = int(COLOR.a * 255.0 + 0.5);
 	int shape = code & ((1 << LEAF_SHAPE_BITS) - 1);

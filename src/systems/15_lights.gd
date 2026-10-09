@@ -355,6 +355,11 @@ func _new_light(n: String) -> OmniLight3D:
 	l.shadow_enabled = false
 	l.shadow_bias = 0.035
 	l.shadow_normal_bias = 1.1
+	# TWO VIEWS, NOT SIX. The engine's default cube draws everything in reach
+	# six times, and a light whose reach holds anything that moves (the lantern
+	# on his hip, a villager past a lamp) is drawn again every frame it moves.
+	# A dual paraboloid draws it twice.
+	l.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
 	# It falls off the way light falls off. It used to have NO distance decay at
 	# all -- a flat disc inside a hard range window, because sky_pool() cut it
 	# into two steps afterwards anyway. There is no sky_pool any more; a lamp is

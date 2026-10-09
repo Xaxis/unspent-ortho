@@ -7,6 +7,14 @@ const Terrain := preload("res://tests/render/test_terrain.gd")
 const FarModels := preload("res://src/models/far_models.gd")
 
 
+## Vertices drawn in every cell's `part` of a chunk.
+static func _verts(node: Node, part: String) -> int:
+	var n := 0
+	for g: GeometryInstance3D in WorldView.parts(node, part):
+		n += (g as MeshInstance3D).mesh.surface_get_array_len(0)
+	return n
+
+
 ## The terrain fixture with a few props and a strung pair of poles on it.
 static func _dressed() -> WorldData:
 	var w := Terrain.fixture()
@@ -31,24 +39,19 @@ func test_streamed_props_are_baked_on_the_worker_and_match_a_direct_bake() -> vo
 	var node := view.get_node_or_null("chunk_1_1")
 	check(node != null, "the chunk with the props streamed in")
 	if node != null:
-		var made := node.get_node_or_null("props") as MeshInstance3D
-		var found := node.get_node_or_null("props_found") as MeshInstance3D
-		check(made != null and found != null, "both prop meshes are there")
+		check(not WorldView.parts(node, "props").is_empty() and not WorldView.parts(node, "props_found").is_empty(), "both prop meshes are there")
 		var direct := view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), w.each_prop(), [[w.prop_at(3), w.prop_at(4)]])
-		if made != null:
-			eq(made.mesh.surface_get_array_len(0), (direct[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "MADE props are the direct bake")
-		if found != null:
-			eq(found.mesh.surface_get_array_len(0), (direct[1][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "FOUND props and cables are the direct bake")
+		eq(_verts(node, "props"), (direct[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "MADE props are the direct bake")
+		eq(_verts(node, "props_found"), (direct[1][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "FOUND props and cables are the direct bake")
 	# A take is seen at once: the chunk's props are baked again without it.
 	w.depleted[0] = INF
 	view.refresh_props(w.prop_at(0))
-	var after := view.get_node_or_null("chunk_1_1/props") as MeshInstance3D
 	# Asked of the door the bake uses, never hashed here: a copy of the id hash
 	# went on naming the pine's old model once models were dealt by position.
 	var pine := PropModels.template(PropKind.PINE, PropModels.variant_of(w.prop_at(0), w.seed_value), Country.COAST)
-	if node != null and after != null:
+	if node != null:
 		var before_len := (view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), [w.prop_at(0), w.prop_at(1), w.prop_at(2)], [])[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
-		eq(after.mesh.surface_get_array_len(0), before_len - pine.made_v.size(), "the taken pine is gone from the bake")
+		eq(_verts(node, "props"), before_len - pine.made_v.size(), "the taken pine is gone from the bake")
 	view.queue_free()
 	await tree.process_frame
 

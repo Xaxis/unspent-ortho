@@ -18,6 +18,12 @@ extends Node3D
 signal chunk_built(cx: int, cy: int)
 
 const CHUNK := TerrainMesher.CHUNK
+## A CHUNK'S BUILT THINGS ARE DRAWN IN CELLS of this many tiles a side, each its
+## own instance, so the renderer culls them a cell at a time. Drawn whole, a chunk
+## that the frame or the sun's shadow only grazed drew every prop in it: the
+## orthographic frame holds about 480 tiles and a chunk is 1024.
+const CELL := 8
+const CELLS := CHUNK / CELL
 ## The coarse world, by PATH not by global class name: see its header for what a
 ## `class_name` here cost the owner.
 const Far := preload("res://src/render/world_far.gd")
@@ -770,6 +776,13 @@ func _lod_apply(node: Node3D) -> void:
 			dm.visibility_range_end_margin = LOD_MARGIN if _lod_on else 0.0
 	# The land: all of it casts, out to the reach.
 	_casts(node, "terrain", 0.0, reach, _lod_on and reach > 0.0)
+	for cell: Node3D in cells(node):
+		_lod_props(cell, lod, reach)
+
+
+## `_lod_apply` for the built things of one cell of a chunk (`lod`: the chunk has
+## its mid models and the eye is up).
+func _lod_props(node: Node3D, lod: bool, reach: float) -> void:
 	for i in 3:
 		var full := (["props", "props_found", "props_leaf"] as Array[String])[i]
 		var mid := (["mid", "mid_found", "mid_leaf"] as Array[String])[i]
@@ -800,6 +813,18 @@ func _lod_apply(node: Node3D) -> void:
 			_casts(node, full, 0.0, reach, _lod_on and reach > 0.0)
 			_casts(node, mid, 0.0, 0.0, false)
 			_casts(node, shade, 0.0, 0.0, false)
+
+
+## Take every piece named in `names` out of a chunk and each of its cells.
+static func _drop_parts(node: Node3D, names: Array) -> void:
+	var holders: Array[Node3D] = [node]
+	holders.append_array(cells(node))
+	for h: Node3D in holders:
+		for name: String in names:
+			var old := h.get_node_or_null(name)
+			if old != null:
+				h.remove_child(old)
+				old.queue_free()
 
 
 ## `part` draws but casts nothing (its shadow comes from another level's twin).
@@ -899,29 +924,16 @@ const MID_PARTS := ["mid", "mid_found", "mid_leaf", "shade", "shade_found", "sha
 
 
 func _attach_mid(node: Node3D, baked: Array) -> void:
-	for part: String in MID_PARTS + ["mid_done"]:
-		for name: String in [part, part + "_casts"]:
-			var old := node.get_node_or_null(name)
-			if old != null:
-				node.remove_child(old)
-				old.queue_free()
-	var mats := [_world_mat, PropModels.found_material(), _leaf_mat, _world_mat, PropModels.found_material(), _leaf_mat]
-	var names := MID_PARTS
-	for i in mini(names.size(), baked.size()):
-		var arrays: Array = baked[i]
-		if arrays.is_empty():
-			continue
-		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, prop_flags(arrays))
-		var mi := MeshInstance3D.new()
-		mi.name = names[i]
-		mi.mesh = mesh
-		mi.material_override = mats[i]
-		if i >= 3:
-			# Only ever drawn into the sun's shadow, through its `_casts` twin.
-			mi.visible = false
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		node.add_child(mi)
+	var drop: Array[String] = []
+	for part: String in MID_PARTS:
+		drop.append_array([part, part + "_casts"])
+	_drop_parts(node, drop + ["mid_done"])
+	var mats := [_world_mat, PropModels.found_material(), _leaf_mat]
+	# Two bakes back to back: the MID level, then the SHADE level.
+	if baked.size() >= 4:
+		_attach_runs(node, baked.slice(0, 4), MID_PARTS.slice(0, 3), mats)
+	if baked.size() >= 8:
+		_attach_runs(node, baked.slice(4, 8), MID_PARTS.slice(3, 6), mats, true)
 	var done := Node3D.new()
 	done.name = "mid_done"
 	node.add_child(done)
@@ -1468,11 +1480,7 @@ func _rebake_worker(ch: TerrainMesher.Chunk, props: Array, spans: Array) -> void
 ## here on the main thread.
 func _swap_props(key: Vector2i, baked: Array, mid: Array = []) -> void:
 	var node: Node3D = _chunks[key]
-	for part: String in ["props", "props_found", "props_leaf"]:
-		var old := node.get_node_or_null(part)
-		if old != null:
-			node.remove_child(old)
-			old.queue_free()
+	_drop_parts(node, ["props", "props_found", "props_leaf"])
 	_attach_props(node, baked)
 	if node.get_node_or_null("mid_done") != null:
 		if mid.is_empty():
@@ -1539,9 +1547,24 @@ func _snapshot(key: Vector2i) -> Array:
 
 
 ## A chunk's props baked into three surfaces' arrays: [MADE arrays or [], FOUND
-## arrays or [], LEAF arrays or []]. Pure given its inputs, so safe on a worker thread with that
+## arrays or [], LEAF arrays or [], cell ends]. Pure given its inputs, so safe on a worker thread with that
 ## worker's own mesher (`m` answers heights outside the chunk).
+##
+## Laid down CELL BY CELL (`CELL`): every prop in a cell, then the cables whose
+## middle is in it, so each cell is one run of each surface's vertices and the
+## fourth entry says where each run ends (made, found, leaf, per cell, in cell
+## order). `_attach_props` cuts the runs apart into a cell's own instances.
 func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: Array, level: int = -1) -> Array:
+	var in_cell: Array[Array] = []
+	var spans_in: Array[Array] = []
+	for c in CELLS * CELLS:
+		in_cell.append([])
+		spans_in.append([])
+	for p: WorldProp in props:
+		in_cell[_cell_of(ch, p.pos)].append(p)
+	for span: Array in spans:
+		spans_in[_cell_of(ch, ((span[0] as WorldProp).pos + (span[1] as WorldProp).pos) * 0.5)].append(span)
+	var ends := PackedInt32Array()
 	var mv := PackedVector3Array()
 	var mn := PackedVector3Array()
 	var mc := PackedColorArray()
@@ -1559,57 +1582,60 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 	var lc := PackedColorArray()
 	var luv := PackedVector2Array()
 	var luv2 := PackedVector2Array()
-	for p: WorldProp in props:
-		var country := prop_country(p, ch)
-		var variant := PropModels.variant_of(p, world.seed_value, country)
-		# What a thing the taking has worked on is DRAWN as: the same thing with a
-		# piece off it and a fresh face where the tool went (`Broken`), quantised
-		# to the five steps a template is cached in. `shown` is 1.0 on anything
-		# nobody has touched, so an untouched world bakes exactly as it always did.
-		var worked := Broken.bucket(p.shown)
-		# A thing somebody is working down keeps its full model at any range: the
-		# far models are of whole things, and there are only ever a handful.
-		var tpl := PropModels.template(p.kind, variant, country, worked) if level < 0 or worked != PropModels.WHOLE \
-			else FarModels.template(p.kind, variant, country, level)
-		var xf := prop_xform(p, country, world.seed_value, _height(ch, m, p.pos))
-		# Normals take the turn only: a face keeps the light band the model was
-		# drawn with, however the instance was cast.
-		var nx := Transform3D(xf.basis.orthonormalized(), Vector3.ZERO)
-		if not tpl.made_v.is_empty():
-			mv.append_array(xf * tpl.made_v)
-			mn.append_array(nx * tpl.made_n)
-			mc.append_array(tpl.made_c)
-			muv.append_array(tpl.made_uv)
-			muv2.append_array(tpl.made_uv2)
-			if tpl.made_storey.size() == tpl.made_v.size():
-				mst.append_array(tpl.made_storey)
-				any_storey = true
-			else:
-				mst.resize(mv.size())
-		if not tpl.found_v.is_empty():
-			fv.append_array(xf * tpl.found_v)
-			fn.append_array(nx * tpl.found_n)
-			fc.append_array(tpl.found_c)
-		if not tpl.leaf_v.is_empty():
-			lv.append_array(xf * tpl.leaf_v)
-			ln.append_array(nx * tpl.leaf_n)
-			lc.append_array(tpl.leaf_c)
-			luv.append_array(tpl.leaf_uv)
-			luv2.append_array(tpl.leaf_uv2)
-	if not spans.is_empty():
-		var ck := MeshKit.new()
-		var ice := MeshKit.new()
-		for span: Array in spans:
-			_string_cables(ck, span[0], span[1], ch, m, ice)
-		fv.append_array(ck.verts)
-		fn.append_array(ck.normals)
-		fc.append_array(ck.colors)
-		# Ice hung on the lines is the weather's, drawn by hand (MADE).
-		mv.append_array(ice.verts)
-		mn.append_array(ice.normals)
-		mc.append_array(ice.colors)
-		muv.append_array(ice.uvs)
-		muv2.append_array(ice.uv2s)
+	for c in CELLS * CELLS:
+		for p: WorldProp in in_cell[c]:
+			var country := prop_country(p, ch)
+			var variant := PropModels.variant_of(p, world.seed_value, country)
+			# What a thing the taking has worked on is DRAWN as: the same thing with a
+			# piece off it and a fresh face where the tool went (`Broken`), quantised
+			# to the five steps a template is cached in. `shown` is 1.0 on anything
+			# nobody has touched, so an untouched world bakes exactly as it always did.
+			var worked := Broken.bucket(p.shown)
+			# A thing somebody is working down keeps its full model at any range: the
+			# far models are of whole things, and there are only ever a handful.
+			var tpl := PropModels.template(p.kind, variant, country, worked) if level < 0 or worked != PropModels.WHOLE \
+				else FarModels.template(p.kind, variant, country, level)
+			var xf := prop_xform(p, country, world.seed_value, _height(ch, m, p.pos))
+			# Normals take the turn only: a face keeps the light band the model was
+			# drawn with, however the instance was cast.
+			var nx := Transform3D(xf.basis.orthonormalized(), Vector3.ZERO)
+			if not tpl.made_v.is_empty():
+				mv.append_array(xf * tpl.made_v)
+				mn.append_array(nx * tpl.made_n)
+				mc.append_array(tpl.made_c)
+				muv.append_array(tpl.made_uv)
+				muv2.append_array(tpl.made_uv2)
+				if tpl.made_storey.size() == tpl.made_v.size():
+					mst.append_array(tpl.made_storey)
+					any_storey = true
+				else:
+					mst.resize(mv.size())
+			if not tpl.found_v.is_empty():
+				fv.append_array(xf * tpl.found_v)
+				fn.append_array(nx * tpl.found_n)
+				fc.append_array(tpl.found_c)
+			if not tpl.leaf_v.is_empty():
+				lv.append_array(xf * tpl.leaf_v)
+				ln.append_array(nx * tpl.leaf_n)
+				lc.append_array(tpl.leaf_c)
+				luv.append_array(tpl.leaf_uv)
+				luv2.append_array(tpl.leaf_uv2)
+		if not spans_in[c].is_empty():
+			var ck := MeshKit.new()
+			var ice := MeshKit.new()
+			for span: Array in spans_in[c]:
+				_string_cables(ck, span[0], span[1], ch, m, ice)
+			fv.append_array(ck.verts)
+			fn.append_array(ck.normals)
+			fc.append_array(ck.colors)
+			# Ice hung on the lines is the weather's, drawn by hand (MADE).
+			mv.append_array(ice.verts)
+			mn.append_array(ice.normals)
+			mc.append_array(ice.colors)
+			muv.append_array(ice.uvs)
+			muv2.append_array(ice.uv2s)
+		mst.resize(mv.size())
+		ends.append_array(PackedInt32Array([mv.size(), fv.size(), lv.size()]))
 	mst.resize(mv.size())
 	var made := []
 	if not mv.is_empty():
@@ -1635,7 +1661,80 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		leaves[Mesh.ARRAY_COLOR] = lc
 		leaves[Mesh.ARRAY_TEX_UV] = luv
 		leaves[Mesh.ARRAY_TEX_UV2] = luv2
-	return [made, found, leaves]
+	return [made, found, leaves, ends]
+
+
+## The cell of chunk `ch` that point `at` (tiles) is drawn in, row-major. A prop
+## standing on the chunk's edge, or a cable's middle outside it, goes to the
+## nearest cell.
+static func _cell_of(ch: TerrainMesher.Chunk, at: Vector2) -> int:
+	var o := Vector2(ch.x0, ch.y0) if ch != null else (at / CHUNK).floor() * CHUNK
+	var cx := clampi(floori((at.x - o.x) / CELL), 0, CELLS - 1)
+	var cy := clampi(floori((at.y - o.y) / CELL), 0, CELLS - 1)
+	return cy * CELLS + cx
+
+
+## The cell node `i` of a chunk, made on first asking.
+static func _cell_node(node: Node3D, i: int) -> Node3D:
+	var name := "cell_%d" % i
+	var c := node.get_node_or_null(name) as Node3D
+	if c == null:
+		c = Node3D.new()
+		c.name = name
+		node.add_child(c)
+	return c
+
+
+## A chunk's cell nodes, in cell order.
+static func cells(node: Node) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	for c: Node in node.get_children():
+		if String(c.name).begins_with("cell_"):
+			out.append(c as Node3D)
+	return out
+
+
+## Every drawn piece of `part` in a chunk: the chunk's own child of that name (the
+## land, water and tufts are one each) and each cell's (the built things are cut
+## by cell). What a probe or a test asks for instead of a child's name.
+static func parts(node: Node, part: String) -> Array[GeometryInstance3D]:
+	var out: Array[GeometryInstance3D] = []
+	var own := node.get_node_or_null(part) as GeometryInstance3D
+	if own != null:
+		out.append(own)
+	for c: Node3D in cells(node):
+		var g := c.get_node_or_null(part) as GeometryInstance3D
+		if g != null:
+			out.append(g)
+	return out
+
+
+## Vertices [a, b) of non-indexed surface arrays.
+static func _slice_arrays(arrays: Array, a: int, b: int) -> Array:
+	var out := []
+	out.resize(Mesh.ARRAY_MAX)
+	for k in arrays.size():
+		var v: Variant = arrays[k]
+		if v != null:
+			out[k] = v.slice(a, b)
+	return out
+
+
+## Surface `which` (0 made, 1 found, 2 leaf) of a bake, as [cell, arrays] for
+## every cell that holds any of it.
+static func _runs(baked: Array, which: int) -> Array:
+	var arrays: Array = baked[which]
+	var out: Array = []
+	if arrays.is_empty():
+		return out
+	var ends: PackedInt32Array = baked[3]
+	var from := 0
+	for c in ends.size() / 3:
+		var to := ends[c * 3 + which]
+		if to > from:
+			out.append([c, _slice_arrays(arrays, from, to)])
+		from = to
+	return out
 
 
 ## The surface format a baked prop array needs: the storey channel is one float
@@ -1678,37 +1777,31 @@ static func _height(ch: TerrainMesher.Chunk, m: TerrainMesher, p: Vector2) -> fl
 	return m.surface_height(p.x, p.y)
 
 
-## Turn baked prop arrays into the chunk's prop meshes (main thread).
+## Turn baked prop arrays into the chunk's prop meshes (main thread), a cell at
+## a time (`CELL`).
 func _attach_props(node: Node3D, baked: Array) -> void:
-	if baked.size() < 2:
+	if baked.size() < 4:
 		return
-	var made: Array = baked[0]
-	if not made.is_empty():
-		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made, [], {}, prop_flags(made))
-		var mi := MeshInstance3D.new()
-		mi.name = "props"
-		mi.mesh = mesh
-		mi.material_override = _world_mat
-		node.add_child(mi)
-	var found: Array = baked[1]
-	if not found.is_empty():
-		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, found)
-		var mi := MeshInstance3D.new()
-		mi.name = "props_found"
-		mi.mesh = mesh
-		mi.material_override = PropModels.found_material()
-		node.add_child(mi)
-	var leaves: Array = baked[2] if baked.size() > 2 else []
-	if not leaves.is_empty():
-		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, leaves)
-		var mi := MeshInstance3D.new()
-		mi.name = "props_leaf"
-		mi.mesh = mesh
-		mi.material_override = _leaf_mat
-		node.add_child(mi)
+	_attach_runs(node, baked, ["props", "props_found", "props_leaf"], [_world_mat, PropModels.found_material(), _leaf_mat])
+
+
+## Each cell's run of each of a bake's three surfaces, as a MeshInstance3D named
+## `names[i]` in that cell's node.
+static func _attach_runs(node: Node3D, baked: Array, names: Array, mats: Array, hidden := false) -> void:
+	for i in 3:
+		for run: Array in _runs(baked, i):
+			var arrays: Array = run[1]
+			var mesh := ArrayMesh.new()
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, prop_flags(arrays))
+			var mi := MeshInstance3D.new()
+			mi.name = names[i]
+			mi.mesh = mesh
+			mi.material_override = mats[i]
+			if hidden:
+				# Only ever drawn into the sun's shadow, through its `_casts` twin.
+				mi.visible = false
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			_cell_node(node, int(run[0])).add_child(mi)
 
 
 ## Insulator points a mast carries cables from, in model space.
