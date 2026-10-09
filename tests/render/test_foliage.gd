@@ -153,7 +153,9 @@ func test_a_crown_still_opens_over_a_fight() -> void:
 		gt(float(open), t.leaf_v.size() * 0.3, "%s: most of a crown is leaves that can open" % PropKind.NAMES[kind])
 
 
-func test_a_chunk_draws_its_leaves_in_one_more_call_with_the_views_own_material() -> void:
+## A chunk's built things are drawn a cell at a time (WorldView.CELL), so its
+## leaves are one more draw in each cell that holds a plant.
+func test_a_chunk_draws_its_leaves_one_call_a_cell_with_the_views_own_material() -> void:
 	var w := Terrain.fixture()
 	w.add_prop(WorldProp.new(0, PropKind.BROADLEAF, Vector2(36.5, 38.5), 0.3, 1.0))
 	w.add_prop(WorldProp.new(1, PropKind.BUSH, Vector2(40.5, 40.5), 0.2, 1.0))
@@ -165,20 +167,21 @@ func test_a_chunk_draws_its_leaves_in_one_more_call_with_the_views_own_material(
 	var node := view.get_node_or_null("chunk_1_1")
 	check(node != null, "the chunk with the plants is built")
 	if node != null:
-		var leaves := node.get_node_or_null("props_leaf") as MeshInstance3D
-		check(leaves != null, "the chunk has a leaf surface")
-		if leaves != null:
-			check(leaves.material_override == view.leaf_material(), "drawn with the view's own leaf material, which 18_crowns writes")
-			eq(leaves.mesh.get_surface_count(), 1, "every plant's cards in one draw")
-			var direct := view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), [w.prop_at(0), w.prop_at(1), w.prop_at(2)], [])
-			eq(leaves.mesh.surface_get_array_len(0), (direct[2][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "the leaves are the direct bake")
+		var leaves := WorldView.parts(node, "props_leaf")
+		var ch := view.chunk_at(Vector2(40, 40))
+		var plant_cells := 1 if WorldView._cell_of(ch, w.prop_at(0).pos) == WorldView._cell_of(ch, w.prop_at(1).pos) else 2
+		eq(leaves.size(), plant_cells, "the chunk has a leaf surface in each cell with a plant")
+		for g: GeometryInstance3D in leaves:
+			check(g.material_override == view.leaf_material(), "drawn with the view's own leaf material, which 18_crowns writes")
+			eq((g as MeshInstance3D).mesh.get_surface_count(), 1, "every plant's cards in a cell in one draw")
+		var direct := view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), [w.prop_at(0), w.prop_at(1), w.prop_at(2)], [])
+		var drawn := _verts(node, "props_leaf")
+		eq(drawn, (direct[2][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "the leaves are the direct bake")
 		# Taking a plant takes its leaves.
 		w.depleted[1] = INF
 		view.refresh_props(w.prop_at(1))
-		var after := view.get_node_or_null("chunk_1_1/props_leaf") as MeshInstance3D
 		var bush := PropModels.template(PropKind.BUSH, PropModels.variant_of(w.prop_at(1), w.seed_value), view.prop_country(w.prop_at(1), view.chunk_at(Vector2(40, 40))))
-		if after != null and leaves != null:
-			eq(after.mesh.surface_get_array_len(0), leaves.mesh.surface_get_array_len(0) - bush.leaf_v.size(), "the taken bush's leaves are gone from the bake")
+		eq(_verts(node, "props_leaf"), drawn - bush.leaf_v.size(), "the taken bush's leaves are gone from the bake")
 	view.queue_free()
 	await tree.process_frame
 
@@ -209,3 +212,11 @@ func test_a_falling_tree_takes_its_crown_down_in_its_own_material() -> void:
 		check(leaves.material_override == PropModels.leaf_material(), "carrying the leaf shader, never the world's")
 		leaves.free()
 	check(PropModels.leaf_node(PropKind.BOULDER) == null, "a boulder has none")
+
+
+## Vertices drawn in every cell's `part` of a chunk.
+static func _verts(node: Node, part: String) -> int:
+	var n := 0
+	for g: GeometryInstance3D in WorldView.parts(node, part):
+		n += (g as MeshInstance3D).mesh.surface_get_array_len(0)
+	return n

@@ -373,27 +373,31 @@ void fragment() {
 	if (near_cut > 0.5 && near_drawn(world_pos)) {
 		discard;
 	}
-	// The subjects that must not be hidden. Read INSIDE the stage function
-	// because INV_VIEW_MATRIX and PROJECTION_MATRIX do not exist outside one.
-	vec3 camz = INV_VIEW_MATRIX[2].xyz;
+	// The subjects that must not be hidden, from the camera only: what is cut
+	// for the eye still shades (world.gdshader says why). Read INSIDE the stage
+	// function because INV_VIEW_MATRIX and PROJECTION_MATRIX do not exist
+	// outside one.
 	vec3 eye = INV_VIEW_MATRIX[3].xyz;
-	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
-	float cut = found_cut(world_pos, camz, eye, persp);
-	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
-	// sight to a body, at any height, as world.gdshader does: a machine city's
-	// deck at chest height stood square between the eye and the player, who
-	// read as a head on a floor (tours/tight_eye.tour frame 01).
-	if (persp) {
-		float close = sight_close(eye, found_clear[0]);
-		if (close > 0.0) {
-			for (int i = 0; i < 4; i++) {
-				cut = max(cut, sight_cone(world_pos, eye, found_clear[i]) * close);
+	if (!IN_SHADOW_PASS) {
+		vec3 camz = INV_VIEW_MATRIX[2].xyz;
+		bool persp = PROJECTION_MATRIX[3][3] < 0.5;
+		float cut = found_cut(world_pos, camz, eye, persp);
+		// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line
+		// of sight to a body, at any height, as world.gdshader does: a machine
+		// city's deck at chest height stood square between the eye and the
+		// player, who read as a head on a floor (tours/tight_eye.tour frame 01).
+		if (persp) {
+			float close = sight_close(eye, found_clear[0]);
+			if (close > 0.0) {
+				for (int i = 0; i < 4; i++) {
+					cut = max(cut, sight_cone(world_pos, eye, found_clear[i]) * close);
+				}
+				cut = max(cut, sight_near(world_pos, eye, found_clear[0]) * close);
 			}
-			cut = max(cut, sight_near(world_pos, eye, found_clear[0]) * close);
 		}
-	}
-	if (cut > 0.0 && found_stipple(world_pos) < cut) {
-		discard;
+		if (cut > 0.0 && found_stipple(world_pos) < cut) {
+			discard;
+		}
 	}
 	vec3 c = COLOR.rgb;
 	// The hour, the weather and what has settled in the air. Nothing LIES on a

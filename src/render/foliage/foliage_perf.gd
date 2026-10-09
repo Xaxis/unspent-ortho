@@ -140,9 +140,9 @@ static func nodes(game: Node, layer: String) -> Array[Node3D]:
 	var view: WorldView = game.get("view")
 	for chunk: Node in view.get_children():
 		for part: String in LAYERS[layer]:
-			var m := chunk.get_node_or_null(part) as Node3D
-			if m != null and m.visible:
-				out.append(m)
+			for m: GeometryInstance3D in WorldView.parts(chunk, part):
+				if m.visible:
+					out.append(m)
 	if layer == "meadow" or layer == "sward":
 		for sys: Node in game.get("systems"):
 			var ring: Variant = sys.get(&"meadow")

@@ -16,7 +16,8 @@ extends GameSystem
 ## every door, by day and night, and at dusk; p95 frame cost lower than without
 ## (the lidded hall 21.0 against 23.7 ms, the tear 31.0 against 42.3, the open
 ## coast 22.5 against 25.6). They take two of the renderer's eight lights per
-## object.
+## object. They stand on Compatibility only: Forward+ has no program per light
+## state, so on the desktop they built nothing and were shaded on every pixel.
 ##
 ## What stays is the one axis the lights cannot fix: what casts. The sun always
 ## does outdoors; a sealed room has nothing that does; a room's own lights cast
@@ -75,21 +76,28 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	# After the sky has set the sun for the frame, so the held shadows hold.
 	process_priority = 1000
-	_omni = OmniLight3D.new()
-	_omni.name = "constant_omni"
-	_omni.omni_range = REACH
-	_spot = SpotLight3D.new()
-	_spot.name = "constant_spot"
-	_spot.spot_range = REACH
-	_spot.spot_angle = 170.0
-	var dir := DirectionalLight3D.new()
-	dir.name = "constant_dir"
-	dir.rotation = Vector3(-PI * 0.3, 0.4, 0.0)
 	_caster = SpotLight3D.new()
 	_caster.name = "warm_caster"
 	_caster.spot_range = 40.0
 	_caster.spot_angle = 60.0
-	for l: Light3D in [_omni, _spot, dir, _caster]:
+	var stand: Array[Light3D] = [_caster]
+	# THE STAND-INS ARE COMPATIBILITY'S ALONE. Forward+ lights by clusters, so its
+	# programs never change with the lights a scene brings; there the three only
+	# put two lights in every cluster and a third in the directional loop, shaded
+	# on every pixel to add nothing.
+	if not Quality.forward_plus():
+		_omni = OmniLight3D.new()
+		_omni.name = "constant_omni"
+		_omni.omni_range = REACH
+		_spot = SpotLight3D.new()
+		_spot.name = "constant_spot"
+		_spot.spot_range = REACH
+		_spot.spot_angle = 170.0
+		var dir := DirectionalLight3D.new()
+		dir.name = "constant_dir"
+		dir.rotation = Vector3(-PI * 0.3, 0.4, 0.0)
+		stand.append_array([_omni, _spot, dir])
+	for l: Light3D in stand:
 		l.light_energy = 1.0
 		l.light_color = Color.BLACK
 		l.light_volumetric_fog_energy = 0.0
@@ -186,9 +194,10 @@ func _process(_delta: float) -> void:
 	if game == null or game.player == null:
 		return
 	var focus: Vector3 = game.camera.target if game.camera != null else game.player.position
-	_omni.position = focus + Vector3(0.0, 3.0, 0.0)
-	_spot.position = focus + Vector3(0.0, 40.0, 0.0)
-	_spot.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
+	if _omni != null:
+		_omni.position = focus + Vector3(0.0, 3.0, 0.0)
+		_spot.position = focus + Vector3(0.0, 40.0, 0.0)
+		_spot.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
 	if _frame > HOLD * STATES:
 		return
 	var now := Time.get_ticks_usec()

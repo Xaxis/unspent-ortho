@@ -49,6 +49,14 @@ static func _game(n: int, v: WorldView = null) -> Game:
 	return g
 
 
+## Vertices drawn in `parts`.
+static func _verts(parts: Array[GeometryInstance3D]) -> int:
+	var n := 0
+	for g: GeometryInstance3D in parts:
+		n += (g as MeshInstance3D).mesh.surface_get_array_len(0)
+	return n
+
+
 static func _done(g: Game) -> void:
 	WorldView.dispose(g.view)
 	g.player.free()
@@ -85,15 +93,16 @@ func test_a_prop_set_down_is_drawn_once_its_worker_is_done() -> void:
 	var g := _game(20)
 	var v := g.view
 	var node: Node3D = v._chunks.get(KEY)
-	var before: Node = node.get_node_or_null("props")
-	check(before != null, "the chunk's props are drawn")
+	var before := WorldView.parts(node, "props")
+	var verts := _verts(before)
+	check(not before.is_empty(), "the chunk's props are drawn")
 	var cairn := Survival.add_prop(g, PropKind.CAIRN, Vector2(20.0, 20.0))
 	check(g.query.props_near(cairn.pos, 0.5).any(func(q: WorldProp) -> bool: return WorldProp.same(q, cairn)), "in the world at once")
-	eq(node.get_node_or_null("props"), before, "and not drawn on the spot")
+	eq(WorldView.parts(node, "props"), before, "and not drawn on the spot")
 	_settle(v)
-	var after: Node = node.get_node_or_null("props")
-	check(after != null and after != before, "drawn once the worker is done")
-	gt(float((after as MeshInstance3D).mesh.surface_get_array_len(0)), float((before as MeshInstance3D).mesh.surface_get_array_len(0)), "with the cairn in it")
+	var after := WorldView.parts(node, "props")
+	check(not after.is_empty() and after != before, "drawn once the worker is done")
+	gt(float(_verts(after)), float(verts), "with the cairn in it")
 	_done(g)
 
 
@@ -121,8 +130,8 @@ func test_a_take_drawn_while_the_rebake_is_out_is_not_put_back() -> void:
 	var pine := w.prop_at(0)
 	w.depleted[pine.id] = INF
 	held.refresh_props(pine)
-	var taken: Node = node.get_node_or_null("props")
+	var taken := WorldView.parts(node, "props")
 	held.gate.post()
 	_settle(held)
-	eq(node.get_node_or_null("props"), taken, "the drawing of the take stands, not the older bake")
+	eq(WorldView.parts(node, "props"), taken, "the drawing of the take stands, not the older bake")
 	_done(g)

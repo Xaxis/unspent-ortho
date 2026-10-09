@@ -97,10 +97,13 @@ float fore_cut(vec3 wp) {
 
 void fragment() {
 	vec2 px = matter_px(world_pos);
-	float cut = max(fore_cut(world_pos), fore_thin);
+	// The hole over a body is for the camera; a piece fading in or out
+	// (`fore_thin`) fades from the sun too. What is cut still shades
+	// (world.gdshader says why).
+	float cut = IN_SHADOW_PASS ? fore_thin : max(fore_cut(world_pos), fore_thin);
 	// For a close eye, the line of sight to each body (sight.gdshaderinc): the
 	// lean `fore_cut` works by is an orthographic one.
-	if (PROJECTION_MATRIX[3][3] < 0.5) {
+	if (!IN_SHADOW_PASS && PROJECTION_MATRIX[3][3] < 0.5) {
 		vec3 eye = INV_VIEW_MATRIX[3].xyz;
 		float close = sight_close(eye, fore_clear[0]);
 		if (close > 0.0) {

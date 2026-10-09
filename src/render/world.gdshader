@@ -2731,26 +2731,34 @@ void fragment() {
 	// A fight is never hidden: leaves over the player, or over a body they can
 	// see, thin to stipple and then go. Stipple, never a fade (docs/LOOK.md law 5).
 	int m1 = int(COLOR.a * 255.0 + 0.5);
-	// Where the camera is, for the tall cut: the horizontal part of the camera's
-	// own Z over its vertical part is exactly 1/tan(pitch), with no trigonometry
-	// and no assumption about the rig it was built with.
-	vec3 camz = INV_VIEW_MATRIX[2].xyz;
+	// THE CUT IS FOR THE CAMERA, NEVER FOR THE SUN. What is thinned so a body
+	// can be seen still stands there, so it still shades: the shadow pass draws
+	// it whole, as it keeps the whole of a sectioned roof (docs/ABOVE.md). In
+	// that pass INV_VIEW_MATRIX is the LIGHT's, so `tall_cut` opened every tall
+	// thing along the sun's own ray and took away exactly the shadow it threw on
+	// the player, and these loops were the depth pass's only work per texel.
 	// The eye itself, and which projection drew this: PROJECTION_MATRIX[3][3] is
 	// 1.0 orthographic and 0.0 perspective, it is uniform across the draw, so the
-	// branch below costs nothing to divergence.
+	// branches on it cost nothing to divergence.
 	vec3 eye = INV_VIEW_MATRIX[3].xyz;
 	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
-	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
-	// sight to a body, at any height (sight.gdshaderinc), and that cone REPLACES
-	// the ring `crown_cut` opens round a body: the ring is for a camera looking
-	// down, where a crown over a body is in the way whichever side it stands on.
-	// At eye level it took every crown within reach and stood the player in a
-	// ring of stumps, though only the crowns between the eye and a body hide it.
-	float close = persp ? sight_close(eye, crown_clear[0]) : 0.0;
-	float cut = mark_uncut(m1) ? 0.0 : max(crown_cut(world_pos, sway_w) * (1.0 - close), tall_cut(world_pos, m1, camz, eye, persp));
-	// Never the land, nor what is held in sight.
-	if (persp && !mark_uncut(m1)) {
-		if (close > 0.0) {
+	float cut = 0.0;
+	if (!IN_SHADOW_PASS && !mark_uncut(m1)) {
+		// Where the camera is, for the tall cut: the horizontal part of the
+		// camera's own Z over its vertical part is exactly 1/tan(pitch), with no
+		// trigonometry and no assumption about the rig it was built with.
+		vec3 camz = INV_VIEW_MATRIX[2].xyz;
+		// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line
+		// of sight to a body, at any height (sight.gdshaderinc), and that cone
+		// REPLACES the ring `crown_cut` opens round a body: the ring is for a
+		// camera looking down, where a crown over a body is in the way whichever
+		// side it stands on. At eye level it took every crown within reach and
+		// stood the player in a ring of stumps, though only the crowns between
+		// the eye and a body hide it.
+		float close = persp ? sight_close(eye, crown_clear[0]) : 0.0;
+		cut = max(crown_cut(world_pos, sway_w) * (1.0 - close), tall_cut(world_pos, m1, camz, eye, persp));
+		// Never the land, nor what is held in sight.
+		if (persp && close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
 				cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
 			}

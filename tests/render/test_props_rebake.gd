@@ -17,17 +17,17 @@ func test_a_turned_stone_is_redrawn_by_a_worker() -> void:
 	v.ensure_near(Vector2(16.0, 16.0))
 	var node: Node3D = v._chunks.get(Vector2i(0, 0))
 	check(node != null, "the chunk is built")
-	var before: Node = node.get_node_or_null("props")
-	check(before != null, "with its props drawn")
+	var before := WorldView.parts(node, "props")
+	check(not before.is_empty(), "with its props drawn")
 	w.turn_prop(st.id, 0.4)
 	v.refresh_props_soon(w.prop(st.id))
-	eq(node.get_node_or_null("props"), before, "nothing redrawn on the spot")
+	eq(WorldView.parts(node, "props"), before, "nothing redrawn on the spot")
 	for i in 400:
 		v._rebake_step()
-		if v._rb_task < 0 and v._rb_wanted.is_empty() and node.get_node_or_null("props") != before:
+		if v._rb_task < 0 and v._rb_wanted.is_empty() and WorldView.parts(node, "props") != before:
 			break
 		OS.delay_msec(5)
-	var after: Node = node.get_node_or_null("props")
-	check(after != null and after != before, "the props were swapped for new ones")
+	var after := WorldView.parts(node, "props")
+	check(not after.is_empty() and after != before, "the props were swapped for new ones")
 	gt(float(v.rebake_swap_usec_max), 0.0, "by the rebake, not in place")
 	v.free()
