@@ -78,6 +78,8 @@ var detour := Vector2.ZERO
 ## (Brains._flee), until `detour_until`; INF while it flees straight.
 var flee_to := Vector2.INF
 var detour_until := 0.0
+## Going round a prop's walls toward the player, until (Brains._seek).
+var round_until := -INF
 var last_think_pos := Vector2.ZERO
 var flee_home := false
 ## Beats seen or heard in a row / beats since last contact.
