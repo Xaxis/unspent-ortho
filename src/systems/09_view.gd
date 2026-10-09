@@ -117,7 +117,10 @@ func setup(g: Game) -> void:
 	# canon's own closing `zoom 14`; after a probe ending on `zoom 9`, height 9).
 	# A picture that depends on what ran before it cannot be compared with
 	# anything.
-	_tool = g.options.shot != "" or g.options.tour != ""
+	# A game a tour starts from the title is one too (BootOptions.tool): it read and
+	# wrote the zoom the run before it left, and a probe's closing `press zoom_out`
+	# opened the next tour's wake with the whole island in frame.
+	_tool = g.options.shot != "" or g.options.tour != "" or g.options.tool
 	if g.options.zoom > 0.0:
 		_level = level_of(g.camera.view_height)
 	else:
