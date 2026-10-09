@@ -61,6 +61,12 @@ var spawner: Spawner
 var spawning := true
 ## Set false to keep patrols and the first meeting off (soaks of the plain rolls).
 var rounds := true
+## THE OPENING IS QUIET (owner, playtest 2026-10-09: no machine walks into the
+## scene while he is still learning to play). While set, nothing comes out: no
+## roll, no worker on its round, no first meeting. 48_wake holds it from the
+## surf until he has been given a reason to go (Maren's lead), and `open` lets
+## go with the coast's clocks started afresh.
+var opening := false
 ## Another package may shut kinds out of the rolls for a reason of its own, given
 ## the dictionary `shut` has built and where the player is standing: the plan's
 ## depots (src/core/works) close a whole region's machines once the yard that
@@ -84,19 +90,30 @@ func _init(s: FightSim, sp: Spawner) -> void:
 	_first_try_at = s.now + FIRST_MEETING_MS
 
 
+## Let the opening go. The first meeting and the rounds are timed from here, not
+## from the load: on the old clock the runner was already due the moment the
+## coast opened, and a worker was put out the same second.
+func open() -> void:
+	if not opening:
+		return
+	opening = false
+	_first_try_at = sim.now + FIRST_MEETING_MS
+	_patrol_at = sim.now + PATROL_EVERY_MS
+
+
 func tick() -> void:
 	var rolls := floori(sim.now / Spawner.ROLL_MS)
 	_rolls_done = maxi(_rolls_done, rolls - MAX_ROLLS_PER_TICK)
 	while _rolls_done < rolls:
 		_rolls_done += 1
-		if not spawning:
+		if not spawning or opening:
 			continue
 		var s := spawner.roll(_rolls_done, sim.world, sim.query, sim.moment, sim.hero.pos, sim.living(), shut(), _creatures())
 		if not s.is_empty():
 			sim.add_mob(s.kind, s.pos)
 			if Roster.row(s.kind).get("approach", &"") == &"dart":
 				_kind_ready[s.kind] = sim.moment.minutes + DART_KIND_GAP
-	if spawning and rounds:
+	if spawning and rounds and not opening:
 		_patrols()
 		_first_meeting()
 	for m in sim.mobs:

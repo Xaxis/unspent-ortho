@@ -201,3 +201,25 @@ func test_a_patrol_blocked_on_its_round_turns_back_and_goes_on() -> void:
 			break
 		furthest = maxf(furthest, start.distance_to(m.pos))
 	gt(furthest, 6.0, "it turned back and went on its way (%.1f tiles)" % furthest)
+
+
+## THE OPENING IS QUIET (owner, playtest 2026-10-09: random machines walked into
+## the opening while he was learning to play). While the wake holds the coast
+## nothing comes out, not a worker on its round nor the first meeting; and once it
+## lets go, the first meeting is a whole FIRST_MEETING_MS off, not already due.
+func test_nothing_comes_out_while_the_opening_holds_the_coast() -> void:
+	var c := _coast()
+	var sim := c.sim
+	c.opening = true
+	for i in 150:
+		sim.now += 1000.0
+		c.tick()
+	eq(sim.mobs.size(), 0, "nothing on the land in the opening's two and a half minutes")
+	c.open()
+	c.tick()
+	var met := func() -> int: return sim.mobs.filter(func(m: MobState) -> bool: return m.first_meeting).size()
+	eq(met.call(), 0, "the first meeting is not due the moment the coast opens")
+	sim.now += Coast.FIRST_MEETING_MS + 10.0
+	c.tick()
+	eq(met.call(), 1, "it comes a whole first-meeting time later")
+

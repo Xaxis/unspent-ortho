@@ -1008,6 +1008,10 @@ func _now_true(what: String) -> bool:
 		return row.ends_with(" - " + what.substr(5))
 	if what == "mob" or what.begins_with("mob:"):
 		return _body_in_frame(what.substr(4), 1)
+	# No live body in frame: the opening's quiet (Coast.opening), asserted rather
+	# than hoped for.
+	if what == "no_mob":
+		return not _body_in_frame("", 1)
 	# What a body in frame has made of the player, which is the difference between
 	# watching a machine work and standing in front of a hunter: `on_round` is a
 	# live body in frame and nothing aware of you, `noticed` is one that has you.
@@ -2541,7 +2545,7 @@ func _instead(what: String) -> String:
 		if game.world.blend[i] > 0.0:
 			return " (at %s the ground is %s, on its border with %s)" % [p, here, other]
 		return " (at %s the ground is %s, no border)" % [p, here]
-	if what == "mob" or what.begins_with("mob:") or what.begins_with("down:") or what.begins_with("body:"):
+	if what == "mob" or what == "no_mob" or what.begins_with("mob:") or what.begins_with("down:") or what.begins_with("body:"):
 		var seen := PackedStringArray()
 		for n: Node in get_tree().get_nodes_in_group(&"mobs"):
 			seen.append("%s%s" % [n.get("kind"), "" if bool(n.get("alive")) else " (down)"])
