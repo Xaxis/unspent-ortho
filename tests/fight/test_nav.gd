@@ -71,6 +71,35 @@ func test_a_runner_comes_round_the_wall() -> void:
 	check(reached, "it got to the player, at %s" % r.pos)
 
 
+
+## AND ROUND A HOUSE (owner, playtest 2026-10-09: machines pushed into walls). The
+## same chase with a house standing between: a house's walls are its props', not
+## the ground's, and the approach tested its straight line against the ground
+## alone, so the runner pressed into the wall and shuffled there.
+func test_a_runner_comes_round_a_house() -> void:
+	var w := F.flat_world(64)
+	w.add_prop(WorldProp.new(w.next_id(), PropKind.HOUSE, Vector2(28.5, 20.5), 0.0, 1.0))
+	var sim := F.make_sim(w, Vector2(34.5, 20.5))
+	var r := sim.add_mob(&"runner", Vector2(22.5, 20.5))
+	r.line_a = r.pos
+	r.line_b = r.pos
+	r.calm_until = 0.0
+	r.last_seen = sim.hero.pos
+	r.set_mood(MobState.CHASING, sim.now)
+	var reached := false
+	var i_at := 150
+	for i in 150:
+		F.ms(sim, 100)
+		r.lost_beats = 0
+		if r.pos.distance_to(sim.hero.pos) < 2.5:
+			reached = true
+			i_at = i
+			break
+	check(reached, "it got round the house to the player, at %s" % r.pos)
+	# The way round, not a shuffle at the wall: pressing in and sidestepping took
+	# 3.3 s here, and the way the charge takes 2.5.
+	lt(float(i_at) * 100.0, 3000.0, "and the way round, not a press and shuffle at the wall (%d ms)" % (i_at * 100))
+
 ## A BODY'S FIELD SHUTS THE CELLS ITS OWN MOVE CANNOT STAND IN, WIDE SOLIDS,
 ## WALLS AND ALL. Disc kinds over WorldQuery.ORDINARY are stamped into the field
 ## once per rebuild by footprint, the ordinary ones asked cell by cell, and a
@@ -177,3 +206,4 @@ func test_a_city_field_shuts_what_its_move_cannot_stand_in() -> void:
 		eq(wrong, 0, "the field to %s shuts the cells its move cannot stand in" % target)
 	print("  info its six fields met %d walled props and %d wide solids" % [walled, wide])
 	gt(float(walled), 10.0, "the city's fields met walled buildings (%d)" % walled)
+
