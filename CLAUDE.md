@@ -29,6 +29,7 @@ tools/tour.sh tours/x.tour      # scripted real-input proof; each tour's header 
 tools/canon.sh [--accept]       # canon frames vs the accepted set
 tools/web.sh                    # export and boot the web build in headless Chromium
 tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
+tools/release.sh [VERSION]      # tag main's gated head; see it built, booted per OS, published and on unspent.world
 tools/heavy.sh CMD...           # run a tour/shot/render/web job only when the box can take it (one slot per 6 cores)
 tools/gpu.sh CMD...             # run a tour/shot/sweep on the GPU in a private display (no desktop needed): tools/heavy.sh tools/gpu.sh tools/tour.sh ...
 tools/tour-sweep.sh [--since REF|--smoke] # run tours on this checkout, PASS/FAIL each (CI has no GPU: tours run here)
