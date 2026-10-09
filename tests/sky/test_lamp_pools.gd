@@ -20,12 +20,12 @@ func test_pool_radius_is_where_the_light_is_half() -> void:
 	lt(Lights.pool_radius(4.0, 9.0), 1e-6, "a light too high leaves no pool")
 
 
-## A lamp that casts draws its shadow in two views, not the engine's six: the
-## lantern's is drawn again every frame it moves.
-func test_a_lamps_shadow_is_two_views() -> void:
+## A lamp that casts draws its shadow as a cube: the cheaper dual paraboloid
+## bent the post beside the camp fire into a thin broken line (canon 14-night-lamp).
+func test_a_lamps_shadow_is_a_cube() -> void:
 	var sys: Node = Lights.new()
 	var l: OmniLight3D = sys.call(&"_new_light", "probe")
-	eq(l.omni_shadow_mode, OmniLight3D.SHADOW_DUAL_PARABOLOID, "a lamp casts as a dual paraboloid")
+	eq(l.omni_shadow_mode, OmniLight3D.SHADOW_CUBE, "a lamp casts as a cube")
 	sys.free()
 
 
