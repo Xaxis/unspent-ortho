@@ -400,6 +400,8 @@ func _start_game() -> void:
 	# shoulder through the title, as a player's opens by their setting.
 	o.view = options.view
 	o.tool = options.tool or options.shot != "" or options.tour != ""
+	# A tour's `perf stats` windows over a game begun on the title need it too.
+	o.stats = options.stats
 	if _continue_slot >= 0:
 		var slot := _continue_slot
 		var why := SaveSlots.options_for(slot, o)
