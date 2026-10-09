@@ -387,6 +387,21 @@ static func wanted(start_shoulder: bool, key_on: bool) -> bool:
 	return start_shoulder != key_on
 
 
+## ZOOMING ALL THE WAY IN IS THE VIEW OVER THE SHOULDER (owner, three times; the
+## last: "zooming in far enough should put it in over the shoulder view"). Zoom
+## past the near end of the land's zoom and the camera goes over his shoulder;
+## zoom out past the shoulder eye's furthest and it comes back down on the land.
+## +1 into the shoulder, -1 out of it, 0 neither. `level` is 09_view's zoom (0 as
+## close as it comes), `back` the shoulder eye's distance against its `back_most`,
+## `way` the zoom asked for (in is negative).
+static func zoom_crossing(shoulder: bool, level: float, back: float, back_most: float, way: float) -> int:
+	if way < 0.0 and not shoulder and level <= 0.0:
+		return 1
+	if way > 0.0 and shoulder and back >= back_most - 0.001:
+		return -1
+	return 0
+
+
 ## The screen's "up" on the ground, for a camera at `yaw_deg`: the same axes
 ## `Player.screen_to_world` walks by, so a key and the camera cannot disagree.
 static func forward(yaw_deg: float) -> Vector2:

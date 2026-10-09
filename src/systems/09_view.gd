@@ -27,6 +27,7 @@ extends GameSystem
 
 ## The nearest and furthest the play camera may sit, as view height in world
 ## units. `CameraRig.VIEW_HEIGHT` (15) is inside them and is still the default.
+const Shoulder := preload("res://src/core/view/shoulder.gd")
 const CLOSE := 9.0
 const FAR := 34.0
 ## Factors per second while a key is held, so a press is a nudge and a hold is a
@@ -145,6 +146,8 @@ func _process(delta: float) -> void:
 		way -= 1.0
 	if Keys.down(&"zoom_out"):
 		way += 1.0
+	if way != 0.0 and Shoulder.zoom_crossing(false, _level, 0.0, 0.0, way) > 0 and _over_shoulder():
+		return
 	if way != 0.0:
 		var by := pow(RATE, way * delta)
 		_level = level_of(height_of(_level) * by)
@@ -169,6 +172,8 @@ func _process(delta: float) -> void:
 func take_scroll(steps: Vector2) -> bool:
 	if game == null or game.camera == null or steps.y == 0.0:
 		return false
+	if Shoulder.zoom_crossing(false, _level, 0.0, 0.0, steps.y) > 0 and _over_shoulder():
+		return true
 	_level = level_of(height_of(_level) * pow(RATE, steps.y * SCROLL_SECONDS))
 	game.camera.view_height = height_of(_level)
 	_save_in = 0.6
@@ -177,6 +182,15 @@ func take_scroll(steps: Vector2) -> bool:
 
 ## How much of a held zoom key one notch of scroll is worth.
 const SCROLL_SECONDS := 0.12
+
+
+## Zoomed in as close as the land comes and still asked in: whatever owns the
+## view over the shoulder takes it from here (41_shoulder `zoom_into_view`).
+func _over_shoulder() -> bool:
+	for s in game.systems:
+		if s.has_method(&"zoom_into_view") and bool(s.call(&"zoom_into_view")):
+			return true
+	return false
 
 
 ## Put the camera at a view height and KEEP it there.

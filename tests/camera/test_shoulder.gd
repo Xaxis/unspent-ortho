@@ -1302,3 +1302,22 @@ func test_a_rock_lower_than_the_eye_behind_is_looked_over() -> void:
 	eye = cam.global_position
 	lt(Vector2(eye.x - feet.x, eye.z - feet.z).length(), open_back - 1.2, "a wall taller than the eye can rise still pulls it in")
 	_done()
+
+
+## ZOOMING ALL THE WAY IN IS THE VIEW OVER THE SHOULDER, and zooming back out of it
+## is the land (owner, three times). Only at the ends: a zoom anywhere else moves
+## the land's height or the shoulder eye, and never crosses.
+func test_zooming_past_either_end_crosses_into_the_other_view() -> void:
+	eq(Shoulder.zoom_crossing(false, 0.0, 0.0, 6.0, -1.0), 1, "in, at the land's nearest: over the shoulder")
+	eq(Shoulder.zoom_crossing(false, 0.2, 0.0, 6.0, -1.0), 0, "in, short of the nearest: still the land's zoom")
+	eq(Shoulder.zoom_crossing(false, 0.0, 0.0, 6.0, 1.0), 0, "out, at the land's nearest: the land pulls back")
+	eq(Shoulder.zoom_crossing(true, 0.0, 6.0, 6.0, 1.0), -1, "out, the eye at its furthest: back over the land")
+	eq(Shoulder.zoom_crossing(true, 0.0, 4.0, 6.0, 1.0), 0, "out, the eye not yet back: the eye backs off")
+	eq(Shoulder.zoom_crossing(true, 0.0, 6.0, 6.0, -1.0), 0, "in, over the shoulder: the eye comes in")
+
+
+## A GAME OPENS OVER THE SHOULDER (owner, 2026-10-09), while a tool run opens
+## looking down (41_shoulder.setup), so every tour's frames stay comparable.
+func test_a_game_opens_over_the_shoulder() -> void:
+	eq(PlayerSettings.default_of(&"playing.view"), &"shoulder", "the default view is over the shoulder")
+
