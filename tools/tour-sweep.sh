@@ -40,6 +40,14 @@ fi
 # On Linux each tour takes the GPU lease for itself, inside its CPU slot: waiting for
 # the GPU while holding a slot costs less than the other way round.
 gpu=""; [ "$(uname)" = Linux ] && gpu=tools/gpu.sh
+# A tour that failed while the box was starved runs once more: past SPIKE times a
+# core's worth of load (tools/_slack.sh), a real-time tour misses its own beats and
+# the failure is the box's. One retry, said on stderr; a tour that fails on a quiet
+# box is never run again.
+. tools/_slack.sh
+SPIKE=3.5
+peakf="$(mktemp "${TMPDIR:-/tmp}/unspent-peak.XXXXXX")"
+trap 'rm -f "$peakf"' EXIT
 fail=0; n=0; skipped=0
 for t in $tours; do
   [ -f "$t" ] || continue
@@ -53,7 +61,18 @@ for t in $tours; do
     continue
   fi
   n=$((n+1))
-  if tools/heavy.sh $gpu tools/tour.sh "$t" > /dev/null 2>&1; then
+  for try in 1 2; do
+    echo 0 > "$peakf"
+    ( while :; do f=$(slack_factor); awk -v f="$f" -v p="$(cat "$peakf")" 'BEGIN { exit !(f > p) }' && echo "$f" > "$peakf"; sleep 15; done ) &
+    mon=$!
+    tools/heavy.sh $gpu tools/tour.sh "$t" > /dev/null 2>&1; code=$?
+    kill "$mon" 2>/dev/null; wait "$mon" 2>/dev/null
+    [ "$code" -eq 0 ] || [ "$try" -eq 2 ] && break
+    peak=$(cat "$peakf")
+    awk -v p="$peak" -v s="$SPIKE" 'BEGIN { exit !(p > s) }' || break
+    echo "RETRY $name: failed with the load at $peak a core" >&2
+  done
+  if [ "$code" -eq 0 ]; then
     echo "PASS $name"
   else
     shot=$(ls shots/tour/"$name"/FAILED-*.png 2>/dev/null | tail -1)
