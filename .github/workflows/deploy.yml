@@ -1,8 +1,9 @@
 name: deploy
 
-# Export the web build and put it on Vercel. A push to main gets a preview URL;
-# production — what unspent.world serves — is only ever a deliberate act, so it
-# needs someone to run this by hand and say so.
+# Export the web build and put it on Vercel. A push to main deploys production,
+# what unspent.world serves (owner, 2026-10-09): main only ever moves to a head
+# that passed the gate, so main is what players get. A run by hand may still ask
+# for a preview URL.
 #
 # Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID.
 
@@ -14,7 +15,7 @@ on:
       target:
         description: 'preview or production'
         required: true
-        default: preview
+        default: production
         type: choice
         options: [preview, production]
 
@@ -89,12 +90,22 @@ jobs:
       - name: Prove the web build boots (CPU WebGL)
         run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=400
 
+      # The landing page draws nothing on WebGL, so this runner proves it whole,
+      # before it goes out: the game's face, every frame, no console error.
+      - name: Prove the landing page
+        run: |
+          python3 -m http.server 8763 --bind 127.0.0.1 -d site > /dev/null 2>&1 &
+          sleep 1
+          node tools/site/check.mjs http://127.0.0.1:8763/ --out=shots/site
+
       - name: Keep what the browser saw
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: web-proof
-          path: shots/export/
+          path: |
+            shots/export/
+            shots/site/
           if-no-files-found: ignore
 
       - name: Deploy
@@ -102,12 +113,14 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          # tools/site/latest.py reads the newest release through GitHub's API.
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           # The browser proof needs a GPU this runner does not have; the machine
           # the game is built on runs it (tools/deploy.sh does it by default).
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.target }}" = "production" ]; then
-            tools/deploy.sh --prod --no-export --no-check
-          else
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.target }}" = "preview" ]; then
             tools/deploy.sh --no-export --no-check
+          else
+            tools/deploy.sh --prod --no-export --no-check
           fi
