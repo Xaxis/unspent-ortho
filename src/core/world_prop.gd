@@ -20,6 +20,9 @@ var variant := -1
 ## does what stops a body. Not saved — `SaveCore` puts the takes back and the rule
 ## works it out again.
 var shown := 1.0
+## Taken from and left standing until it grows back (SurvivalState.spent), drawn
+## as its picked-over form. Not saved: SaveCore reads it off the spent takes.
+var picked := false
 
 ## How many WorldProps are alive: the number the streaming design drives toward
 ## the working set near the camera (tests/stream/test_prop_table.gd). Exact, so

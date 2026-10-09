@@ -406,7 +406,8 @@ static func bush(k: Kit, v: int, c: int) -> void:
 		# A snowfield bush carries its snow on its leaves, not as a white clump
 		# on top of them, which from above was a dome.
 		k.canopy(cos(a) * rr, -0.03, sin(a) * rr, r, bh, s + i * 5, mass, Kit.LEAF_SMALL, SMALL_CARD, leaf_cards(r, bh, SMALL_CARD), snow)
-	if berries.a > 0.0:
+	# Picked over, the berries are gone and only the leaves are left.
+	if berries.a > 0.0 and not k.picked:
 		for i in 7:
 			var a := float(i) * 1.37
 			var p := Vector3(cos(a) * 0.24, 0.26 + Kit.j(s, 40 + i, 0.08), sin(a) * 0.24)

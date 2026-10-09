@@ -245,12 +245,12 @@ const MAX_VARIANTS := 16
 ## `worked` is how far the taking has got through it (Broken.BUCKETS steps, the
 ## last whole): a thing being quarried is a template of its own at each step, so a
 ## rock worked twice is built twice and cached, not cut every frame it is drawn.
-static func template(kind: int, variant: int = 0, country: int = Country.COAST, worked: int = WHOLE) -> Template:
-	var key := _key(kind, variant, country, worked)
+static func template(kind: int, variant: int = 0, country: int = Country.COAST, worked: int = WHOLE, picked: bool = false) -> Template:
+	var key := _key(kind, variant, country, worked) * 2 + int(picked)
 	_lock.lock()
 	var t: Template = _templates.get(key)
 	if t == null:
-		t = _extract(build_kit(kind, variant, country, worked))
+		t = _extract(build_kit(kind, variant, country, worked, picked))
 		_storeys(t, kind, variant, country)
 		_templates[key] = t
 	_lock.unlock()
@@ -265,8 +265,9 @@ static func _key(kind: int, variant: int, country: int, worked: int) -> int:
 	return ((kind * MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country) * Broken.BUCKETS + clampi(worked, 0, WHOLE)
 
 
-static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE) -> Kit:
+static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE, picked: bool = false) -> Kit:
 	var k := Kit.new()
+	k.picked = picked
 	variant = clampi(variant, 0, variants(kind) - 1)
 	match kind:
 		PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.GORSE, PropKind.REEDS:
