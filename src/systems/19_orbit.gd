@@ -61,6 +61,13 @@ var tether_shown := false
 var _tether_placed := false
 
 
+## Whether this run has an orbit to draw (not --orbit=off). Asked of the system,
+## not of its process flag: under --stats 12_landscape holds every system's
+## `_process` itself, and the flag reads off.
+func drawn() -> bool:
+	return def != null
+
+
 func setup(g: Game) -> void:
 	super.setup(g)
 	var spec: String = g.options.orbit
