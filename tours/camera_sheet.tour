@@ -24,8 +24,9 @@ shot 04-the-lean-settled with mob:runner
 release target
 wait 1.0
 
-# As near as the zoom currently comes: 09_view.CLOSE is 9.0 world units of view
-# height, and the ask is that reaching it glides to third person.
+# Zoomed in past the nearest the land's zoom comes (09_view.CLOSE, 9 world units
+# of view height): the owner's ask is that this is the view over his shoulder.
 press zoom_in 2.5
+await shoulder 5
 wait 0.6
-shot 05-the-nearest-the-zoom-comes with mob:runner
+shot 05-zoomed-past-the-nearest-is-over-his-shoulder with mob:runner,shoulder

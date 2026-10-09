@@ -51,6 +51,11 @@ var _idle := 99.0
 ## The toggle's own state, kept across a page opening (`HoldToggle.put`).
 var _latched := false
 var _was_blocked := false
+## The view a zoom put up or took down, under a HELD key (in toggle mode the zoom
+## sets the key's own latch instead): +1 over the shoulder, -1 on the land, 0 the
+## key's. A fresh press of the key hands the view back to the key.
+var _zoomed := 0
+var _key_was := false
 ## Prop tops, keyed by template, in the model's own units.
 var _tops: Dictionary = {}
 var _solids: Array[Vector4] = []
@@ -85,10 +90,12 @@ func setup(g: Game) -> void:
 	_tool = g.options.shot != "" or g.options.tour != ""
 	var v := g.options.view
 	if v == &"":
-		# A tool run opens where the game ships, never where the person at the
-		# machine last left it (09_view says why: a picture that depends on what
-		# ran before it cannot be compared with anything).
-		v = &"top" if _tool else StringName(str(PlayerSettings.value(&"playing.view")))
+		# A tool run or a test opens looking down, never where the person at the
+		# machine last left it nor where a person's game now opens (over the
+		# shoulder): a picture that depends on what ran before it cannot be
+		# compared with anything (09_view), and played tests steer by the camera.
+		var person := PlayerSettings.file == PlayerSettings.FILE
+		v = StringName(str(PlayerSettings.value(&"playing.view"))) if person and not _tool else &"top"
 	opens_over = v == &"shoulder"
 	# The player can look out to the horizon from the first frame, so the far
 	# land's silhouettes are built from the start on the far workers, behind the
@@ -128,7 +135,10 @@ func _process(delta: float) -> void:
 	_given_back_by_the_browser()
 	var blocked := game.input_blocked()
 	var key := _key(blocked)
-	cam.shoulder = Shoulder.wanted(opens_over, key)
+	if key != _key_was:
+		_zoomed = 0
+	_key_was = key
+	cam.shoulder = Shoulder.wanted(opens_over, key) if _zoomed == 0 else _zoomed > 0
 	_hold_pointer(Shoulder.capture(cam.shoulder, blocked, _tool, _focused()))
 	cam.shoulder_clear = Shoulder.CLEAR_TIP if _person_on_the_line(cam) else 0.0
 	if blocked or not cam.shoulder:
@@ -156,7 +166,35 @@ func _process(delta: float) -> void:
 	if Keys.down(&"zoom_out"):
 		way += 1.0
 	if way != 0.0:
-		_move_back(way * delta)
+		if Shoulder.zoom_crossing(true, 0.0, cam.shoulder_back, BACK_MOST, way) < 0:
+			_view_from_zoom(false)
+		else:
+			_move_back(way * delta)
+
+
+## 09_view's zoom has come in as close as it goes and is asked for more: the view
+## goes over his shoulder, the eye starting at its furthest so the zoom carries
+## on in rather than jumping. Answered as a capability, so the land's zoom does
+## not know this system by name.
+func zoom_into_view() -> bool:
+	if game == null or game.camera == null or game.camera.shoulder or game.input_blocked():
+		return false
+	game.camera.shoulder_back = BACK_MOST
+	_view_from_zoom(true)
+	return true
+
+
+## The view put up or down by the zoom, the way the key would have put it: in
+## toggle mode by the key's own latch, so the next press takes it back down.
+func _view_from_zoom(on: bool) -> void:
+	if PlayerSettings.is_set(SETTING, &"toggle"):
+		var k := on != opens_over
+		HoldToggle.put(ACTION, k)
+		_latched = k
+		_zoomed = 0
+	else:
+		_zoomed = 1 if on else -1
+	game.camera.shoulder = on
 
 
 ## The eye in or out along the view by `by` (seconds' worth of a held zoom key).
@@ -178,7 +216,10 @@ func _zoom_taken() -> bool:
 func take_scroll(steps: Vector2) -> bool:
 	if game == null or game.camera == null or not game.camera.shoulder:
 		return false
-	_move_back(steps.y * SCROLL_SECONDS)
+	if Shoulder.zoom_crossing(true, 0.0, game.camera.shoulder_back, BACK_MOST, steps.y) < 0:
+		_view_from_zoom(false)
+	else:
+		_move_back(steps.y * SCROLL_SECONDS)
 	return true
 
 

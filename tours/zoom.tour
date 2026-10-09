@@ -21,14 +21,24 @@ await zoomed_out 3
 wait 0.4
 shot 02-pulled-back with land:coast
 
-# And in, past where it started, to the near end.
+# And in, past where it started, to the near end, and on past it: zooming in far
+# enough is the view over his shoulder (owner, three times), the same view the
+# shoulder key puts up.
 press zoom_in 3.2
 await zoomed_in 3
-wait 0.4
-shot 03-close-in with land:coast
+await shoulder 5
+wait 0.6
+shot 03-zoomed-in-is-over-his-shoulder with land:coast,shoulder
+
+# Out of it the same way: the eye backs off to its furthest, then the camera
+# comes back down over the land.
+press zoom_out 2.4
+await top_view 5
+wait 0.6
+shot 04-zoomed-out-of-it-over-the-land with land:coast,top_view
 
 # Back to where a player would leave it, so the last frame of this tour is the
 # game as it is normally played.
 press zoom_out 1.6
 wait 0.6
-shot 04-back-to-the-walk with land:coast
+shot 05-back-to-the-walk with land:coast

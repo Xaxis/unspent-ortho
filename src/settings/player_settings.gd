@@ -105,9 +105,11 @@ const ROWS: Array[Dictionary] = [
 		"help": "hold the key down, or press it once"},
 	# The view over the shoulder (41_shoulder): where a game opens, and whether its
 	# key is held or pressed. Opening over the shoulder turns the key round -- held,
-	# it looks down on the land -- so one key answers both ways.
+	# it looks down on the land -- so one key answers both ways. A game opens over
+	# the shoulder (owner, 2026-10-09: "over the shoulder should be the default");
+	# shots and tours still open looking down, so their frames stay comparable.
 	{"id": &"playing.view", "group": &"playing", "label": "where the camera starts", "kind": CHOICE,
-		"default": &"top", "options": [&"top", &"shoulder"], "applies": &"",
+		"default": &"shoulder", "options": [&"top", &"shoulder"], "applies": &"",
 		"help": "looking down on the land, or over your shoulder"},
 	{"id": &"playing.shoulder", "group": &"playing", "label": "the view over your shoulder", "kind": CHOICE,
 		"default": &"toggle", "options": [&"hold", &"toggle"], "applies": &"",
