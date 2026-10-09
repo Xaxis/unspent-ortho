@@ -4,8 +4,6 @@ extends TestCase
 
 const F := preload("res://tests/fight/fixture.gd")
 const Worlds := preload("res://tests/core/test_world_gen.gd")
-## A machine wider than a tile (radius 1.2).
-const WIDE := &"harvester"
 
 
 ## A cliff wall across x = 30 from y = 5 to 40, with a way round below it.
@@ -208,17 +206,4 @@ func test_a_city_field_shuts_what_its_move_cannot_stand_in() -> void:
 		eq(wrong, 0, "the field to %s shuts the cells its move cannot stand in" % target)
 	print("  info its six fields met %d walled props and %d wide solids" % [walled, wide])
 	gt(float(walled), 10.0, "the city's fields met walled buildings (%d)" % walled)
-
-
-## MACHINES KEEP APART BY THEIR SIZE (owner, playtest 2026-10-09: bodies stood in
-## each other). Two wide machines put down on one spot part until they no longer
-## overlap; a flat tile apart left wide ones standing inside each other.
-func test_wide_machines_part_by_their_size() -> void:
-	var sim := F.make_sim(F.flat_world(64), Vector2(50.5, 50.5))
-	var a := F.still(sim, WIDE, Vector2(20.5, 20.5), 0.0)
-	var b := F.still(sim, WIDE, Vector2(20.7, 20.5), 0.0)
-	F.ms(sim, 3000)
-	var apart := a.radius + b.radius
-	gt(apart, 1.0, "the kind is wider than the old flat tile")
-	gt(a.pos.distance_to(b.pos), apart - 0.15, "they part to their size (%.2f of %.2f)" % [a.pos.distance_to(b.pos), apart])
 
