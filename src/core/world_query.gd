@@ -672,6 +672,17 @@ func stand_at(p: Vector2, r: float, on: CraftRide = null, swims: bool = false, t
 const SLIDE_MIN := 0.5
 
 
+## A step that would end inside another body's circle (`gap`, the two radii) and
+## nearer it than it started is refused: people and animals do not walk into each
+## other or into the player. Only moving closer is refused, the rule `_fits` keeps
+## for walls, so a body already too close can always step away.
+static func keep_off(from: Vector2, to: Vector2, other: Vector2, gap: float) -> Vector2:
+	var near := to.distance_squared_to(other)
+	if near < gap * gap and near < from.distance_squared_to(other):
+		return from
+	return to
+
+
 ## Move a circle of radius r from p by delta, sliding round solid props and along
 ## walls. Returns the new position. Pushed into a circle the move is turned along
 ## its edge; testing x and y apart alone left a diagonal push dead against a

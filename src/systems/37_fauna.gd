@@ -63,6 +63,9 @@ const REFUSE_REACH := 1.9
 var _check := 0.25
 
 
+## A dog or a sheep, as a circle for the walls it walks by.
+const BODY_R := 0.25
+
 func setup(g: Game) -> void:
 	super.setup(g)
 	name = "fauna"
@@ -487,8 +490,12 @@ func _wander(b: Dictionary, delta: float, radius: float, pace: float, wait_lo: f
 
 func _move(b: Dictionary, dir: Vector2, pace: float, delta: float) -> float:
 	var from: Vector2 = b.pos
-	var to := from + dir * pace * delta
-	if not _ok(to):
+	var step := dir * pace * delta
+	# By the player's rules (WorldQuery.move_body): props' walls, rooms, drops.
+	var to := game.query.move_body(from, step, BODY_R, null, false, 0)
+	if game.player != null:
+		to = WorldQuery.keep_off(from, to, game.player.pos, BODY_R + Tuning.PLAYER_RADIUS)
+	if not _ok(to) or (to - from).length_squared() < step.length_squared() * 0.04:
 		b.target = b.pos
 		return 0.0
 	b.pos = to
