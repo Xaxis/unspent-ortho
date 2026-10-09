@@ -61,9 +61,13 @@
         }
         btn.href = b.url;
         btn.removeAttribute("aria-disabled");
-        btn.textContent = "Download " + b.name.replace(/\.zip$/, "") ;
-        meta.textContent = "Version " + rel.version + " / " + day(rel.published) + " / " + mb(b.size);
-        if (sum && b.sha256) sum.textContent = "sha256 " + b.sha256;
+        btn.textContent = "Download";
+        btn.title = b.name;
+        meta.textContent = "Version " + rel.version + ", " + day(rel.published) + ", " + mb(b.size) + " zip";
+        if (sum && b.sha256) {
+          sum.textContent = "sha256 " + b.sha256.slice(0, 16) + "\u2026";
+          sum.title = b.sha256;
+        }
       });
       var lead = document.getElementById("download-lead");
       if (lead) {
