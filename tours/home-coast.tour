@@ -27,20 +27,20 @@ key use
 await game 120
 await waking 5
 wait 0.4
-shot 01-he-breaks-the-surface with waking,wake:staged
+shot 01-he-breaks-the-surface with waking,wake:staged,no_mob
 await woken 10
 wait 1.0
-shot 02-in-the-surf-from-above with woken,cast:maren
+shot 02-in-the-surf-from-above with woken,cast:maren,no_mob
 # 1b THE FIRST SIGHT (48_wake, 42_stage): a breath after he stands, the view
 # turns once to the far horizon and up the Tether to the Foundry, and holds.
 await staging:tether 6
 wait 1.2
-shot 03-the-first-sight with staging:tether,tether
+shot 03-the-first-sight with staging:tether,tether,no_mob
 wait 4.0
 tap shoulder
 await shoulder 20
 wait 1.0
-shot 04-in-the-surf-over-the-shoulder with woken,cast:maren,shoulder
+shot 04-in-the-surf-over-the-shoulder with woken,cast:maren,shoulder,no_mob
 
 # 2 MAREN'S ASK BECOMES THE GOAL (Guide._led, StoryContent.LEAD): he goes to her
 # at the water's edge and talks, taking the first reply each time, as a player

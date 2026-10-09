@@ -39,8 +39,17 @@ const SIGHT_TIP := 0.5
 ## Tether.TOP_MOST, 60) are both in the one frame.
 const SIGHT_FOV := 72.0
 
+## THE OPENING HOLDS THE COAST (Coast.opening; owner, playtest 2026-10-09: no
+## machine walks into the scene while he is still learning to play). From the surf
+## until Maren has given him somewhere to go, or he has walked this far from where
+## he woke without asking her, or OPENING_MOST seconds after he stood up.
+const OPENING_LEAVE := 40.0
+const OPENING_MOST := 300.0
+
 var _first := false
 var _staged: Dictionary = {}
+var _coast: Coast = null
+var _opening_t := -1.0
 var _t := -1.0
 var _said_shallows := false
 var _maren_home := Vector2.INF
@@ -61,6 +70,10 @@ func started() -> void:
 	_staged = WakeSpot.find(game.world)
 	if _staged.is_empty():
 		return
+	var mobs := game.get_node_or_null(^"30_mobs")
+	_coast = mobs.get(&"coast") if mobs != null else null
+	if _coast != null:
+		_coast.opening = true
 	var p: Vector2 = _staged.at
 	game.player.place(p, float(_staged.face))
 	game.player.sunk = DEPTH
@@ -70,6 +83,7 @@ func started() -> void:
 
 func _process(delta: float) -> void:
 	_send_maren_home()
+	_hold_opening(delta)
 	if not _first:
 		return
 	if _staged.is_empty():
@@ -108,6 +122,19 @@ func _process(delta: float) -> void:
 	var gone := game.player.pos.distance_to(_staged.maren) > MAREN_LEAVE
 	if _said_shallows and _sighted and not _stage_looking() and (met or gone):
 		_first = false
+
+
+## Let the coast go once he has a reason to (see OPENING_LEAVE). Timed from the
+## rise, never from the load: the page can stand over the first minute.
+func _hold_opening(delta: float) -> void:
+	if _coast == null or not _coast.opening:
+		return
+	if _t >= 0.0:
+		_opening_t = maxf(_opening_t, 0.0) + delta
+	var given := Story.landed(&"marens_lead")
+	var walked := not _first and game.player.pos.distance_to(_staged.at) > OPENING_LEAVE
+	if given or walked or _opening_t > OPENING_MOST:
+		_coast.open()
 
 
 ## SHE GOES BACK TO HER FIRE out of his sight: once he is MAREN_BACK from where
