@@ -446,10 +446,9 @@ static func _hunt(m: MobState, sim: FightSim) -> void:
 ## ground, and the props it does not break), walk its own field's way round
 ## (FightSim.route) at its own pace and say so; else false, and the caller aims
 ## straight.
-static func _round_the_ground(m: MobState, sim: FightSim, target: Vector2, speed: float = -1.0) -> bool:
+static func _round_the_ground(m: MobState, sim: FightSim, target: Vector2) -> bool:
 	if sim.nav == null:
 		return false
-	var pace := m.pace if speed < 0.0 else speed
 	var r := FightSim.move_radius(m)
 	var clear := NavField.line_walkable(sim.world, m.pos, target, r) \
 			and NavField.props_clear(sim.query, m.pos, target, r, NavField.breaks_of(m.row))
@@ -478,9 +477,9 @@ static func _round_the_ground(m: MobState, sim: FightSim, target: Vector2, speed
 	if sim.now < m.detour_until:
 		var mid := Vector2(floorf(m.pos.x) + 0.5, floorf(m.pos.y) + 0.5)
 		dir = (mid - m.pos).normalized() if m.pos.distance_to(mid) > 0.05 else way
-	elif m.want.length() > 0.1 and m.pos.distance_to(m.last_think_pos) < pace * 0.064 * BLOCKED_SHARE:
+	elif m.want.length() > 0.1 and m.pos.distance_to(m.last_think_pos) < m.pace * 0.064 * BLOCKED_SHARE:
 		m.detour_until = sim.now + 300.0
-	m.want = dir * pace
+	m.want = dir * m.pace
 	m.aim = dir.angle()
 	return true
 
@@ -728,10 +727,19 @@ static func _seek(m: MobState, sim: FightSim, target: Vector2, speed: float) -> 
 	# Going for the player round whatever stands between: a cliff, the sea, and the
 	# walls props are drawn with. The straight line used to be tested against the
 	# ground alone, so a machine pressed into a house's wall and shuffled there
-	# (owner, playtest 2026-10-09). The way round is the one a charge takes, at the
-	# speed this approach asked for.
-	if target.distance_squared_to(sim.hero.pos) < 0.25 and _round_the_ground(m, sim, target, speed):
-		return
+	# (owner, playtest 2026-10-09). Only a line truly crossed is rerouted: the
+	# charge's own way round also reads a run stopped short by another body as the
+	# ground's doing, and in a crowd that turned three harvesters into circlers
+	# (test_ploughshare: won 14 of 16 bare, 6 of 16 with the share).
+	if target.distance_squared_to(sim.hero.pos) < 0.25 and sim.nav != null:
+		var r := FightSim.move_radius(m)
+		if not NavField.line_walkable(sim.world, m.pos, target, r) \
+				or not NavField.props_clear(sim.query, m.pos, target, r, NavField.breaks_of(m.row)):
+			var way := sim.route(m, target)
+			if way != Vector2.ZERO:
+				m.want = way * speed
+				m.aim = way.angle()
+				return
 	if sim.now < m.detour_until:
 		dir = (dir * 0.4 + m.detour).normalized()
 	elif m.want.length() > 0.1 and m.pos.distance_to(m.last_think_pos) < speed * 0.064 * BLOCKED_SHARE:
