@@ -116,6 +116,8 @@ func test_a_person_never_walks_through_a_house() -> void:
 	var house := WorldProp.new(w.next_id(), PropKind.HOUSE, Vector2(48.5, 48.5), 0.0, 1.0)
 	w.add_prop(house)
 	var g := _game_on(w)
+	# Within sight of the player, where people walk by the rules (RULES_REACH).
+	g.player.pos = Vector2(48.5, 38.5)
 	var f := _folk(g)
 	var r := Tuning.PLAYER_RADIUS
 	var person := {"pos": Vector2(42.5, 48.5), "facing": 0.0, "state": &"walk", "stuck": 0.0}

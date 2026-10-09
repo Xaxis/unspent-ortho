@@ -491,9 +491,11 @@ func _wander(b: Dictionary, delta: float, radius: float, pace: float, wait_lo: f
 func _move(b: Dictionary, dir: Vector2, pace: float, delta: float) -> float:
 	var from: Vector2 = b.pos
 	var step := dir * pace * delta
-	# By the player's rules (WorldQuery.move_body): props' walls, rooms, drops.
-	var to := game.query.move_body(from, step, BODY_R, null, false, 0)
-	if game.player != null:
+	# By the player's rules (WorldQuery.move_body): props' walls, rooms, drops,
+	# where the player can be near enough to see it (35_folk RULES_REACH).
+	var to := from + step
+	if game.player != null and from.distance_squared_to(game.player.pos) < 1600.0:
+		to = game.query.move_body(from, step, BODY_R, null, false, 0)
 		to = WorldQuery.keep_off(from, to, game.player.pos, BODY_R + Tuning.PLAYER_RADIUS)
 	if not _ok(to) or (to - from).length_squared() < step.length_squared() * 0.04:
 		b.target = b.pos
