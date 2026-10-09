@@ -104,6 +104,7 @@ extends RefCounted
 ## --build=STATION     at start, put a fire/bench/kiln in front of the player, free (survival)
 ## --put=KIND[,KIND]   at start, place these props (e.g. tip,driftwood) in an arc in front of the player (survival)
 ## --taken             the --put props start already taken, laid in a row across the screen (their leavings show)
+## --picked            as --taken, but only what a hand gathers is spent: they stand picked over (WorldProp.picked)
 ## --hold=SECONDS      survival and its drawing run on fixed 1/60 s frames and stop SECONDS
 ##                     after start: a take or a fire caught at an exact moment (--frames > SECONDS*60)
 ## --fit=ID[,ID...]    wear this gear at start, given if not carried: a piece goes in
@@ -251,6 +252,7 @@ var build := ""
 var hold := -1.0
 var put: PackedStringArray = []
 var taken := false
+var picked := false
 var fit: PackedStringArray = []
 var spawn: PackedStringArray = []
 ## Pieces of a holding to stand in front of the player at boot (settlements).
@@ -385,6 +387,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"hold": o.hold = v.to_float()
 			"put": o.put = v.split(",", false)
 			"taken": o.taken = true
+			"picked": o.picked = true
 			"fit": o.fit = v.split(",", false)
 			"spawn": o.spawn = v.split(",", false)
 			"holding":

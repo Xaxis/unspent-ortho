@@ -491,8 +491,12 @@ func test_a_spent_bush_is_picked_over_until_it_grows_back() -> void:
 ## The picked-over form is a different model: a bush without its berries, a
 ## mussel rock stripped to a few stragglers, cached apart from the whole one.
 func test_a_picked_over_thing_is_drawn_without_what_was_taken() -> void:
-	for kind: int in [PropKind.MUSSEL_ROCK, PropKind.TIP]:
+	for kind: int in [PropKind.MUSSEL_ROCK, PropKind.TIP, PropKind.STONE_ORE, PropKind.BOULDER]:
 		for v in PropModels.variants(kind):
+			# A boulder split along its bedding (v 2) or cracked in two (v 1) has
+			# no loose stone lying at its foot to take.
+			if kind == PropKind.BOULDER and v % 4 in [1, 2]:
+				continue
 			var whole := PropModels.build_kit(kind, v, Country.COAST)
 			var picked := PropModels.build_kit(kind, v, Country.COAST, PropModels.WHOLE, true)
 			lt(float(picked.made.vertex_count() + picked.found.vertex_count()),

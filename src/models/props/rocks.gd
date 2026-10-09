@@ -45,9 +45,11 @@ static func boulder(k: Kit, v: int, c: int) -> void:
 	# off the vertical, and a split with one piece slipped from the other.
 	match v % 4:
 		0:
-			# One mass, leaning off true, a spall fallen from its foot.
+			# One mass, leaning off true, a spall fallen from its foot: the loose
+			# stone a hand gathers, gone once it is picked over (WorldProp.picked).
 			top = faceted(k, Vector3(0.0, -0.06, 0.0), Vector3(0.5, 0.74, 0.46), faces, s, g[0], Vector3(0.08, 0.0, -0.12))
-			faceted(k, Vector3(0.42, -0.07, 0.2), Vector3(0.16, 0.2, 0.14), faces - 6, s + 2, g[1], Vector3(0.3, 0.0, 0.4))
+			if not k.picked:
+				faceted(k, Vector3(0.42, -0.07, 0.2), Vector3(0.16, 0.2, 0.14), faces - 6, s + 2, g[1], Vector3(0.3, 0.0, 0.4))
 		1:
 			# Cracked through, the far half settled away from it.
 			var split := Vector3(0.3, 0.12, 1.0).normalized()
@@ -58,9 +60,11 @@ static func boulder(k: Kit, v: int, c: int) -> void:
 			var bed := Vector3(1.0, 0.25, 0.2).normalized()
 			top = faceted(k, Vector3(0.0, -0.06, 0.0), Vector3(0.62, 0.36, 0.5), faces, s, g[0], Vector3(0.04, 0.0, 0.08), bed, 0.1, 0.07)
 		_:
-			# A tall stone leaning hard, a spall fallen at its foot.
+			# A tall stone leaning hard, a spall fallen at its foot (gathered once
+			# picked over).
 			top = faceted(k, Vector3(0.02, -0.06, 0.0), Vector3(0.34, 1.04, 0.3), faces, s, g[0], Vector3(0.1, 0.0, -0.2))
-			faceted(k, Vector3(-0.36, -0.07, 0.26), Vector3(0.2, 0.26, 0.17), faces - 3, s + 3, g[1], Vector3(0.4, 0.0, -0.3))
+			if not k.picked:
+				faceted(k, Vector3(-0.36, -0.07, 0.26), Vector3(0.2, 0.26, 0.17), faces - 3, s + 3, g[1], Vector3(0.4, 0.0, -0.3))
 	var cap_r: float = [0.26, 0.22, 0.34, 0.14][v % 4]
 	# What lies on a stone here is the land's answer, not the stone's: snow where
 	# snow lies, an ember seam where nothing green survives, growth where it is
@@ -305,7 +309,8 @@ static func stone_ore(k: Kit, v: int, c: int) -> void:
 	for w in 4:
 		var z := -0.24 + w * 0.16
 		k.made.quad(Vector3(fx - 0.045, 0.5, z - 0.025), Vector3(fx - 0.045, 0.5, z + 0.025), Vector3(fx - 0.04, 0.56, z + 0.025), Vector3(fx - 0.04, 0.56, z - 0.025), P.INK[2])
-	for i in 2 + v:
+	# The loose slabs at its foot are what a hand gathers: picked over, they are gone.
+	for i in (0 if k.picked else 2 + v):
 		var a := -0.6 + i * 0.7
 		k.made.push(Transform3D(Basis(Vector3.UP, a) * Basis(Vector3.BACK, 0.25 + i * 0.1), Vector3(0.8 + i * 0.1, -0.02, -0.3 + i * 0.36)))
 		k.slab(0, 0, 0, 0.34, 0.16, 0.22, s + i, pale, GroundColors.up(pale, 0.25), 0.02, 0.1, 0.0)

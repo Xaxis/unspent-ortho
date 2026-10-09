@@ -98,7 +98,8 @@ func setup(g: Game) -> void:
 ## --put: props the generator may not place yet, set out in front for a shot:
 ## the first straight ahead in reach, the rest fanned round the player. With
 ## --taken they stand in a row across the screen instead, already taken, so a
-## shot shows what each leaves behind.
+## shot shows what each leaves behind; with --picked, in the same row, only
+## their gathering spent, so it shows each picked over.
 func _put_props(kinds: PackedStringArray) -> void:
 	var i := 0
 	var across := Vector2(1, -1).normalized()
@@ -111,29 +112,30 @@ func _put_props(kinds: PackedStringArray) -> void:
 			push_warning("--put: unknown prop kind %s" % name)
 			continue
 		var at: Vector2
-		if game.options.taken:
+		if game.options.taken or game.options.picked:
 			at = game.player.pos + across * (i - (kinds.size() - 1) * 0.5) * 1.5 + across.orthogonal() * 1.4
 		else:
 			var turn := [0.0, 1.1, -1.1, 2.2, -2.2, PI][i % 6] as float
 			at = game.player.pos + Vector2.from_angle(game.player.facing + turn) * (0.75 + PropKind.SOLID[kind])
 		var prop := Survival.add_prop(game, kind, at)
-		if game.options.taken:
-			_take_for_shot(prop)
+		if game.options.taken or game.options.picked:
+			_take_for_shot(prop, game.options.picked)
 		i += 1
 
 
-func _take_for_shot(prop: WorldProp) -> void:
+func _take_for_shot(prop: WorldProp, gathered_only := false) -> void:
 	var opts := Takes.options(prop.kind)
 	var gone := false
 	for o: Dictionary in opts:
 		gone = gone or not o.keep
-	if gone:
+	if gone and not gathered_only:
 		game.world.depleted[prop.id] = INF
 		game.view.refresh_props(prop)
 		return
 	var state := SurvivalState.of(game)
 	for j in opts.size():
-		state.spent[SurvivalState.key(prop.id, j)] = INF
+		if opts[j].keep:
+			state.spent[SurvivalState.key(prop.id, j)] = INF
 	game.world.set_picked(prop, true)
 	game.view.refresh_props(prop)
 
