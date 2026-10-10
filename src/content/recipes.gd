@@ -252,6 +252,14 @@ const LIST: Array[Dictionary] = [
 	{"id": &"axe_cemented", "at": &"kiln", "minutes": 600.0, "needs": {&"axe_hand": 1, &"charcoal": 8}, "makes": {&"axe_felling": 1}},
 	{"id": &"mattock_cemented", "at": &"kiln", "minutes": 600.0, "needs": {&"mattock": 1, &"charcoal": 8}, "makes": {&"mattock_steel": 1}},
 	{"id": &"pick_cemented", "at": &"kiln", "minutes": 600.0, "needs": {&"pick": 1, &"charcoal": 8}, "makes": {&"pick_steel": 1}},
+	# THE QUICK WAY TO STEEL IS THROUGH A MACHINE (docs/SALVAGE.md E5): a bladed
+	# machine's own edge, stripped off its body (48_carcasses) and ground onto a
+	# tool at a bench in half an hour, where the kiln takes a night. The fight
+	# is the price the kiln's patience is not.
+	{"id": &"knife_ground", "at": &"bench", "minutes": 25.0, "needs": {&"knife": 1, &"machine_edge": 1}, "makes": {&"knife_shear": 1}},
+	{"id": &"axe_ground", "at": &"bench", "minutes": 30.0, "needs": {&"axe_hand": 1, &"machine_edge": 2}, "makes": {&"axe_felling": 1}},
+	{"id": &"mattock_ground", "at": &"bench", "minutes": 30.0, "needs": {&"mattock": 1, &"machine_edge": 2}, "makes": {&"mattock_steel": 1}},
+	{"id": &"pick_ground", "at": &"bench", "minutes": 30.0, "needs": {&"pick": 1, &"machine_edge": 2}, "makes": {&"pick_steel": 1}},
 
 	# --- Raids: what a machine was carrying about you (docs/VISION.md) ---
 	# A filed record is their own account of a place, taken off the body that was

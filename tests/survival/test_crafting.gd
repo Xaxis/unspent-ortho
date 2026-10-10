@@ -211,6 +211,25 @@ func test_cementation_eats_the_knife_and_gives_steel_in_hand() -> void:
 	Fx.done(g)
 
 
+## THE QUICK WAY TO STEEL IS THROUGH A MACHINE (docs/SALVAGE.md E5): a harvester's
+## own edge, stripped off its body, ground onto the knife at a bench in half an
+## hour, where the kiln takes a night.
+func test_a_machines_edge_ground_onto_the_knife_makes_it_steel() -> void:
+	check(EliteStock.table_for(&"harvester").any(func(r: Dictionary) -> bool: return r.item == &"machine_edge" and float(r.chance) >= 1.0),
+		"a harvester always carries its edge")
+	var g := Fx.flat()
+	g.inventory.add(&"machine_edge", 1)
+	Survival.build(g, &"bench", true)
+	eq(Survival.station_near(g), &"bench")
+	var t0 := g.clock.minutes
+	var r := Crafting.recipe(&"knife_ground")
+	check(Crafting.make_in(g, r), "the knife is ground at the bench")
+	check(g.inventory.has(&"knife_shear"), "and it is steel")
+	check(not g.inventory.has(&"machine_edge"), "the edge went into it")
+	lt(g.clock.minutes - t0, 31.0, "in half an hour, not a night")
+	Fx.done(g)
+
+
 func test_no_making_jumps_the_clock_more_than_half_an_hour() -> void:
 	for r: Dictionary in Recipes.LIST:
 		if Crafting.sets_going(r):

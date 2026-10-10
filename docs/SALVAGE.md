@@ -77,4 +77,8 @@ ground the cities were built on. Each form keeps its landscape's colour.
   time in seven (`Survival.FIND_CHANCE`), dealt per landscape like any fragment
   (`StoryFragments.FIND`), never twice, filed in the journal and named, never
   opened over him mid-take (49_story `_on_turned_up`).
-- **E5, machine steel**: a steel edge is ground from a machine's own blade.
+- **E5, machine steel** (first step built): a machine that cuts (a harvester, a
+  cutter) always carries its own edge (`machine_edge`), stripped off its body and
+  ground onto a knife at a bench in 25 minutes (two edges and 30 minutes for an
+  axe, a pick or a mattock). The kiln's cementation stays, a night of charcoal: the
+  slow safe way against the fought-for quick one.

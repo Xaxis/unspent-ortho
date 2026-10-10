@@ -534,6 +534,9 @@ const DEFS := {
 	# The mesas': rope steel annealed and laid up again for a span, light and
 	# stiff, in the rock's own red.
 	&"span_wire": {"name": "span wire", "bulk": 1.5, "group": &"material", "icon": [&"coil", &"rust", &"sand"]},
+	# A bladed machine's own edge, stripped off its body: steel, ground onto a
+	# tool at a bench (Recipes: knife_ground and the rest; docs/SALVAGE.md E5).
+	&"machine_edge": {"name": "length of machine edge", "many": "machine edge", "bulk": 1.5, "group": &"material", "icon": [&"bar", &"plate", &"plate"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
 	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
 	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},

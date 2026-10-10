@@ -91,7 +91,7 @@ end
 # (98_tour `_seen.erase`). What is asked instead is a state — the filament edge
 # is in the creel — which is the thing this section is actually about.
 await carcass 3
-press use 7
+press use 10
 await elite:mono_edge 5
 shot 08-what-it-was-carrying with spoils,land:bonelands
 
