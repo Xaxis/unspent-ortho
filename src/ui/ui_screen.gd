@@ -32,16 +32,6 @@ var is_open := false
 var wake := 1.0
 var wake_seconds := UiSlate.WAKE_SECONDS
 var wakes := true
-## The glass's brightness 0..1 (the ui system sets it from the slate's power).
-## The dimming is drawn on the glass layer over the app, so that layer redraws.
-var brightness := 1.0:
-	set(v):
-		if not is_equal_approx(v, brightness):
-			brightness = v
-			if _fx != null:
-				_fx.queue_redraw()
-## The slate's power 0..1, for the cell in the status bar.
-var power := 1.0
 ## Where this app's device sits (the title's slate is smaller).
 var device_rect := UiSlate.DEVICE
 ## First row drawn of a list longer than its pane.
@@ -224,7 +214,7 @@ func _process(delta: float) -> void:
 func draw_frame(app: StringName = screen_name) -> void:
 	UiSlate.veil(self)
 	draw_device()
-	UiSlate.status(self, app, clock_text(), power, device_rect)
+	UiSlate.status(self, app, clock_text(), device_rect)
 
 
 ## The bezel and glass, noting whether they were still a plain frame.
@@ -243,7 +233,6 @@ func _draw_glass() -> void:
 		return
 	UiSlate.marks(_fx, device_rect)
 	UiSlate.wake(_fx, wake, device_rect)
-	UiSlate.dim(_fx, brightness, device_rect)
 
 
 # --- for subclasses ---

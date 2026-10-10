@@ -222,22 +222,6 @@ func test_a_new_landscape_is_pinged_once_it_holds() -> void:
 	eq(w.step(&"sea", 3.0), &"", "wading out to sea names nothing")
 
 
-func test_the_slate_runs_off_the_lamp_or_a_charge_and_dims_when_low() -> void:
-	eq(UiRules.slate_power(UiRules.POWER_LAMP_MINUTES, 0), 1.0, "a full flask")
-	eq(UiRules.slate_power(0.0, UiRules.POWER_CHARGES), 1.0, "or enough charges")
-	near(UiRules.slate_power(UiRules.POWER_LAMP_MINUTES * 0.5, 1), 0.5, 1e-4, "whichever holds more")
-	eq(UiRules.slate_power(0.0, 0), 0.0, "nothing left")
-	eq(UiRules.brightness(1.0), 1.0)
-	eq(UiRules.brightness(UiSlate.LOW_POWER), 1.0, "full brightness down to the low line")
-	check(UiRules.brightness(UiSlate.LOW_POWER * 0.5) < 1.0, "it dips below it")
-	eq(UiRules.brightness(0.0), UiSlate.DIM_FLOOR, "never darker than the floor")
-	check(UiSlate.DIM_FLOOR >= 0.75, "the floor keeps it readable")
-	eq(UiRules.cell_segments(1.0), 4)
-	eq(UiRules.cell_segments(0.5), 2)
-	eq(UiRules.cell_segments(0.2), 1, "a sliver still shows a segment")
-	eq(UiRules.cell_segments(0.0), 0)
-
-
 func test_charges_show_only_with_something_that_spends_them() -> void:
 	check(not UiRules.charge_shown(&""), "bare hands")
 	check(not UiRules.charge_shown(&"knife"), "a made tool spends nothing")

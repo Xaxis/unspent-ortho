@@ -291,7 +291,7 @@ func _axis(neg: StringName, pos: StringName) -> int:
 func draw_frame(_app: StringName = screen_name) -> void:
 	UiSlate.veil(self)
 	draw_device()
-	UiSlate.status(self, &"", "", power, device_rect, false)
+	UiSlate.status(self, &"", "", device_rect, false)
 
 
 func _draw() -> void:

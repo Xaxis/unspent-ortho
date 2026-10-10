@@ -11,7 +11,7 @@ class_name UiSlate
 ## The glass is honest about being salvaged, and none of it ever sits under
 ## text: a dead column of stuck pixels in the left margin, a crack confined to
 ## the top right corner, a replacement sub-panel (SPARE) a shade bluer than the
-## rest, a scan shimmer when it wakes, and brightness that dips with low power.
+## rest, and a scan shimmer when it wakes. It needs no power: it is always on.
 ##
 ## ## What LANTERN changed, and what it did not
 ##
@@ -64,9 +64,6 @@ const PAD := 8 * UNIT
 ## Seconds the glass takes to wake (opening) and to change app (switching).
 const WAKE_SECONDS := 0.2
 const SWITCH_SECONDS := 0.1
-## Below this power the glass dims, down to DIM_FLOOR of full brightness.
-const LOW_POWER := 0.25
-const DIM_FLOOR := 0.8
 
 ## Apps in the order the status bar lists them: [screen name, tab label, key].
 ## Every tab names the key that reaches it. Three have keys of their own; home
@@ -163,13 +160,6 @@ static func wake(ci: CanvasItem, t: float, d: Rect2i = DEVICE) -> void:
 			UiDraw.rect(ci, Rect2i(g.position.x, ry, g.size.x, UiBase.PITCH), Color(UiTheme.PHOSPHOR[2], 0.12 + 0.1 * Rng.hash01(frame, k, 1, 0x5a4e)))
 
 
-## Brightness 0..1 laid over the glass: a dark wash, never on the bezel.
-static func dim(ci: CanvasItem, brightness: float, d: Rect2i = DEVICE) -> void:
-	if brightness >= 1.0:
-		return
-	UiDraw.rect(ci, glass_of(d), Color(UiTheme.GLASS_OFF, clampf(1.0 - brightness, 0.0, 1.0)))
-
-
 ## The key that reaches app `n` on the status bar: its own, or home's for the
 ## apps chosen inside home. "" for anything that is not a tab.
 static func tab_key(n: StringName) -> String:
@@ -191,9 +181,9 @@ static func tab_under_home(n: StringName) -> bool:
 	return false
 
 
-## The status bar: the slate's name, the apps with the open one lit, the clock
-## and the cell. `app` is a screen name (&"" with no app on the glass).
-static func status(ci: CanvasItem, app: StringName, clock: String, power: float, d: Rect2i = DEVICE, tabs: bool = true) -> void:
+## The status bar: the slate's name, the apps with the open one lit, and the
+## clock. `app` is a screen name (&"" with no app on the glass).
+static func status(ci: CanvasItem, app: StringName, clock: String, d: Rect2i = DEVICE, tabs: bool = true) -> void:
 	var g := glass_of(d)
 	var y := g.position.y + 2
 	var x := g.position.x + MARGIN_L
@@ -226,9 +216,7 @@ static func status(ci: CanvasItem, app: StringName, clock: String, power: float,
 			UiDraw.hline(ci, x - 6, x + UiFont.width(label) + 4, y + UiFont.SIZE, UiTheme.TEXT)
 		UiDraw.text(ci, Vector2i(x, y), label, UiTheme.BRIGHT if lit else UiTheme.TEXT_DIM)
 		x += UiFont.width(label) + (14 if under_home else 18)
-	var right := g.end.x - MARGIN_R - 28
-	cell(ci, Vector2i(right - 26, y + 2), power)
-	UiDraw.text_right(ci, right - 38, y, clock, UiTheme.TEXT_DIM)
+	UiDraw.text_right(ci, g.end.x - MARGIN_R - 28, y, clock, UiTheme.TEXT_DIM)
 
 
 ## A small right-pointing chevron. Returns its width.
@@ -238,18 +226,6 @@ static func chevron(ci: CanvasItem, at: Vector2i, col: Color) -> int:
 		UiDraw.px(ci, at.x + k * p, at.y + k * p, col)
 		UiDraw.px(ci, at.x + k * p, at.y + (4 - k) * p, col)
 	return 3 * p
-
-
-## A four-segment cell glyph: its segments go out from the right as power falls,
-## and the last one shows in the warning.
-static func cell(ci: CanvasItem, at: Vector2i, power: float) -> void:
-	var p := UiBase.PITCH
-	UiDraw.frame(ci, Rect2i(at.x, at.y, 12 * p, 7 * p), UiTheme.TEXT_DIM)
-	UiDraw.vline(ci, at.x + 12 * p, at.y + 2 * p, at.y + 5 * p - 1, UiTheme.TEXT_DIM)
-	var n := UiRules.cell_segments(power)
-	for i in 4:
-		var col := UiTheme.WARN if n == 1 else UiTheme.TEXT
-		UiDraw.rect(ci, Rect2i(at.x + 2 * p + i * 2 * p, at.y + 2 * p, p, 3 * p), col if i < n else UiTheme.GHOST)
 
 
 ## The key strip along the foot: `keys` as [[key, words], ...] in phosphor, and

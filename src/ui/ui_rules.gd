@@ -41,7 +41,7 @@ static func wind_shown(wind: float, max_wind: float) -> bool:
 	return wind < max_wind - 0.5
 
 
-# --- the slate's power and the felt pressures --------------------------------------
+# --- the felt pressures ----------------------------------------------------------
 
 ## A felt pressure (a hazard the body is under) is only a gauge once it is this
 ## strong, and it is the warning once it is costing the body something. Both are
@@ -51,29 +51,6 @@ const PRESSURE_SHOWN := Hazards.FELT
 const PRESSURE_WARN := Hazards.BITE
 ## Share of Survival.LAMP_LOW_MINUTES left at which the lamp is the last rung.
 const LAMP_LAST := 0.34
-## The slate runs off the lamp's reserve (a flask lights it this long) or the
-## found charges carried, whichever holds more (docs/LOOK.md: brightness dips
-## when the lamp oil or charge is low).
-const POWER_LAMP_MINUTES := 360.0
-const POWER_CHARGES := 3
-
-
-## Power 0..1 from the lamp's minutes of light and the charges carried.
-static func slate_power(lamp_minutes: float, charges: int) -> float:
-	return clampf(maxf(lamp_minutes / POWER_LAMP_MINUTES, charges / float(POWER_CHARGES)), 0.0, 1.0)
-
-
-## How bright the glass is at a power: full down to UiSlate.LOW_POWER, then
-## dipping toward UiSlate.DIM_FLOOR, never so far that it cannot be read.
-static func brightness(power: float) -> float:
-	if power >= UiSlate.LOW_POWER:
-		return 1.0
-	return lerpf(UiSlate.DIM_FLOOR, 1.0, clampf(power / UiSlate.LOW_POWER, 0.0, 1.0))
-
-
-## Segments lit in the four-segment cell glyph.
-static func cell_segments(power: float) -> int:
-	return clampi(ceili(power * 4.0 - 0.001), 0, 4)
 
 
 ## The charge readout is only on the wrist while the thing in hand spends charges.

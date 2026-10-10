@@ -90,7 +90,6 @@ var _kept: Array[String] = []
 var place := ""
 var charge_shown := false
 var charges := 0
-var power := 1.0
 
 var _canvas: Control
 var _place_age := 99.0
@@ -159,11 +158,6 @@ func set_held(id: StringName) -> void:
 func set_charge(shown: bool, count: int) -> void:
 	charge_shown = shown
 	charges = count
-
-
-## The slate's power 0..1: the readouts dim with it, as the glass does.
-func set_power(p: float) -> void:
-	power = p
 
 
 ## Felt pressures as UiRules.pressures gives them: [{id, level, value}].
@@ -438,8 +432,6 @@ func _process(delta: float) -> void:
 		else:
 			_gauge_flare[k] = f
 	if _canvas != null:
-		var b := UiRules.brightness(power)
-		_canvas.modulate = Color(b, b, b, 1.0)
 		_canvas.queue_redraw()
 
 
@@ -576,11 +568,10 @@ static func _charge_glyph(ci: CanvasItem, at: Vector2i, col: Color) -> void:
 
 
 func _draw_clock(ci: Control) -> void:
-	var w := UiFont.width(clock_text) + 48
+	var w := UiFont.width(clock_text) + 16
 	var win := Rect2i(UiBase.SIZE.x - MARGIN - w, MARGIN, w, UiTheme.LINE)
 	clip(ci, win, false)
-	UiSlate.cell(ci, Vector2i(win.position.x + 6, win.position.y + 4), power)
-	UiDraw.text(ci, Vector2i(win.position.x + 38, win.position.y), clock_text, UiTheme.TEXT)
+	UiDraw.text(ci, Vector2i(win.position.x + 8, win.position.y), clock_text, UiTheme.TEXT)
 	# Felt pressures, right to left under the clock, in a fixed order so they never swap.
 	var x := UiBase.SIZE.x - MARGIN - GAUGE.x
 	var level := {}

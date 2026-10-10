@@ -311,7 +311,7 @@ func _draw() -> void:
 	var g := UiSlate.glass_of(DEVICE)
 	if not is_lit() and wake_stage()[1] <= 0.0:
 		return
-	UiSlate.status(self, &"", "island %d" % (title.seed_value if title != null else 0), 1.0, DEVICE, false)
+	UiSlate.status(self, &"", "island %d" % (title.seed_value if title != null else 0), DEVICE, false)
 	if page == "keys":
 		UiPauseScreen.draw_keys_list(self, Vector2i(g.position.x + UiSlate.MARGIN_L + 8, g.position.y + UiSlate.STATUS_H + 16), 104)
 		draw_keys(KEY_HINTS_PAGE)

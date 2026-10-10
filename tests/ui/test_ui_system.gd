@@ -486,30 +486,6 @@ func test_x_on_the_carrying_page_puts_a_thing_down() -> void:
 	g.free()
 
 
-func test_the_slate_whines_once_when_power_runs_low() -> void:
-	var g := _make()
-	var ui := _ui(g)
-	var heard: Array[StringName] = []
-	var listen := func(n: StringName, _at: Vector3) -> void: heard.append(n)
-	Events.sfx.connect(listen)
-	SurvivalState.of(g).lamp_oil = UiRules.POWER_LAMP_MINUTES
-	ui.call("_step_power")
-	eq(heard.count(&"ui_slate_whine"), 0, "a full lamp: no whine")
-	SurvivalState.of(g).lamp_oil = UiRules.POWER_LAMP_MINUTES * 0.1
-	g.inventory.remove(&"oil", g.inventory.count(&"oil"))
-	ui.call("_step_power")
-	ui.call("_step_power")
-	eq(heard.count(&"ui_slate_whine"), 1, "low: one whine, not one a frame")
-	lt(g.hud.power, UiSlate.LOW_POWER, "the HUD dims with it")
-	SurvivalState.of(g).lamp_oil = UiRules.POWER_LAMP_MINUTES
-	ui.call("_step_power")
-	SurvivalState.of(g).lamp_oil = UiRules.POWER_LAMP_MINUTES * 0.1
-	ui.call("_step_power")
-	eq(heard.count(&"ui_slate_whine"), 2, "refilled and run low again: it whines again")
-	Events.sfx.disconnect(listen)
-	g.free()
-
-
 func test_the_land_seen_is_saved_and_loaded() -> void:
 	var g := _make()
 	var ui := _ui(g)

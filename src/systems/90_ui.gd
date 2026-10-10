@@ -7,7 +7,6 @@ extends GameSystem
 ##     routes menu input to the top one (draw order = input priority); an app's
 ##     key while another app is up switches the glass to it, and on home opens
 ##     it over home; gear, machine reads and saves open from home
-##   - the slate's power: its glass dims and it whines once when power runs low
 ## It reads the game's data and acts only through Inventory, Crafting, Survival's
 ## `eat` / `use_hint`, and SlateFeeds for the apps other packages fill.
 
@@ -16,7 +15,6 @@ var layer: CanvasLayer
 var screens := {}
 var stack: Array[UiScreen] = []
 var map_data: UiMapData
-var power := 1.0
 var _places := UiPlaceWatch.new()
 var _pending_screen := ""
 var _vertical := UiMenu.new()
@@ -44,7 +42,6 @@ var _horizontal := UiMenu.new()
 ## Real seconds until the survey's data is packed in the background: after the
 ## world's first chunks, so start-up is not slowed, and before anyone opens it.
 var _map_build_in := 2.0
-var _low := false
 
 ## Apps with a key of their own, which switch between each other.
 const APPS: Array[StringName] = [&"inventory", &"crafting", &"map", &"loadout", &"reads", &"saves"]
@@ -161,8 +158,6 @@ func open_screen(n: StringName, switched: bool = false) -> bool:
 		(s as UiPauseScreen).seen_share = explored.fraction()
 		# The survey is an app of home's: its lettering is worked out as home opens.
 		_warm_map()
-	s.power = power
-	s.brightness = UiRules.brightness(power)
 	stack.append(s)
 	# The newest app is drawn over the rest (gear over home).
 	layer.move_child(s, -1)
@@ -321,22 +316,12 @@ func _process(delta: float) -> void:
 			UiSketch.warm(carried, UiInventoryScreen.SKETCH, stations, UiCraftingScreen.SKETCH)
 			var none: Array[StringName] = []
 			UiSketch.warm(none, UiInventoryScreen.SKETCH, stations, UiCraftingScreen.STATION)
-	_step_power()
 	if _pending_screen != "" and game.scripted_seconds <= 0.0:
 		# --screen=NAME or NAME:ROW (a row id to choose, for shots). Staging, not
 		# play: it may wait for the bezel's bake so a shot shows it.
 		UiSlate.warm()
 		UiSlate.wait()
 		var parts := _pending_screen.split(":")
-		if parts[0] == "lowpower":
-			# Shot staging: the lamp nearly dry and no charge carried, then NAME after it.
-			SurvivalState.of(game).lamp_oil = UiRules.POWER_LAMP_MINUTES * 0.08
-			game.inventory.remove(&"oil", game.inventory.count(&"oil"))
-			game.inventory.remove(&"wick", game.inventory.count(&"wick"))
-			_step_power()
-			parts.remove_at(0)
-			if parts.is_empty():
-				parts.append("")
 		# Gear, reads and saves live under home, as a player reaches them.
 		if StringName(parts[0]) in SlateFeeds.APPS:
 			open_screen(&"pause")
@@ -396,28 +381,6 @@ func _watch_place(delta: float, hostile: bool) -> void:
 ## whole rise and half its ring spent where nobody could see them.
 func _page_up() -> bool:
 	return not get_tree().get_nodes_in_group(&"boot_page").is_empty()
-
-
-## The slate's power from the lamp's reserve and the charges carried: the glass
-## dims with it, and it whines once each time it runs low.
-func _step_power() -> void:
-	power = UiRules.slate_power(Survival.lamp_oil(game), game.inventory.count(&"wick"))
-	var low := power < UiSlate.LOW_POWER
-	if low and not _low:
-		Events.sfx.emit(&"ui_slate_whine", Vector3.ZERO)
-	# It must come back a little over the line before it can whine again.
-	if low:
-		_low = true
-	elif power >= UiSlate.LOW_POWER + 0.05:
-		_low = false
-	game.hud.set_power(power)
-	# Every open app, not just the top: home under gear shows as soon as gear closes.
-	for s in stack:
-		if not is_equal_approx(s.power, power):
-			s.power = power
-			# Its setter redraws the glass layer, where the dimming is drawn.
-			s.brightness = UiRules.brightness(power)
-			s.queue_redraw()
 
 
 ## A direction moves the list once on the frame it goes down, then repeats while

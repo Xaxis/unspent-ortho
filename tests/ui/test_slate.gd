@@ -99,27 +99,25 @@ func test_the_flaws_never_sit_under_words() -> void:
 	check(UiSlate.SPARE.end.x - UiSlate.SPARE_INSET <= zone.position.x, "the spare panel's words are clear of the crack")
 
 
-func test_power_dims_the_glass_not_the_bezel() -> void:
-	var s := UiPauseScreen.new()
-	tree.root.add_child(s)
-	s.open()
+## THE SLATE NEEDS NO POWER (owner, 2026-10-09): it is always on. Opened in a game
+## with no lamp oil and no charge carried, nothing washes over its glass and no
+## cell sits in its status bar.
+func test_the_slate_is_always_on_with_nothing_to_run_on() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"])))
+	await tree.process_frame
+	SurvivalState.of(g).lamp_oil = 0.0
+	g.inventory.remove(&"oil", g.inventory.count(&"oil"))
+	g.inventory.remove(&"wick", g.inventory.count(&"wick"))
+	var ui := g.get_node("90_ui")
+	check(ui.call("open_screen", &"pause"), "the slate opens")
+	var s: UiScreen = ui.call("top")
 	s.settle()
 	await tree.process_frame
-	check(_dim_washes(await _glass_drawn(s)).is_empty(), "full power: no wash")
-	# Power runs low while the app stays open: only the brightness changes.
-	UiDraw.tape.clear()
-	UiDraw.taping = true
-	s.brightness = UiRules.brightness(0.0)
 	await tree.process_frame
-	UiDraw.taping = false
-	check(s.brightness >= UiSlate.DIM_FLOOR, "dim, never unreadable")
-	var washes := _dim_washes(UiDraw.tape.filter(func(d: Dictionary) -> bool: return d.ci != s))
-	eq(washes.size(), 1, "the glass redraws dimmed while the app is open")
-	if washes.size() == 1:
-		eq(Rect2i(washes[0].rect), UiSlate.glass_of(s.device_rect), "over the glass only, never the bezel")
-		near((washes[0].col as Color).a, 1.0 - s.brightness, 0.01, "as dark as the power is low")
-	UiDraw.tape.clear()
-	s.free()
+	eq(_dim_washes(await _glass_drawn(s)).size(), 0, "no wash over the glass")
+	g.free()
 
 
 ## What the glass layer over `s` draws on its next frame.
@@ -224,7 +222,6 @@ func test_every_word_on_the_glass_reads() -> void:
 			s.select(pick[1])
 		if pick[2] != "":
 			(s as UiPauseScreen).page = pick[2]
-		s.power = 0.1
 		for w: Dictionary in await _words_drawn(s):
 			words["%s|%s" % [w.text, (w.col as Color).to_html()]] = [s.screen_name, w]
 		if pick[0] == &"reads" and pick[1] == &"":
@@ -243,7 +240,6 @@ func test_every_word_on_the_glass_reads() -> void:
 			words["%s|%s" % [w.text, (w.col as Color).to_html()]] = [&"title", w]
 	title.free()
 	gt(words.size(), 60, "the apps said enough to judge")
-	var dim := 1.0 - UiSlate.DIM_FLOOR
 	for key: String in words:
 		var app: StringName = words[key][0]
 		var col: Color = words[key][1].col
@@ -253,9 +249,7 @@ func test_every_word_on_the_glass_reads() -> void:
 			continue
 		for glass: Color in [UiTheme.GLASS, UiTheme.GLASS_SPARE]:
 			var lit := _wcag(col, glass)
-			var low := _wcag(col.lerp(UiTheme.GLASS_OFF, dim), glass.lerp(UiTheme.GLASS_OFF, dim))
 			check(lit >= 4.5, "%s: '%s' in %s is %.2f:1 on the glass" % [app, said, col.to_html(false), lit])
-			check(low >= 3.0, "%s: '%s' in %s is %.2f:1 at low power" % [app, said, col.to_html(false), low])
 	for faint: Color in [UiTheme.FAINT, UiTheme.GHOST, UiTheme.MACHINE[0], UiTheme.MACHINE[1]]:
 		check(_wcag(faint, UiTheme.GLASS) < 4.5, "%s is only for rules and glyphs" % faint.to_html(false))
 	for word_tone: Color in [UiTheme.TEXT_DIM, UiTheme.MACHINE[2], UiTheme.WARN]:

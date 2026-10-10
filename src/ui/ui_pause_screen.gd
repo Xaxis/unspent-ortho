@@ -187,14 +187,11 @@ func _draw() -> void:
 		UiDraw.text(self, Vector2i(px + 8, R.position.y + 48 + UiTheme.LINE), game.clock.label(), UiTheme.TEXT)
 		UiDraw.text(self, Vector2i(px + 8, R.position.y + 48 + UiTheme.LINE * 2), "%s of the land seen" % UiRules.share(seen_share), UiTheme.TEXT_DIM)
 		_draw_body(Vector2i(px, R.position.y + 136), R.end.x - 24)
-	var sy := R.position.y + 344
-	UiSlate.heading(self, Vector2i(px, sy), "slate", R.end.x - 24)
-	UiDraw.text(self, Vector2i(px + 8, sy + 32), "power", UiTheme.TEXT_DIM)
-	UiSlate.meter(self, Rect2i(px + 120, sy + 32, 240, 16), power, 2.0, UiTheme.WARN if power < UiSlate.LOW_POWER else UiTheme.TEXT)
-	UiDraw.text(self, Vector2i(px + 8, sy + 56), "runs off the lamp's oil, or a found charge", UiTheme.TEXT_DIM)
 	var line := saved_line()
 	if line != "":
-		UiDraw.text(self, Vector2i(px + 8, sy + 88), line, UiTheme.TEXT)
+		var sy := R.position.y + 344
+		UiSlate.heading(self, Vector2i(px, sy), "slate", R.end.x - 24)
+		UiDraw.text(self, Vector2i(px + 8, sy + 32), line, UiTheme.TEXT)
 	draw_keys([["e", "choose"], ["esc", "resume"]])
 
 
