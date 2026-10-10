@@ -34,10 +34,6 @@ var lift := 0.0
 ## craft, for the tests and tools where no simulation owns the body. The crafts
 ## package (src/systems/44_crafts.gd) is the only writer.
 var ride: CraftRide = null
-## How far under the ground the body is drawn: the first morning's rise out of
-## the surf (48_wake), eased to 0. The one writer is the wake; nothing else
-## sinks a body.
-var sunk := 0.0
 ## OFF THE LAND ALTOGETHER, up a walker's leg (43_climb, the only writer): the
 ## figure is drawn where the climb hangs it, in world space, placed by the climb
 ## the same frame as the leg it hangs from, and the climb puts this node with it,
@@ -257,7 +253,7 @@ func _sync(delta: float) -> void:
 ## Where he is on the land: the node's own place, except up a walker's leg,
 ## where the node is with the figure and this stays where he left the ground.
 func on_land() -> Vector3:
-	return Vector3(pos.x, _z + lift - sunk, pos.y)
+	return Vector3(pos.x, _z + lift, pos.y)
 
 
 ## Where he is heard from, in tile space: `pos`, except up a walker's leg, where

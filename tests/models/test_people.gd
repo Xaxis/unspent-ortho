@@ -269,6 +269,25 @@ func test_a_swimmer_is_drawn_at_the_waterline_on_every_build() -> void:
 			else:
 				gt(head_low, Swim.WATER_Y + 0.05, "%s treading: the head stays out" % b)
 			p.free()
+## Getting up off the ground (48_wake): on hands and knees the wrists and the
+## knees are on the ground, not in it and not over it, on every build, because
+## the keys are solved from the build's own lengths; and it ends standing.
+func test_rise_puts_hands_and_knees_on_the_ground_on_every_build() -> void:
+	for b: StringName in PersonLook.BUILDS:
+		var p := PersonModel.make({"build": b})
+		p.pose_at(&"rise", 1.2)
+		for bone: StringName in [&"hand_l", &"hand_r", &"shin_l", &"shin_r"]:
+			var y := p.rig.bone_global(p.rig.find(bone)).origin.y
+			check(y > -0.05 and y < 0.15, "%s: %s on the ground on hands and knees (%.3f)" % [b, bone, y])
+		p.free()
+		var stood := PersonModel.make({"build": b})
+		var standing := stood.rig.bone_global(stood.rig.find(&"head")).origin.y
+		stood.free()
+		var up := PersonModel.make({"build": b})
+		up.pose_at(&"rise", PersonAnim.RISE_SECONDS)
+		var head := up.rig.bone_global(up.rig.find(&"head")).origin.y
+		check(absf(head - standing) < 0.03, "%s: on his feet at the end, as the build stands (%.3f, %.3f)" % [b, head, standing])
+		up.free()
 
 
 func test_play_action_contract() -> void:

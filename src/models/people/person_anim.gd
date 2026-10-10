@@ -486,7 +486,7 @@ static func _carry(p: Pose, klass: StringName, move: float, run: float, c: float
 
 # ---------------------------------------------------------------- actions
 
-const ACTIONS: Array[StringName] = [&"swing", &"heavy", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"swim", &"jump", &"climb"]
+const ACTIONS: Array[StringName] = [&"swing", &"heavy", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"rise", &"swim", &"jump", &"climb"]
 ## Actions with no natural end: they hold their last pose until replaced. `swim`
 ## is here so a shot can stage a stroke on dry land and the gallery can show it;
 ## in a game the water chooses it, frame by frame, and nobody plays it by hand.
@@ -507,6 +507,7 @@ static func default_seconds(action: StringName, tool_id: StringName) -> float:
 		&"hurt": return 0.45
 		&"eat": return 2.4
 		&"carried", &"downed": return 0.0
+		&"rise": return RISE_SECONDS
 	return 2.0
 
 
@@ -551,6 +552,8 @@ static func action(name: StringName, t: float, seconds: float, d: Dictionary, to
 			return carried(t, d)
 		&"downed":
 			return downed(t, d)
+		&"rise":
+			return rise(t, d)
 		&"work":
 			return action(work_for(tool_id), t, seconds, d, tool_id)
 		&"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather":
@@ -922,7 +925,6 @@ static func carried(t: float, d: Dictionary) -> Pose:
 ## Downed: the knees go, the body folds forward and lies face down, breathing.
 static func downed(t: float, d: Dictionary) -> Pose:
 	var hip_y: float = d.get("hip_y", 0.6)
-	var depth: float = d.get("depth", 0.22)
 	var st := _stand(d)
 	var buckle := st.with({
 		"@hips": Vector3(-0.05, -hip_y * 0.42, 0), "spine": Vector3(0.1, 0.1, -0.6), "head": Vector3(0, 0, -0.4),
@@ -931,16 +933,7 @@ static func downed(t: float, d: Dictionary) -> Pose:
 		"arm_l": Vector3(0.3, 0, 0.3), "fore_l": Vector3(0, 0, 0.3), "arm_r": Vector3(-0.3, 0, 0.2), "fore_r": Vector3(0, 0, 0.3),
 		"tool": Vector3(0, 0, -1.8),
 	})
-	var breath := sin(t * TAU / 2.6) * 0.012
-	var lying := st.with({
-		"root": Vector3(0, 0, -PI * 0.5),
-		"@root": Vector3(-hip_y * 0.55, depth * 0.52 + 0.01 + breath, 0),
-		"spine": Vector3(0.12, 0, 0.05), "head": Vector3(0.1, 0.95, 0.12),
-		"arm_l": Vector3(0.1, 0, 2.7), "fore_l": Vector3(0, 0, 0.5), "arm_r": Vector3(-0.35, 0, 0.25), "fore_r": Vector3(0, 0, 0.3),
-		"thigh_l": Vector3(0.15, 0, 0.5), "shin_l": Vector3(0, 0, -0.9), "thigh_r": Vector3(-0.08, 0, -0.05), "shin_r": Vector3(0, 0, -0.15),
-		"foot_l": Vector3(0, 0, 1.2), "foot_r": Vector3(0, 0, 1.4),
-		"hem": Vector3(0, 0, 0.1), "aerial": Vector3(0.8, 0, -0.9), "tool": Vector3(0, 0, -2.0),
-	})
+	var lying := _lying(d, sin(t * TAU / 2.6) * 0.012)
 	if t < 0.22:
 		return mix_keys(st, buckle, _ease_in(t / 0.22))
 	if t < 0.6:
@@ -952,6 +945,85 @@ static func downed(t: float, d: Dictionary) -> Pose:
 		p.off[&"root"] = lying.o(&"root") + Vector3(0, sin(settle * PI) * 0.035, 0)
 		return p
 	return lying
+
+
+## Face down, one arm flung past the head and the cheek on the ground: where
+## `downed` falls to, and where `rise` gets up from. `breath` lifts the back.
+static func _lying(d: Dictionary, breath: float) -> Pose:
+	var hip_y: float = d.get("hip_y", 0.6)
+	var depth: float = d.get("depth", 0.22)
+	return _stand(d).with({
+		"root": Vector3(0, 0, -PI * 0.5),
+		"@root": Vector3(-hip_y * 0.55, depth * 0.52 + 0.01 + breath, 0),
+		"spine": Vector3(0.12, 0, 0.05), "head": Vector3(0.1, 0.95, 0.12),
+		"arm_l": Vector3(0.1, 0, 2.7), "fore_l": Vector3(0, 0, 0.5), "arm_r": Vector3(-0.35, 0, 0.25), "fore_r": Vector3(0, 0, 0.3),
+		"thigh_l": Vector3(0.15, 0, 0.5), "shin_l": Vector3(0, 0, -0.9), "thigh_r": Vector3(-0.08, 0, -0.05), "shin_r": Vector3(0, 0, -0.15),
+		"foot_l": Vector3(0, 0, 1.2), "foot_r": Vector3(0, 0, 1.4),
+		"hem": Vector3(0, 0, 0.1), "aerial": Vector3(0.8, 0, -0.9), "tool": Vector3(0, 0, -2.0),
+	})
+
+
+## Seconds getting up off the ground takes.
+const RISE_SECONDS := 2.6
+
+
+## Rise: up off the ground from lying face down, the way somebody half-drowned
+## does it (48_wake). A cough lifts the back; the hands come under the
+## shoulders and push him onto hands and knees, where he hangs his head and
+## breathes; one foot comes forward under him; he stands. Every key is solved
+## from the build's own lengths, so hands and knees meet the ground on any body.
+static func rise(t: float, d: Dictionary) -> Pose:
+	var hip_y: float = d.get("hip_y", 0.6)
+	var thigh: float = d.get("thigh", 0.3)
+	var shin_t: float = d.get("shin_t", 0.13)
+	var torso: float = d.get("torso", 0.45)
+	var reach: float = d.get("upper", 0.27) + d.get("fore", 0.23) + d.get("hand", 0.09) * 0.5
+	# Kneeling, the hips are a thigh above the shin lying on the ground; on hands
+	# and knees the shoulders are an arm above it, so the back tips up by `lift`.
+	var low := thigh + 0.03 + shin_t * 0.5
+	var lift := asin(clampf((reach - low) / maxf(torso - 0.025, 0.1), 0.0, 0.9))
+	var tip := PI * 0.5 - lift
+	var hips_x := 0.12
+	var lying := _lying(d, 0.0)
+	var stir := lying.with({
+		"spine": Vector3(0.12, 0, -0.18), "head": Vector3(0.1, 0.6, 0.35),
+		"arm_r": Vector3(-0.3, 0, 1.2), "fore_r": Vector3(0, 0, 1.2),
+	})
+	var crawl := _stand(d).with({
+		"root": Vector3(0, 0, -tip),
+		"@root": Vector3(hips_x - hip_y * sin(tip), low - hip_y * cos(tip), 0),
+		"spine": Vector3(0, 0, 0.05), "head": Vector3(0.05, 0.1, -0.25),
+		"arm_l": Vector3(0.12, 0, tip + 0.08), "fore_l": Vector3(0, 0, 0.06),
+		"arm_r": Vector3(-0.12, 0, tip + 0.08), "fore_r": Vector3(0, 0, 0.06),
+		"thigh_l": Vector3(0.08, 0, tip), "shin_l": Vector3(0, 0, -PI * 0.5),
+		"thigh_r": Vector3(-0.08, 0, tip - 0.1), "shin_r": Vector3(0, 0, -PI * 0.5 + 0.1),
+		"foot_l": Vector3(0, 0, 1.0), "foot_r": Vector3(0, 0, 1.0),
+		"hem": Vector3(0, 0, 0.5), "aerial": Vector3(0.4, 0, -0.4), "tool": Vector3(0, 0, -1.6),
+	})
+	var kneel := _stand(d).with({
+		"@hips": Vector3(0.05, low - hip_y, 0),
+		"spine": Vector3(0, 0, -0.32), "head": Vector3(0, 0, 0.12),
+		"thigh_l": Vector3(0.06, 0, 0.05), "shin_l": Vector3(0, 0, -PI * 0.5), "foot_l": Vector3(0, 0, 1.0),
+		"thigh_r": Vector3(-0.06, 0, 1.45), "shin_r": Vector3(0, 0, -1.45), "foot_r": Vector3(0, 0, 0.0),
+		"arm_r": Vector3(-0.1, 0, 0.75), "fore_r": Vector3(0, 0, 0.7),
+		"arm_l": Vector3(0.12, 0, 0.3), "fore_l": Vector3(0, 0, 0.35),
+		"hem": Vector3(0, 0, 0.3), "tool": Vector3(0, 0, -1.4),
+	})
+	var st := _stand(d)
+	if t < 0.3:
+		return mix_keys(lying, stir, smoothstep(0.0, 1.0, t / 0.3))
+	if t < 1.0:
+		return mix_keys(stir, crawl, smoothstep(0.0, 1.0, (t - 0.3) / 0.7))
+	if t < 1.35:
+		# Hanging there a breath: the back heaves.
+		var p := crawl.with({})
+		p.off[&"root"] = crawl.o(&"root") + Vector3(0, sin((t - 1.0) / 0.35 * PI) * 0.025, 0)
+		return p
+	if t < 1.95:
+		return mix_keys(crawl, kneel, smoothstep(0.0, 1.0, (t - 1.35) / 0.6))
+	if t < 2.1:
+		return kneel
+	return mix_keys(kneel, st, smoothstep(0.0, 1.0, (t - 2.1) / (RISE_SECONDS - 2.1)))
 
 
 ## Seconds before a looping action repeats exactly (0 = it does not loop): lets

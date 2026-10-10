@@ -183,7 +183,7 @@ func test_the_first_morning_is_said_once() -> void:
 	var g := Sx.game(tree, ["--seed=1", "--size=128", "--hour=8"])
 	# The first morning is said in a PROCESS frame, so ask for process frames.
 	await process_frames(3)
-	var first: String = StoryContent.WAKE[&"surface"][0]
+	var first: String = StoryContent.WAKE[&"comes_to"][0]
 	check(said.has(first), "it says what happened to him: %s" % "\n".join(said))
 	check(Story.began, "and remembers having said it")
 	# A game carried on from a save is not told again: the story's own state is

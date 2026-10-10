@@ -78,7 +78,7 @@ extends RefCounted
 ## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package;
 ##                     `:wind=W` also holds the wind at W, -1..1 (clear:0:wind=0.8)
 ## --lamp              start with the player's lantern lit, sky package
-## --wake              a new game wakes in the surf off the spawn beach (48_wake), as
+## --wake              a new game wakes washed up on the spawn beach (48_wake), as
 ##                     the title's New game does; a boot without it starts on dry land
 ## --silhouette        gallery: machines (and the lineup's people) drawn flat black
 ## --filter=NAME       gallery: only the items whose name holds NAME

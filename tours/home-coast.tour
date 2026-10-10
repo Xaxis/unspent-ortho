@@ -10,11 +10,11 @@
 # hours and a meal, which is why the goal after it is his hunger's until step 4
 # stages the fight itself.
 #
-# 1a THE WAKE (48_wake): a new game starts him under the water in the shallows
-# off the spawn beach, the black site in the sea behind him and Maren at the
-# water's edge. 01 he breaks the surface; 02 he stands in the surf with his legs,
-# from above; 03 the first sight of the Tether; 04 over the shoulder, looking to
-# the shore and her.
+# 1a THE WAKE (48_wake): a new game opens on him washed up face down on the
+# tideline of the spawn beach, the black site in the sea behind him and Maren a
+# few paces along the water. 01 he lies out cold; 02 he is up off the sand, from
+# above; 03 the first sight of the Tether; 04 over the shoulder, looking up the
+# beach and to her.
 await title 40
 # New game heads the title's list when there is no save to continue; with one,
 # continue would, and `await character` below fails rather than play a save.
@@ -27,10 +27,10 @@ key use
 await game 120
 await waking 5
 wait 0.4
-shot 01-he-breaks-the-surface with waking,wake:staged,no_mob
+shot 01-washed-up with waking,wake:staged,no_mob
 await woken 10
 wait 1.0
-shot 02-in-the-surf-from-above with woken,cast:maren,no_mob
+shot 02-up-from-above with woken,cast:maren,no_mob
 # 1b THE FIRST SIGHT (48_wake, 42_stage): a breath after he stands, the view
 # turns once to the far horizon and up the Tether to the Foundry, and holds.
 await staging:tether 6
@@ -40,7 +40,7 @@ wait 4.0
 tap shoulder
 await shoulder 20
 wait 1.0
-shot 04-in-the-surf-over-the-shoulder with woken,cast:maren,shoulder,no_mob
+shot 04-on-the-beach-over-the-shoulder with woken,cast:maren,shoulder,no_mob
 
 # 2 MAREN'S ASK BECOMES THE GOAL (Guide._led, StoryContent.LEAD): he goes to her
 # at the water's edge and talks, taking the first reply each time, as a player

@@ -1,14 +1,16 @@
 extends TestCase
-## THE WAKE (48_wake, ROADMAP slice 1 step 1a): a new game starts him under the
-## water in the shallows off the spawn beach, the black site behind him and
-## Maren at the water's edge; he rises, and the record's first lines come on the
-## rise. A game that has woken before, or one started somewhere by name, is not
-## put in the surf.
+## THE WAKE (48_wake, ROADMAP slice 1 step 1a): a new game opens on him washed
+## up face down on the tideline of the spawn beach, the black site out in the
+## sea behind him and Maren a few paces along the water; he lies out cold, comes
+## to, gets up off the sand, and the record's first lines come on those moments.
+## A game that has woken before, or one started somewhere by name, is not put
+## on the tideline.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
+const Wake := preload("res://src/systems/48_wake.gd")
 const ARGS := ["--seed=1", "--hour=10", "--weather=clear:0", "--wake"]
-## Past the rise (48_wake.RISE), on the wall clock the rise runs on.
-const RISE_WAIT := 2.0
+## Past the waking (out cold, then up), on the wall clock it runs on.
+const RISE_WAIT := Wake.OUT + PersonAnim.RISE_SECONDS + 0.5
 
 
 func _wall(secs: float) -> void:
@@ -25,31 +27,44 @@ func _until_let_go(g: Game, most: float) -> void:
 		t += 0.25
 
 
-## The record's first lines as they are said, in order. Only those: standing in
-## the sea, the body is also told it is soaked through.
+## The record's first lines as they are said, in order. Only those: out of the
+## sea, the body is also told it is soaked through.
 func _lines() -> Array[String]:
 	var said: Array[String] = []
-	var wake: Array = StoryContent.WAKE[&"surface"] + StoryContent.WAKE[&"shallows"]
+	var wake: Array = StoryContent.WAKE[&"comes_to"] + StoryContent.WAKE[&"stands"]
 	Events.message.connect(func(line: String) -> void:
 		if line in wake:
 			said.append(line))
 	return said
 
 
-func test_a_new_game_wakes_in_the_surf_with_the_site_behind_and_maren_ahead() -> void:
+func _touches_water(w: WorldData, p: Vector2) -> bool:
+	for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if Ground.is_water(w.ground_at(floori(p.x) + d.x, floori(p.y) + d.y)):
+			return true
+	return false
+
+
+func test_a_new_game_wakes_on_the_tideline_with_the_site_behind_and_maren_by() -> void:
 	var said := _lines()
 	var g := Sx.game(tree, ARGS)
 	var w := g.world
 	var ground := w.ground_at(floori(g.player.pos.x), floori(g.player.pos.y))
-	check(Ground.is_water(ground) and not Ground.is_deep(ground), "he starts in wading water, not on the beach and not swimming")
-	gt(g.player.sunk, 1.0, "and under it")
+	check(not Ground.is_water(ground), "he lies on the sand, not in the sea")
+	check(_touches_water(w, g.player.pos), "at the water's edge, where the sea left him")
+	eq(g.player.model.action, &"downed", "face down, out cold")
+	# Lying with his head into a terrace a step up, the view saw no body at all.
+	var level := w.level_at(floori(g.player.pos.x), floori(g.player.pos.y))
+	var head := g.player.pos + Vector2.from_angle(g.player.facing) * WakeSpot.HEAD
+	eq(w.level_at(floori(head.x), floori(head.y)), level, "his head up the beach on his own level, in the open")
 	var site := BlackSite.site(w)
 	var to_site := (site - g.player.pos).angle()
-	# Facing the shore, the site is behind him: his facing and the site's bearing
-	# point well apart.
+	# Lying with his head up the beach, the site is behind him: his facing and
+	# the site's bearing point well apart.
 	gt(absf(angle_difference(g.player.facing, to_site)), deg_to_rad(120.0), "the black site stands behind him")
+	gt(SurvivalState.of(g).wet_until, g.clock.minutes, "out of the sea, soaked through")
 	await process_frames(2)
-	eq(said, StoryContent.WAKE[&"surface"], "the record's first lines, as he breaks the water")
+	eq(said.size(), 0, "nothing is said while he is out cold")
 	var cast := Sx.system(g, "49_cast")
 	var maren: Dictionary = {}
 	for row: Dictionary in cast.get("people"):
@@ -59,19 +74,37 @@ func test_a_new_game_wakes_in_the_surf_with_the_site_behind_and_maren_ahead() ->
 	if not maren.is_empty():
 		var at: Vector2 = maren.pos
 		check(not Ground.is_water(w.ground_at(floori(at.x), floori(at.y))), "Maren stands dry")
-		lt(at.distance_to(g.player.pos), 6.0, "at the water's edge he rises in")
+		var apart := at.distance_to(g.player.pos)
+		check(apart > 1.0 and apart < 5.0, "a few paces from him (%.1f)" % apart)
 	var from := g.player.pos
+	# Pressed and let go before a press may bring him round: he stays down.
 	Input.action_press(&"move_up")
-	await _wall(0.8)
+	await _wall(Wake.OUT_LEAST * 0.6)
 	Input.action_release(&"move_up")
-	lt(from.distance_to(g.player.pos), 0.05, "held still while he rises")
-	await _wall(RISE_WAIT)
-	eq(g.player.sunk, 0.0, "risen")
-	eq(said.slice(2, 5), StoryContent.WAKE[&"shallows"], "and the rest as he stands in the surf")
+	lt(from.distance_to(g.player.pos), 0.05, "held still while he is down")
+	eq(g.player.model.action, &"downed", "still out cold")
+	await _wall(Wake.OUT - Wake.OUT_LEAST * 0.6 + 0.2)
+	eq(said, StoryContent.WAKE[&"comes_to"], "he comes to by himself, and the record's first lines")
+	eq(g.player.model.action, &"rise", "and gets up off the sand")
+	lt(from.distance_to(g.player.pos), 0.05, "held still while he gets up")
+	await _wall(PersonAnim.RISE_SECONDS + 0.3)
+	check(g.player.model.action != &"downed" and g.player.model.action != &"rise", "on his feet")
+	eq(said.slice(2, 5), StoryContent.WAKE[&"stands"], "and the rest as he stands")
 	Sx.end(g)
 
 
-func test_a_game_that_has_woken_is_not_put_back_in_the_surf() -> void:
+func test_a_press_brings_him_round_sooner() -> void:
+	var g := Sx.game(tree, ARGS)
+	await _wall(Wake.OUT_LEAST + 0.2)
+	eq(g.player.model.action, &"downed", "out cold until something is pressed")
+	Input.action_press(&"use")
+	await process_frames(3)
+	Input.action_release(&"use")
+	eq(g.player.model.action, &"rise", "a press, and he comes to")
+	Sx.end(g)
+
+
+func test_a_game_that_has_woken_is_not_put_back_on_the_tideline() -> void:
 	Sx.use_root("wake-load")
 	var a := Sx.game(tree, ARGS)
 	await _wall(RISE_WAIT)
@@ -81,18 +114,18 @@ func test_a_game_that_has_woken_is_not_put_back_in_the_surf() -> void:
 	var o := BootOptions.new()
 	eq(SaveSlots.options_for(1, o), "", "the slot boots")
 	var b := Sx.game(tree, [], o)
-	eq(b.player.sunk, 0.0, "a loaded game is not sunk again")
+	check(b.player.model.action != &"downed", "a loaded game is not laid on the tideline again")
 	lt(b.player.pos.distance_to(stood), 0.01, "it stands where it was saved")
 	Sx.end(b)
 	Sx.finish()
 
 
-func test_a_start_by_name_is_not_staged_in_the_surf() -> void:
+func test_a_start_by_name_is_not_staged_on_the_tideline() -> void:
 	var said := _lines()
 	var g := Sx.game(tree, ARGS + ["--place=spawn"])
 	var ground := g.world.ground_at(floori(g.player.pos.x), floori(g.player.pos.y))
 	check(not Ground.is_water(ground), "a --place start stands where it was put")
-	eq(g.player.sunk, 0.0, "not sunk")
+	check(g.player.model.action != &"downed", "on its feet")
 	await process_frames(2)
 	eq(said.size(), 5, "and still hears the first morning, once")
 	Sx.end(g)
@@ -103,7 +136,7 @@ func test_a_game_booted_straight_into_the_world_starts_on_dry_land() -> void:
 	var g := Sx.game(tree, ["--seed=1", "--hour=10", "--weather=clear:0"])
 	var ground := g.world.ground_at(floori(g.player.pos.x), floori(g.player.pos.y))
 	check(not Ground.is_water(ground), "a test, a shot or a tour stands at the spawn, dry")
-	eq(g.player.sunk, 0.0, "not sunk")
+	check(g.player.model.action != &"downed", "on its feet")
 	await process_frames(2)
 	eq(said.size(), 5, "and hears the first morning, once")
 	Sx.end(g)
@@ -138,11 +171,13 @@ func test_no_goal_or_key_hint_is_on_the_glass_until_the_wake_is_over() -> void:
 func test_only_the_record_speaks_while_the_wake_holds_the_glass() -> void:
 	var g := Sx.game(tree, ARGS)
 	await _wall(RISE_WAIT + 3.0)
-	var soaked := String(Hazards.LINES[&"wet"])
-	gt(g.body.wet, 0.0, "standing in the sea, he is wet: the state applies")
+	gt(g.body.wet, 0.0, "out of the sea, he is wet: the state applies")
+	var other := "A line that is not the record's."
+	Events.message.emit(other)
+	await process_frames(2)
 	for l: Dictionary in g.hud.messages.lines:
 		check(String(l.text) in (Sx.system(g, "48_wake").call(&"own_lines") as Array), "only the record's lines on the glass, not '%s'" % l.text)
-	check(soaked in g.hud.get("_kept"), "survival's line is kept while the wake holds the glass")
+	check(other in g.hud.get("_kept"), "any other line is kept while the wake holds the glass")
 	@warning_ignore("return_value_discarded")
 	Story.meet(&"maren")
 	await _until_let_go(g, 12.0)
