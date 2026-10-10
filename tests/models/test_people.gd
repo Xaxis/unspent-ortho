@@ -269,6 +269,8 @@ func test_a_swimmer_is_drawn_at_the_waterline_on_every_build() -> void:
 			else:
 				gt(head_low, Swim.WATER_Y + 0.05, "%s treading: the head stays out" % b)
 			p.free()
+
+
 ## Getting up off the ground (48_wake): on hands and knees the wrists and the
 ## knees are on the ground, not in it and not over it, on every build, because
 ## the keys are solved from the build's own lengths; and it ends standing.
