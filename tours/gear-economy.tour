@@ -80,6 +80,11 @@ place bonelands
 wait 1.5
 spawn cutter
 shot 07-a-cutter-on-its-round with mob:cutter,land:bonelands
+# Brought most of the way down first: what this section shows is the part coming
+# out of the body, and a scripted swing at its back is no match for a roused
+# cutter's whole life (it put the tour down and the coast was cleared under it,
+# on main too).
+wound cutter 0.2
 try 26
   walkto part 4
   tap swing
