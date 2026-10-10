@@ -438,10 +438,14 @@ wait 1.0
 shot 16-a-holding-founded with holding,goal:raft
 village 0
 wait 1.5
-near holding_ask
-wait 0.5
-tap use
-await talking 3
+# Asked again where the first press met a villager mid-step (a real-time stand
+# under load): staged and pressed afresh each try.
+try 3
+  near holding_ask
+  wait 0.5
+  tap use
+  await talking 3
+end
 wait 0.4
 shot 17-he-offers-a-bed with talking
 tap use
