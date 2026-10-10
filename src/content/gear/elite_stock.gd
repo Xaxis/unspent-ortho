@@ -135,9 +135,13 @@ const SPOILS := {
 		{"item": &"stun_hand", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"clerk": [{"item": &"rep_light", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"warden": [{"item": &"las_long", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
-	# Workers: what is carried to cut, lift and burn through things all day.
-	&"cutter": [{"item": &"plasma_torch", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
-	&"harvester": [{"item": &"las_broad", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
+	# Workers: what is carried to cut, lift and burn through things all day. A
+	# machine that cuts carries its own edge, always: steel, the quick way to a
+	# steel tool (docs/SALVAGE.md E5).
+	&"cutter": [{"item": &"machine_edge", "chance": 1.0},
+		{"item": &"plasma_torch", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
+	&"harvester": [{"item": &"machine_edge", "chance": 1.0},
+		{"item": &"las_broad", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
 	&"hauler": [{"item": &"pulse_hammer", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
 	&"sweeper": [{"item": &"arc_cut", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"lineman": [{"item": &"beam_lance", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
