@@ -169,26 +169,6 @@ func test_night_without_a_light_hides_what_a_hand_does_not_touch() -> void:
 	Fx.done(g)
 
 
-func test_the_lamp_says_when_its_oil_is_low_once() -> void:
-	var g := Fx.flat(40, 21.0)
-	var said: Array[String] = []
-	var f := _listen(said)
-	g.inventory.add(&"lamp")
-	g.body.lamp_lit = true
-	var state := SurvivalState.of(g)
-	state.lamp_at = g.clock.minutes
-	state.lamp_oil = Survival.LAMP_LOW_MINUTES + 5.0
-	Survival.tick(g, 0.0)
-	eq(said.count(Survival.LAMP_LOW_LINE), 0, "plenty left")
-	g.clock.skip(10.0)
-	Survival.sweep(g, 1.0)
-	Survival.tick(g, 0.0)
-	Survival.tick(g, 0.0)
-	eq(said.count(Survival.LAMP_LOW_LINE), 1, "low, said once")
-	Events.message.disconnect(f)
-	Fx.done(g)
-
-
 func test_long_takes_and_meals_wait_until_the_hunter_is_gone() -> void:
 	var g := Fx.flat()
 	var sim := FightSim.new(g.world, g.query)

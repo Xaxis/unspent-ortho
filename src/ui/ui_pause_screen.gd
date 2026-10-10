@@ -21,7 +21,7 @@ const KEYS := [
 	[[&"swing"], "swing, or pull free"],
 	[[&"use"], "use what is in reach"],
 	[[&"drop"], "hold: put down what is in hand"],
-	[[&"lamp"], "lamp"],
+	[[&"lamp"], "headlamp"],
 	[[&"inventory"], "carrying"],
 	[[&"craft"], "making"],
 	[[&"map"], "map"],

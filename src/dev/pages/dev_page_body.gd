@@ -19,7 +19,6 @@ func rows() -> Array[Dictionary]:
 	out.append(item(&"mend", "mend", "%d of %d" % [game.body.health, game.body.max_health]))
 	out.append(item(&"feed", "feed", _hunger()))
 	out.append(item(&"dry", "dry off", "%d%% wet" % roundi(game.body.wet * 100.0)))
-	out.append(item(&"lamp", "fill the lamp", "%d min of oil" % roundi(Survival.lamp_oil(game))))
 	out.append(item(&"empty", "put everything away", "", {"tone": "warn"}))
 	return out
 
@@ -39,9 +38,6 @@ func confirm(row: Dictionary) -> void:
 		&"dry":
 			DevCheats.dry(game)
 			report("Dry.")
-		&"lamp":
-			DevCheats.fill_lamp(game)
-			report("The lamp is full.")
 		&"empty":
 			if screen.ask("empty", "Again: everything but the knife goes."):
 				DevCheats.empty_creel(game)

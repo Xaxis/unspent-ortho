@@ -1296,7 +1296,7 @@ func _last_bag() -> WorldProp:
 	return game.world.prop(best) if best >= 0 else null
 
 
-const HOME_LINE := "You wake by your own fire, hands raw. The lamp is out."
+const HOME_LINE := "You wake by your own fire, hands raw. The headlamp is off."
 
 
 ## The player's holdings in the realm they are in, from whichever system keeps

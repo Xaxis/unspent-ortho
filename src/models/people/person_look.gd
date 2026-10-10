@@ -56,7 +56,8 @@ const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"t
 ##   slate       the wrist slate, its screen faint   battery  a machine cell at the back, cabled
 ##   radio       a box on the chest strap, a stub    pack     a frame of bundled scrap and cable
 ##   coil        rope or cable coiled across the body
-const GEAR: Array[StringName] = [&"respirator", &"goggles", &"slate", &"battery", &"radio", &"pack", &"coil"]
+##   headlamp    an old LED headlamp on its strap (the player's, while carried: 54_gear)
+const GEAR: Array[StringName] = [&"respirator", &"goggles", &"slate", &"battery", &"radio", &"pack", &"coil", &"headlamp"]
 const GEAR_MAX := 3
 ## The caps for a chosen kit (`kit: true`): a piece of salvage from each of the four
 ## worn slots, and the slate plus one piece of gear from each.

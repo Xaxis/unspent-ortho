@@ -78,7 +78,6 @@ const LIST: Array[Dictionary] = [
 	{"id": &"pot", "at": &"bench", "minutes": 100.0, "needs": {&"tin": 2}, "makes": {&"pot": 1}},
 	{"id": &"basket", "at": &"bench", "minutes": 40.0, "needs": {&"reeds": 6}, "makes": {&"basket": 1}},
 	{"id": &"oilcloth", "at": &"bench", "minutes": 40.0, "needs": {&"yarn": 2, &"pitch": 1}, "makes": {&"oilcloth": 1}},
-	{"id": &"lamp", "at": &"bench", "minutes": 60.0, "needs": {&"tin": 1, &"copper": 1}, "makes": {&"lamp": 1}},
 	{"id": &"kit_plate", "at": &"bench", "minutes": 80.0, "needs": {&"scrap": 3, &"iron": 1}, "makes": {&"kit_plate": 1}},
 	# MENDED GEAR (slice 3 step 5): living on what the machines leave. A spent
 	# plate is mended from scrap; patched with a harvester's iron it is the mended

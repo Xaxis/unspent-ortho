@@ -66,7 +66,7 @@ Destination `docs/VISION.md`, fiction `docs/STORY.md`, look `docs/LOOK.md`, next
   will hear it. A consuming take works the thing
   DOWN in five steps, never shrinks it. Tools: wood < iron < steel < crucible <
   found; an edge wears, never breaks.
-- **Survival**: health, wind, hunger, wet, load, lamp oil. A landscape's hazards
+- **Survival**: health, wind, hunger, wet, load. The headlamp needs nothing to run on. A landscape's hazards
   (16 ids) are felt at 0.25, bite the legs at 0.55, harm at 0.75 and drain only
   to 1 health. Stations: fire, bench, kiln, jig (built); wheel and loom (in houses).
 - **Gear**: slots head, body, hands, back, tool, craft; tiers made, mended, found.

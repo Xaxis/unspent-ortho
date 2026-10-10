@@ -376,11 +376,6 @@ static func dry(game: Game) -> void:
 	DevMode.touched = true
 
 
-static func fill_lamp(game: Game) -> void:
-	SurvivalState.of(game).lamp_oil = Condition.LAMP_FLASK_MINUTES
-	DevMode.touched = true
-
-
 ## Machines read the player as one of their own for the next world hour.
 static func unseen(game: Game) -> void:
 	game.body.spoof_until = maxf(game.body.spoof_until, game.clock.minutes + 60.0)

@@ -385,8 +385,7 @@ static func save_survival(game: Game) -> Dictionary:
 	var plates := {}
 	for k: Variant in s.plates:
 		plates[String(k)] = String(s.plates[k])
-	return {"woke_at": SaveCodec.num(s.woke_at), "wet_until": SaveCodec.num(s.wet_until),
-		"lamp_oil": s.lamp_oil, "lamp_at": SaveCodec.num(s.lamp_at), "plates": plates}
+	return {"woke_at": SaveCodec.num(s.woke_at), "wet_until": SaveCodec.num(s.wet_until), "plates": plates}
 
 
 static func load_survival(game: Game, v: Variant) -> void:
@@ -394,8 +393,6 @@ static func load_survival(game: Game, v: Variant) -> void:
 	var s := SurvivalState.of(game)
 	s.woke_at = SaveCodec.to_num(d.get("woke_at"), s.woke_at)
 	s.wet_until = SaveCodec.to_num(d.get("wet_until"), s.wet_until)
-	s.lamp_oil = SaveCodec.to_num(d.get("lamp_oil"), s.lamp_oil)
-	s.lamp_at = SaveCodec.to_num(d.get("lamp_at"), s.lamp_at)
 	s.plates = {}
 	var plates := _d(d.get("plates"))
 	for k: Variant in plates:

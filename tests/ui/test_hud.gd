@@ -284,23 +284,17 @@ func test_the_badge_keeps_the_loudest_colour_for_the_last_rung() -> void:
 	lt(UiTheme.WARN_DIM.get_luminance(), UiTheme.WARN.get_luminance(), "which is quieter than the warning itself")
 
 
-func test_the_lamp_and_the_last_rung_of_hunger_are_gauges() -> void:
+func test_the_last_rung_of_hunger_is_a_gauge() -> void:
 	var hud := _hud()
 	var b := Body.new()
 	b.fed_until = 0.0
-	# Starving (level 3) and a lamp down to its last minutes, both felt at once.
-	hud.set_pressures(UiRules.pressures(b, 100000.0, 5.0, UiRules.CREEL, 6.0, true))
+	hud.set_pressures(UiRules.pressures(b, 100000.0, 5.0))
 	hud.settle()
 	var ids := {}
 	for p in hud.pressures:
 		ids[p.id] = p
 	check(ids.has(&"hunger") and int(ids[&"hunger"].level) == 3, "starving is its own rung")
-	check(ids.has(&"lamp") and int(ids[&"lamp"].level) == 3, "and so is a lamp about to gutter")
-	lt(float(ids[&"lamp"].value), 0.2, "its gauge reads how little is left")
-	eq(hud.shown().get(&"lamp", 0.0), 1.0, "the lamp gauge is up")
-	hud.set_pressures(UiRules.pressures(b, 100000.0, 5.0, UiRules.CREEL, 6.0, false))
-	_run(hud, 1.0)
-	check(not hud.shown().has(&"lamp"), "an unlit lamp spends no oil and asks nothing")
+	check(not ids.has(&"lamp"), "the headlamp runs on nothing, so it is never a gauge")
 	hud.free()
 
 
@@ -309,7 +303,7 @@ func test_the_lamp_and_the_last_rung_of_hunger_are_gauges() -> void:
 ## rung that ends the run — nearest the clock, then what the land presses with.
 func test_the_gauge_nearest_the_clock_is_the_one_that_ends_the_run() -> void:
 	eq(Hud.gauge_order([&"tired", &"wet", &"hunger"]), [&"hunger", &"wet", &"tired"] as Array[StringName], "needs in the order they cost you")
-	eq(Hud.gauge_order([&"radiation", &"cold", &"lamp", &"hunger"]), [&"hunger", &"lamp", &"cold", &"radiation"] as Array[StringName], "then the land's pressures, by name")
+	eq(Hud.gauge_order([&"radiation", &"cold", &"wet", &"hunger"]), [&"hunger", &"wet", &"cold", &"radiation"] as Array[StringName], "then the land's pressures, by name")
 	eq(Hud.gauge_order([&"cold"]), [&"cold"] as Array[StringName], "a pressure with no need beside it")
 	eq(Hud.gauge_order([]), [] as Array[StringName], "nothing felt, nothing drawn")
 	for k: StringName in Hud.GAUGE_ORDER:

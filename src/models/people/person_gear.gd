@@ -29,6 +29,7 @@ static func build(r: SkinRig, w: PersonBody.Wear) -> void:
 			&"radio": _radio(r, w)
 			&"pack": _pack(r, w)
 			&"coil": _coil(r, w)
+			&"headlamp": _headlamp(r, w)
 
 
 ## Which forearm wears the slate: the left (the right holds the tool), unless a
@@ -116,6 +117,41 @@ static func _goggles(r: SkinRig, w: PersonBody.Wear) -> void:
 	Sculpt.loft(strap, [
 		[y - 0.03, hd * 0.575 * grow, hw * 0.55 * grow, -0.004, 0.0],
 		[y + 0.03, hd * 0.575 * grow, hw * 0.55 * grow, -0.006, 0.0],
+	], 7, TAPE, false, false, 0.0, 0.0, 0, 0.7, PI)
+
+
+## The headlamp's lens in the head bone's frame, its +Y out of the lens along the
+## beam: level with the brow and tipped a little down, at the ground ahead. The
+## pod is built round it here and 15_lights lays the lit LED on it
+## (PersonModel.headlamp_frame), so the glow and the lens never part.
+const HEADLAMP_BROW := 0.8
+const HEADLAMP_TIP := 0.25
+
+
+static func headlamp_frame(d: Dictionary) -> Transform3D:
+	var at := Vector3(PersonBody.face_x(d, HEADLAMP_BROW, 0.0) + 0.012, float(d.head) * HEADLAMP_BROW, 0.0)
+	return Transform3D(Basis(Vector3(0, 0, 1), -PI * 0.5 - HEADLAMP_TIP), at)
+
+
+## An old LED headlamp on its strap: a dark pod on the brow with its lens a cold
+## mark, the elastic round the head. Worn by whoever carries one (54_gear).
+static func _headlamp(r: SkinRig, w: PersonBody.Wear) -> void:
+	var d := w.d
+	var head := r.find(&"head")
+	var f := r.kit(head, &"gear", SkinRig.FOUND)
+	f.push(headlamp_frame(d))
+	# The pod: wider than it is tall, square-cut, standing off the brow.
+	Sculpt.loft(f, [[-0.02, 0.045, 0.07, 0.0, 0.0], [0.05, 0.042, 0.066, 0.0, 0.0]], 4, Palette.INK[2], false, false, PI / 4)
+	# The lens a step brighter than the pod, so it is a mark even unlit.
+	Sculpt.loft(f, [[0.048, 0.03, 0.03, 0.0, 0.0], [0.054, 0.0, 0.0, 0.0, 0.0]], 8, Palette.COLD[2], false, false, 0.0)
+	f.pop()
+	var y: float = float(d.head) * HEADLAMP_BROW
+	var hd: float = d.head_d
+	var hw: float = d.head_w
+	var strap := r.kit(head, &"gear")
+	Sculpt.loft(strap, [
+		[y - 0.022, hd * 0.575 * 1.04, hw * 0.55 * 1.04, -0.004, 0.0],
+		[y + 0.022, hd * 0.575 * 1.04, hw * 0.55 * 1.04, -0.006, 0.0],
 	], 7, TAPE, false, false, 0.0, 0.0, 0, 0.7, PI)
 
 

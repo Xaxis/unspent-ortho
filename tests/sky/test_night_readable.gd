@@ -183,7 +183,7 @@ func test_the_lamp_action_lights_and_puts_out_the_lantern() -> void:
 	await _drawn(1)
 
 
-func test_lighting_the_lamp_after_the_clock_jumps_keeps_its_oil() -> void:
+func test_the_headlamp_lit_after_the_clock_jumps_stays_lit() -> void:
 	var o := BootOptions.new()
 	o.size = 64
 	o.hour = 8.0
@@ -197,12 +197,10 @@ func test_lighting_the_lamp_after_the_clock_jumps_keeps_its_oil() -> void:
 		if sys.name == "15_lights":
 			lights = sys
 	check(lights != null, "the lights system is loaded")
-	var oil := Survival.lamp_oil(g)
 	g.clock.minutes += 15.0 * 60.0
 	lights.call("toggle_lantern")
-	Survival.burn_lamp(g)
-	check(g.body.lamp_lit, "a lamp lit after a jump in the clock stays lit")
-	near(Survival.lamp_oil(g), oil, 1.0, "the dark hours before it was lit burnt no oil")
+	Survival.keep_lamp(g)
+	check(g.body.lamp_lit, "a headlamp switched on after a jump in the clock stays on")
 	g.body.lamp_lit = false
 	g.queue_free()
 	await _drawn(1)

@@ -109,6 +109,12 @@ func set_look(spec: Dictionary) -> void:
 	animate(0.0, 0.0)
 
 
+## Where the headlamp's lens is in the world, its +Y along the beam
+## (PersonGear.headlamp_frame, on the head as it is posed now).
+func headlamp_frame() -> Transform3D:
+	return global_transform * rig.bone_global(rig.find(&"head")) * PersonGear.headlamp_frame(_dims)
+
+
 func set_held(item: StringName) -> void:
 	if item == held and rig != null:
 		return

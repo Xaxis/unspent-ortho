@@ -43,7 +43,7 @@ const HINTS := {
 	&"fire": ["%s twice on open ground lays a fire.", [&"use"]],
 	&"make": ["%s makes things at the fire. Long work cooks while you go.", [&"craft"]],
 	&"carry": ["%s shows what you carry. Leave what you do not need.", [&"inventory"]],
-	&"lamp": ["Night. %s lights the lamp.", [&"lamp"]],
+	&"lamp": ["Night. %s switches the headlamp on.", [&"lamp"]],
 	# **THE CORE VERB OF AN ACTION GAME, AND IT WAS NEVER NAMED.** `side` is the
 	# only lesson that carries `swing`, it is the HELD lesson delivered after
 	# plate has already rung, and its words ("strike the side that is lit")
@@ -183,11 +183,7 @@ static func _goal_of(game: Game) -> String:
 	if not SurvivalState.of(game).bags.is_empty():
 		return BAG_GOAL
 	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and inv.has(&"lamp"):
-		# A dry lamp only gutters (Survival.burn_lamp): ask for what lights it, and
-		# where it is surely found, not for the light it cannot give (#99).
-		if Survival.lamp_oil(game) <= 0.0:
-			return "Oil for the lamp: search the shelves of houses."
-		return "Light the lamp against the dark."
+		return "Switch the headlamp on against the dark."
 	# PEOPLE AT RISK BEFORE HIS OWN KIT: a raid warned on his holding
 	# (Holding.RAIDED) puts shutters on its beds ahead of the pick, the plate and
 	# the crew. Behind them, a player warned early heard only "coming for".
@@ -843,9 +839,7 @@ static func _applicable(game: Game) -> Array[StringName]:
 				out.append(&"runner")
 			if seen and m.patrol and m.indifferent():
 				out.append(&"worker")
-	# Its key taught once there is oil to light: a dry lamp's key only gutters it.
-	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and game.inventory.has(&"lamp") \
-			and Survival.lamp_oil(game) > 0.0:
+	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and game.inventory.has(&"lamp"):
 		out.append(&"lamp")
 	if game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
 		out.append(&"carry")

@@ -428,7 +428,7 @@ func _feed_hud() -> void:
 	hud.set_body(b.health, b.max_health, b.wind, b.max_wind)
 	hud.set_held(inv.held)
 	hud.set_charge(UiRules.charge_shown(inv.held), inv.count(&"wick"))
-	hud.set_pressures(UiRules.pressures(b, game.clock.minutes, inv.bulk(), UiLink.creel(inv, b), Survival.lamp_oil(game), b.lamp_lit))
+	hud.set_pressures(UiRules.pressures(b, game.clock.minutes, inv.bulk(), UiLink.creel(inv, b)))
 	hud.set_goal(_goal)
 	# A conversation is drawn over the world, not on the slate, so nothing else
 	# here knows one is up. The glass is cleared as it OPENS rather than only

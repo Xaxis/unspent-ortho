@@ -25,7 +25,7 @@ const CARRIED_HOME := 60.0
 
 const DOWNED_LINE := "You come to where you fell. Hours have gone."
 const KEEPER_DOWNED_LINE := "You come to at the edge of the ground it keeps. Hours have gone."
-const CARRIED_LINE := "You wake at a rock face, hands raw, far from where you were. The lamp is out."
+const CARRIED_LINE := "You wake at a rock face, hands raw, far from where you were. The headlamp is off."
 
 
 ## Returns {minutes, line}. `by_kind` is the roster id of what put you down (may be empty).

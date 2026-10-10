@@ -35,7 +35,6 @@ static func gauge_for(text: String) -> StringName:
 			_gauges[String(Hazards.LINES[id])] = StringName(id)
 		_gauges[Survival.HUNGRY_LINE] = &"hunger"
 		_gauges[Survival.STARVING_LINE] = &"hunger"
-		_gauges[Survival.LAMP_LOW_LINE] = &"lamp"
 	return _gauges.get(text, &"")
 
 ## Oldest first: {text, count, age, now, hush}

@@ -128,7 +128,14 @@ func _refit() -> void:
 ## world cannot disagree about what is on.
 func worn_look() -> Dictionary:
 	var body := AvatarState.of(game).look
-	return GearLook.compose(body if not body.is_empty() else PersonLook.BASE, loadout, game.inventory.worn if game.inventory != null else &"")
+	var look := GearLook.compose(body if not body.is_empty() else PersonLook.BASE, loadout, game.inventory.worn if game.inventory != null else &"")
+	# The headlamp is worn while it is carried (Items `lamp`).
+	if game.inventory != null and game.inventory.has(&"lamp"):
+		var gear: Array = (look.get("gear", []) as Array).duplicate()
+		if not gear.has(&"headlamp"):
+			gear.append(&"headlamp")
+		look["gear"] = gear
+	return look
 
 
 

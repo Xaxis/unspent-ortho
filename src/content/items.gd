@@ -211,7 +211,8 @@ const DEFS := {
 	&"yarn": {"name": "yarn", "bulk": 1.0, "group": &"good"},
 	&"blanket": {"name": "blanket", "bulk": 3.0, "group": &"good"},
 	&"basket": {"name": "basket", "bulk": 2.0, "group": &"good", "creel": 8.0},
-	&"lamp": {"name": "lamp", "bulk": 2.0, "group": &"good"},
+	# An old LED headlamp, worn: it needs nothing to run on (owner, 2026-10-09).
+	&"lamp": {"name": "headlamp", "bulk": 1.0, "group": &"good"},
 	&"oil": {"name": "oil", "bulk": 1.0, "group": &"good"},
 	&"oilcloth": {"name": "oilcloth", "bulk": 2.0, "group": &"good"},
 	&"hone": {"name": "hone", "bulk": 1.0, "group": &"good"},

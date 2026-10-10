@@ -34,8 +34,7 @@ class_name Survival
 ##   build(game, station, free) -> WorldProp any station (fire bench kiln) per its recipe
 ##   hold(game, id) -> bool                  put a carried item in hand (&"" = bare hands)
 ##   hone(game) -> bool / reedge(game) -> bool   mend the held tool (see Crafting recipes sharpen/reedge)
-##   lamp_oil(game) -> float                 world minutes of light left in the lamp and carried flasks
-##   tick(game, delta)                       per frame: finish work, body condition, regrowth, lamp oil,
+##   tick(game, delta)                       per frame: finish work, body condition, regrowth,
 ##                                           collect what a station finished, hunger's warnings
 ##   threat_near(game) -> bool               a hostile body close enough that nothing long may be
 ##                                           started (making, a long take, eating, sleeping, building)
@@ -107,15 +106,9 @@ const FIRE_LIGHT := 5.0
 ## so a letter typed here is right only until somebody rebinds, and the settings
 ## page invites exactly that. The guide's `lamp` and `carry` lessons name both
 ## keys in the player's own keys, and both are offered at these same moments.
-const DARK_LINE := "Too dark to find anything. Light the lamp."
-## The same press with the lamp carried but dry: lighting it only gutters it, and
-## the goal line already names the oil (#99).
-const DARK_DRY_LINE := "Too dark to find anything."
+const DARK_LINE := "Too dark to find anything. Switch the headlamp on."
 ## Real seconds between two of the same nudge on an empty press.
 const NUDGE_SECONDS := 12.0
-## Lamp oil, lamp and carried flasks, at or under which the player is told once.
-const LAMP_LOW_MINUTES := 60.0
-const LAMP_LOW_LINE := "The lamp is low on oil."
 ## Starving on your feet: this long after the warning, a body sits down.
 const STARVING_GRACE_MINUTES := 60.0
 const HUNGRY_LINE := "You are hungry. Eat something from what you carry."
@@ -461,7 +454,7 @@ static func use(game: Game) -> bool:
 	# Nothing to do here: say so, so a press is never swallowed without a word.
 	Events.sfx.emit(&"refuse", game.player.position)
 	if in_the_dark(game):
-		_nudge(game, DARK_DRY_LINE if game.inventory.has(&"lamp") and lamp_oil(game) <= 0.0 else DARK_LINE)
+		_nudge(game, DARK_LINE)
 	return false
 
 
@@ -718,11 +711,9 @@ static func sleep(game: Game) -> bool:
 	var roof := in_village(game)
 	var now := game.clock.minutes
 	var wake := Condition.wake_minute(now, roof)
-	# Nobody sleeps with the lamp burning: it is put out, and the oil kept.
-	burn_lamp(game)
+	# Nobody sleeps with the headlamp on.
 	game.body.lamp_lit = false
 	_skip(game, wake - now, &"sleep")
-	state.lamp_at = game.clock.minutes
 	state.woke_at = wake
 	game.body.tired = 0.0
 	if not roof and not game.inventory.has(&"oilcloth") and _weather_wets(game, wake):
@@ -890,7 +881,6 @@ static func tick(game: Game, delta: float) -> void:
 	if not state.cooking.is_empty():
 		collect(game)
 	_hunger(game)
-	_lamp_low(game)
 
 
 ## Hungry and starving read differently: each is said once as it begins, the
@@ -915,19 +905,6 @@ static func _hunger(game: Game) -> void:
 		state.starving_since = INF
 		state.hunger_said = 0
 		collapse(game)
-
-
-## A lit lamp with little oil left says so once, and again once more oil was poured.
-static func _lamp_low(game: Game) -> void:
-	var state := SurvivalState.of(game)
-	var oil := lamp_oil(game)
-	if not game.body.lamp_lit or oil > LAMP_LOW_MINUTES:
-		if oil > LAMP_LOW_MINUTES:
-			state.lamp_low_said = false
-		return
-	if not state.lamp_low_said:
-		state.lamp_low_said = true
-		Events.message.emit(LAMP_LOW_LINE)
 
 
 # --- Putting down -------------------------------------------------------------
@@ -1282,7 +1259,7 @@ static func sweep(game: Game, _delta: float) -> void:
 				w.set_picked(grown, false)
 				if game.view != null:
 					game.view.refresh_props(grown)
-	burn_lamp(game)
+	keep_lamp(game)
 	var p := game.player.pos
 	var g := w.ground_at(floori(p.x), floori(p.y))
 	if Ground.is_water(g) or (not in_village(game) and _weather_wets(game, now)):
@@ -1317,37 +1294,14 @@ static func is_hurt(game: Game) -> bool:
 	return (until is float or until is int) and float(until) > game.clock.minutes
 
 
-# --- The lamp ------------------------------------------------------------------
+# --- The headlamp --------------------------------------------------------------
 
-## Burn the lit lamp's oil up to now: the flask in the lamp first, then a carried
-## `oil` is poured in, one at a time. Dry, it goes out with a line. With no lamp
-## carried there is nothing to light. The sky package toggles Body.lamp_lit;
-## this only puts it out.
-static func burn_lamp(game: Game) -> void:
-	var state := SurvivalState.of(game)
-	var now := game.clock.minutes
-	var minutes := maxf(0.0, now - state.lamp_at) if state.lamp_at > -INF else 0.0
-	state.lamp_at = now
-	var body := game.body
-	if not body.lamp_lit:
-		return
-	var inv := game.inventory
-	if not inv.has(&"lamp"):
-		body.lamp_lit = false
-		Events.message.emit("You have no lamp.")
-		return
-	var r := Condition.burn_lamp(state.lamp_oil, minutes, inv.count(&"oil"))
-	if int(r.flasks) > 0:
-		inv.remove(&"oil", int(r.flasks))
-	state.lamp_oil = r.left
-	if r.out:
-		body.lamp_lit = false
-		Events.message.emit("The lamp gutters, and goes out.")
-		Events.sfx.emit(&"lamp_out", game.player.position)
-
-
-static func lamp_oil(game: Game) -> float:
-	return SurvivalState.of(game).lamp_oil + game.inventory.count(&"oil") * Condition.LAMP_FLASK_MINUTES
+## An old LED headlamp: it needs nothing to run on (owner, 2026-10-09). It is on
+## only while it is carried; put down or carried off, it goes out. The sky package
+## toggles Body.lamp_lit; this only puts it out.
+static func keep_lamp(game: Game) -> void:
+	if game.body.lamp_lit and not game.inventory.has(&"lamp"):
+		game.body.lamp_lit = false
 
 
 ## Starving on your feet: sit down for a shift; wake as if you ate 7 h ago.

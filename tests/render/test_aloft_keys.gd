@@ -113,10 +113,9 @@ func test_hung_high_his_lamp_burns_and_is_heard_where_he_hangs() -> void:
 	var lantern: Node3D = lights.get("lantern")
 	var light: OmniLight3D = lights.get("lantern_light")
 	check(lantern.visible and light.visible, "and drawn, and laying its light")
-	lt(lantern.global_position.distance_to(figure), 1.5, "in his hand where he hangs, not on the land below (%.1f m off)" % lantern.global_position.distance_to(figure))
-	var hand: Vector3 = (lights.get_script() as GDScript).get_script_constant_map().LANTERN_HAND
-	var local := g.player.model.global_transform.affine_inverse() * lantern.global_position
-	lt(local.distance_to(hand), 0.1, "at his side in the figure's own frame, as he carries it on the land (%.2f m off)" % local.distance_to(hand))
+	lt(lantern.global_position.distance_to(figure), 2.5, "on his head where he hangs, not on the land below (%.1f m off)" % lantern.global_position.distance_to(figure))
+	var brow := g.player.model.headlamp_frame().origin
+	lt(lantern.global_position.distance_to(brow), 0.05, "on the headlamp's lens, as he wears it on the land (%.2f m off)" % lantern.global_position.distance_to(brow))
 	lt(light.global_position.distance_to(figure), 2.0, "and its light with it (%.1f m off)" % light.global_position.distance_to(figure))
 	eq(heard.size(), 1, "the lamp is heard lit")
 	if not heard.is_empty():

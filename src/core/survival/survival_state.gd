@@ -29,10 +29,6 @@ var sleep_ask_until := -1.0
 var built: Array[WorldProp] = []
 ## Real-seconds accumulator for the regrowth sweep.
 var sweep_in := 0.0
-## World minutes of light left in the flask inside the lamp (a carried `oil` refills it).
-var lamp_oil := Condition.LAMP_FLASK_MINUTES
-## World minute the lamp's burn was last settled (-INF: not yet).
-var lamp_at := -INF
 ## Work left at stations to finish in world time: station prop id -> {prop,
 ## station, recipe, makes, done (world minute), pos}. Survival.set_going / collect.
 var cooking: Dictionary = {}
@@ -45,8 +41,6 @@ var nudged: Dictionary = {}
 ## The hunger level last announced (2 hungry, 3 starving), and since when starving.
 var hunger_said := 0
 var starving_since := INF
-## The low-oil line has been said for this flask.
-var lamp_low_said := false
 ## What the player left on the ground: heap prop id -> {item id: count}. A heap is
 ## a cairn in the world; `use` on it takes everything back (Survival.take_back).
 var left: Dictionary = {}

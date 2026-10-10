@@ -1,6 +1,6 @@
 extends GameSystem
 ## Night lights: village lamps, the windows of houses, fires, vents and kilns,
-## and the player's lantern (the `lamp` action). docs/LOOK.md section 6: lamp and
+## and the player's headlamp (the `lamp` action). docs/LOOK.md section 6: lamp and
 ## fire light ERASE THE HATCHING in their pool; light means safety, and the page
 ## shows it.
 ##
@@ -16,7 +16,7 @@ extends GameSystem
 ##
 ## The glint list (Glints): every light near the camera, pooled or not, goes to
 ## the sky as a point to mirror in wet ground and to throw shafts into fog: lamps,
-## fires, hearths, stolen neon, pylon beacons, machine lenses, the lantern.
+## fires, hearths, stolen neon, pylon beacons, machine lenses, the headlamp.
 ## Machine light (beacons, neon on the machines' power, lenses) stutters with the
 ## sky's power after lightning (SkyLight.bolt.w).
 ##
@@ -85,25 +85,22 @@ static func is_flame(kind: int) -> bool:
 	return FLAME_KINDS.has(kind)
 ## What a light's level is worth in linear light (see _set_light).
 const GAIN := 5.2
-const LANTERN_RANGE := 3.2
+const LANTERN_RANGE := 3.6
 ## The colour each kind of light throws (pools and wet reflections). People's
-## lamps, windows and fires are warm, and so is the flame in the player's
-## salvaged lantern: the pool it lays is the colour of its own light and never a
-## cold disc over a warm one (docs/LOOK.md section 6). Stolen neon belongs to the
-## houses that wired it in (a few, not all).
-const LANTERN_WARM := Vector3(1.0, 0.74, 0.46)
+## lamps, windows and fires are warm, and so is the player's old LED headlamp:
+## a warm-white diode, steady where a flame breathes, but a person's light and
+## never the machines' cold (docs/LOOK.md section 6). Its pool is the colour of
+## its own light. Stolen neon belongs to the houses that wired it in (a few, not all).
+const HEADLAMP_LED := Vector3(1.0, 0.86, 0.66)
 const NEON_SODIUM := Vector3(1.0, 0.52, 0.16)
 const NEON_CYAN := Vector3(0.25, 0.95, 1.0)
 const NEON_MAGENTA := Vector3(1.0, 0.25, 0.8)
 const NEON_FIRE := Vector3(1.0, 0.45, 0.12)
-const LANTERN_POWER := 0.8
-## Where the lantern's light sits in the player's frame (+X ahead, +Z to the
-## right): above and ahead of the hand that carries it, outside the body, so
-## the figure's own faces turn toward it instead of all away.
-const LANTERN_LIGHT := Vector3(0.42, 1.05, 0.44)
-## Where the lantern itself hangs in the figure's own frame (+X ahead, +Z to the
-## right): at the hand that carries it.
-const LANTERN_HAND := Vector3(0.12, 0.52, 0.34)
+const LANTERN_POWER := 0.9
+## Where the headlamp's pool is lit from, in the player's frame (+X ahead, +Z to
+## the right): out along the beam, low, so the pool lies on the ground he faces
+## rather than round his feet. A headlamp lights where you look.
+const LANTERN_LIGHT := Vector3(1.7, 0.95, 0.0)
 ## Up a walker's leg ahead is into the plate he faces: the light goes out behind
 ## him instead, and the plate is the wall it is held against (`held_level`).
 const LANTERN_LIGHT_ALOFT := Vector3(-0.42, 1.05, 0.44)
@@ -279,10 +276,7 @@ func setup(g: Game) -> void:
 	reach_light = _new_light("reach_light")
 	reach_light.omni_attenuation = 2.2
 	reach_light.shadow_enabled = false
-	lantern = _lantern_mesh()
-	var lr := rays(Palette.COPPER[4], 2.0, 4.0, 0.15, 4.0)
-	lr.position = Vector3(0, 0.08, 0)
-	lantern.add_child(lr)
+	lantern = _led_mesh()
 	add_child(lantern)
 	# The world's index was built beside its raise (RealmWarm) when it was raised
 	# for this game: taken, it is only caught up on what was laid since.
@@ -473,27 +467,25 @@ func _cast_shadows(focus: Vector3) -> void:
 		live[i].shadow_enabled = i < allow
 
 
-## Up a walker's leg, once the climb has hung the figure this frame: the
-## lantern at his side and its light out behind him.
+## Up a walker's leg, once the climb has hung the figure this frame: the LED on
+## his brow and its light out behind him.
 func _follow_figure() -> void:
 	var p := game.player if game != null else null
 	if p == null or not p.hanging or p.model == null or not game.body.lamp_lit:
 		return
-	lantern.position = p.model.global_transform * LANTERN_HAND
+	lantern.global_transform = p.model.headlamp_frame()
 	lantern_light.position = p.model.global_transform * LANTERN_LIGHT_ALOFT
 
 
 func toggle_lantern() -> void:
-	# Soaked by the veil's falling water (AbilityVeil): it will not take a light.
+	# Shorted by the veil's falling water (AbilityVeil): it will not come on.
 	if not game.body.lamp_lit and game.body.doused_until > game.clock.minutes:
-		Events.message.emit("The wick is soaked through. It will not take.")
+		Events.message.emit("Water in the headlamp. It will not come on.")
 		Events.sfx.emit(&"ability_refused", game.player.position)
 		return
-	if not game.body.lamp_lit:
-		# Settle the unlit time first: survival burns oil once a second from its
-		# last settle, so a clock that jumped since (a tour's `hour`) would
-		# otherwise drain the flask the moment the lamp is lit.
-		Survival.burn_lamp(game)
+	if not game.body.lamp_lit and not game.inventory.has(&"lamp"):
+		Events.message.emit("You have no headlamp.")
+		return
 	game.body.lamp_lit = not game.body.lamp_lit
 	Events.sfx.emit(&"lamp_on" if game.body.lamp_lit else &"lamp_off", game.player.position)
 
@@ -1057,7 +1049,7 @@ func _update(delta: float, snap: bool) -> void:
 				level *= clampf(game.sky.bolt.w, 0.0, 1.0)
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
-		level *= _flicker(s) * gutter(kind, false, _wet_kind, _wet_strength, _time, float(s.h))
+		level *= _flicker(s) * gutter(kind, _wet_kind, _wet_strength, _time, float(s.h))
 		# A flame reaches much further and falls off much faster, so its core is
 		# the same size and its tail has no edge on it anywhere (FLAME_KINDS).
 		var flame := is_flame(kind)
@@ -1094,17 +1086,17 @@ func _update(delta: float, snap: bool) -> void:
 	lantern.visible = lit
 	if lit:
 		var p := game.player
-		# At his side as the figure is drawn: up a walker's leg the figure is
+		# Off his facing as the figure is drawn: up a walker's leg the figure is
 		# turned onto the plate (Player.hanging), and an offset off the land's
-		# facing left the lantern in the air beside him.
+		# facing left the light in the air beside him.
 		var frame := Transform3D(Basis(Vector3.UP, -p.facing), p.position)
 		var hung := p.hanging and p.model != null
 		if hung:
 			frame = p.model.global_transform
-		lantern.position = frame * LANTERN_HAND
-		lantern.rotation.y = -p.facing
-		lantern.position.y += sin(_time * 5.0) * 0.03 * clampf(p.speed / 3.0, 0.0, 1.0)
-		# The lantern's floor: in any gloom it lifts the ground a little (source
+		# The LED itself, on the lens of the headlamp on his brow.
+		if p.model != null:
+			lantern.global_transform = p.model.headlamp_frame()
+		# The light's floor: in any gloom it lifts the ground a little (source
 		# 0.45), and in daylight it lifts nothing at all — a lamp lit at noon must
 		# not lay a disc on a bright land.
 		var night := maxf(dark, 0.45 * maxf(gloom(hour, tint, sun), game.sky.closed))
@@ -1119,14 +1111,14 @@ func _update(delta: float, snap: bool) -> void:
 		var under := smoothstep(0.05, 0.45, covered)
 		night *= 1.0 - 0.9 * under
 		var reach := LANTERN_RANGE * (1.0 - 0.6 * under)
-		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5})) \
-			* gutter(PropKind.LAMP, true, _wet_kind, _wet_strength, _time, 0.5)
+		# An LED: steady, and the rain does not gutter it.
+		var rgb := compensate(HEADLAMP_LED, tint, sun) * LANTERN_POWER * night
 		rgb *= held_level(WalkerClimb.BODY_OUT - LANTERN_LIGHT_ALOFT.x) if hung else _held_off(Vector2(at.x, at.z))
 		lantern_light.light_volumetric_fog_energy = FOG_WARM
 		if _set_light(lantern_light, at, reach, rgb):
 			# The player's own pool comes first: it is the one that matters.
 			pools.push_front(Vector4(at.x, at.y, at.z, reach))
-			pool_rgb.push_front(Vector4(LANTERN_WARM.x, LANTERN_WARM.y, LANTERN_WARM.z, 0.0) * night)
+			pool_rgb.push_front(Vector4(HEADLAMP_LED.x, HEADLAMP_LED.y, HEADLAMP_LED.z, 0.0) * night)
 		if hung:
 			# The climb hangs the figure after this system has run (43 after 15):
 			# placed again at the frame's end, or up a moving leg the lantern
@@ -1232,7 +1224,7 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 				# Slums and this line is where it comes from.
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": 0.95 * power, "shaft": SHAFT_MACHINE})
 	if lantern_lit:
-		cands.append({"at": lantern.position + Vector3(0, 0.1, 0), "rgb": LANTERN_WARM, "level": 0.7, "shaft": SHAFT_RAYED})
+		cands.append({"at": lantern.global_position, "rgb": HEADLAMP_LED, "level": 0.7, "shaft": SHAFT_RAYED})
 	glint_list = Glints.pick(cands, focus3)
 	var packed := Glints.pack(glint_list)
 	game.sky.glints = packed[0]
@@ -1470,17 +1462,14 @@ const WET := {
 
 ## A flame in the wet (the lands builder's weather audit): a multiply on its
 ## level. An open fire burns low and stutters as the rain gets at it, and never
-## quite out; a carried lamp dims and gutters behind its glass; a street lamp
-## under its hood hardly; a hearth under a roof and a kiln not at all. Dry
-## weather, however dark, costs no flame anything.
-static func gutter(kind: int, carried: bool, weather: StringName, strength: float, time: float, h: float) -> float:
+## quite out; a street lamp under its hood hardly; a hearth under a roof and a
+## kiln not at all. Dry weather, however dark, costs no flame anything. The
+## player's headlamp is an LED: no flame, nothing to gutter.
+static func gutter(kind: int, weather: StringName, strength: float, time: float, h: float) -> float:
 	var wet := float(WET.get(weather, 0.0)) * clampf(strength, 0.0, 1.0)
 	if wet <= 0.0:
 		return 1.0
 	var gust := Rng.hash01(floori(time * 7.0 + h * 40.0), int(h * 1000.0) + 11)
-	if carried:
-		# Rain on the glass and wind in the vent: the flame ducks and catches.
-		return 1.0 - wet * (0.2 + 0.35 * gust)
 	match kind:
 		PropKind.FIRE:
 			return 1.0 - wet * (0.45 + 0.35 * gust)
@@ -1712,14 +1701,13 @@ static func rays(col: Color, inner: float, outer: float, flicker: float, spokes:
 
 ## A small hand lantern: copper frame, a warm pane, a ring to carry it by. MADE,
 ## but drawn unshaded, because at night the lantern is the light.
-func _lantern_mesh() -> Node3D:
+## The lit LED: a small cold disc over the headlamp's lens, built along +Y as the
+## lens frame is (PersonGear.headlamp_frame), shown only while it is on.
+func _led_mesh() -> Node3D:
 	var k := MeshKit.new()
-	k.prism(0, 0.0, 0, 0.065, 0.03, 0.06, 6, Palette.COPPER[1])
-	k.prism(0, 0.03, 0, 0.05, 0.12, 0.045, 6, Palette.COPPER[4], Palette.EMBER[5])
-	k.prism(0, 0.12, 0, 0.06, 0.16, 0.02, 6, Palette.COPPER[1])
-	k.strut(Vector3(0, 0.16, 0), Vector3(0, 0.2, 0), 0.012, 4, Palette.COPPER[1])
+	k.prism(0, 0.052, 0, 0.032, 0.06, 0.03, 8, Palette.LINEN[5])
 	var mi := MeshInstance3D.new()
-	mi.name = "lantern"
+	mi.name = "headlamp_led"
 	mi.mesh = k.build()
 	mi.material_override = _glow_mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

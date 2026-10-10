@@ -107,7 +107,6 @@ func test_the_slate_is_always_on_with_nothing_to_run_on() -> void:
 	tree.root.add_child(g)
 	g.setup(BootOptions.parse(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"])))
 	await tree.process_frame
-	SurvivalState.of(g).lamp_oil = 0.0
 	g.inventory.remove(&"oil", g.inventory.count(&"oil"))
 	g.inventory.remove(&"wick", g.inventory.count(&"wick"))
 	var ui := g.get_node("90_ui")

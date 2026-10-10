@@ -49,8 +49,6 @@ static func wind_shown(wind: float, max_wind: float) -> bool:
 ## when a place has become a problem (src/core/hazards/hazards.gd).
 const PRESSURE_SHOWN := Hazards.FELT
 const PRESSURE_WARN := Hazards.BITE
-## Share of Survival.LAMP_LOW_MINUTES left at which the lamp is the last rung.
-const LAMP_LAST := 0.34
 
 
 ## The charge readout is only on the wrist while the thing in hand spends charges.
@@ -62,9 +60,9 @@ static func charge_shown(held: StringName) -> bool:
 ## the body's needs that matter now, then every hazard pressure (Body.pressure,
 ## written by the hazards package) strong enough to be felt.
 ## [{id: StringName, level: 1 quiet | 2 warning | 3 the last rung, value: 0..1}]
-static func pressures(body: Body, minutes: float, load: float, cap: float = CREEL, lamp_minutes: float = INF, lamp_lit: bool = false) -> Array[Dictionary]:
+static func pressures(body: Body, minutes: float, load: float, cap: float = CREEL) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for n in needs(body, minutes, load, cap, lamp_minutes, lamp_lit):
+	for n in needs(body, minutes, load, cap):
 		out.append({"id": n.need, "level": n.level, "value": float(n.get("value", 0.5 if n.level == 1 else 1.0))})
 	var shown := {}
 	for row: Dictionary in out:
@@ -90,18 +88,13 @@ static func creel(body: Body) -> float:
 
 ## Needs that matter now, most pressing first: [{need, level}] where level 1 is
 ## a quiet mark, 2 the accent (act on it) and 3 the last rung before it costs
-## you the game — starving, or a lit lamp with minutes of oil left. A need may
-## carry its own `value` 0..1 (how full the gauge stands); without one, level says.
-## `cap` is the load carried before it tells; `lamp_minutes` is Survival.lamp_oil.
-static func needs(body: Body, minutes: float, load: float, cap: float = CREEL, lamp_minutes: float = INF, lamp_lit: bool = false) -> Array[Dictionary]:
+## you the game: starving. A need may carry its own `value` 0..1 (how full the
+## gauge stands); without one, level says. `cap` is the load carried before it tells.
+static func needs(body: Body, minutes: float, load: float, cap: float = CREEL) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var hunger := body.hunger_level(minutes)
 	if hunger >= 1:
 		out.append({"need": &"hunger", "level": mini(hunger, 3), "value": clampf(hunger / 3.0, 0.0, 1.0)})
-	# The lamp is the light and the slate's power both: its last hour is a need.
-	if lamp_lit and lamp_minutes < Survival.LAMP_LOW_MINUTES:
-		var left := clampf(lamp_minutes / Survival.LAMP_LOW_MINUTES, 0.0, 1.0)
-		out.append({"need": &"lamp", "level": 3 if left < LAMP_LAST else 2, "value": left})
 	if body.wet > 0.3:
 		out.append({"need": &"wet", "level": 2 if body.wet > 0.75 else 1})
 	if load > cap:

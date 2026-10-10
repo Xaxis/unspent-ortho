@@ -56,7 +56,7 @@ const GAUGE := Vector2i(26, 32)
 ## The body's own needs, in the order they cost you the run. The gauges are
 ## drawn right to left from the clock, so the first here sits under the clock:
 ## hunger, the rung that ends the run, is nearest it and never moves.
-const GAUGE_ORDER: Array[StringName] = [&"hunger", &"lamp", &"wet", &"load", &"tired"]
+const GAUGE_ORDER: Array[StringName] = [&"hunger", &"wet", &"load", &"tired"]
 ## Seconds a gauge answers for a line that was not said in words: brackets
 ## close on it, the way the location ping's brackets close on a name.
 const GAUGE_FLARE := 1.2

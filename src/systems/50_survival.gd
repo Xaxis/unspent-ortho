@@ -64,10 +64,9 @@ func setup(g: Game) -> void:
 	var inv := g.inventory
 	if inv.has(&"knife") and inv.edge(&"knife") == 10000:
 		inv.set_edge(&"knife", START_EDGE)
-	# A lamp with one flask in it: the first night is lit, the second needs oil.
+	# The headlamp: worn from the start, and it needs nothing to run on.
 	if not inv.has(&"lamp"):
 		inv.add(&"lamp")
-	state.lamp_at = g.clock.minutes
 	var o := g.options
 	for id: StringName in o.give:
 		if Items.def(id).is_empty():

@@ -1,80 +1,42 @@
 extends TestCase
-## The lamp's oil, a blow breaking off work, a hand held fast, and a fire kept
+## The headlamp, a blow breaking off work, a hand held fast, and a fire kept
 ## out from under a roof.
 
 const Fx := preload("res://tests/survival/fixture.gd")
 
 
-func test_a_flask_burns_six_hours_then_a_carried_one_is_poured_in() -> void:
-	var r := Condition.burn_lamp(360.0, 100.0, 0)
-	near(float(r.left), 260.0, 1e-6)
-	check(not r.out, "still lit")
-	r = Condition.burn_lamp(60.0, 100.0, 1)
-	near(float(r.left), 320.0, 1e-6, "a flask poured in")
-	eq(r.flasks, 1)
-	r = Condition.burn_lamp(60.0, 800.0, 3)
-	eq(r.flasks, 3, "a long night drinks flask after flask")
-	near(float(r.left), 340.0, 1e-6)
-	r = Condition.burn_lamp(60.0, 100.0, 0)
-	check(r.out, "dry, it goes out")
-	near(float(r.left), 0.0, 1e-6)
-
-
-func test_the_lit_lamp_drinks_the_creel_and_goes_out_dry() -> void:
+## THE HEADLAMP NEEDS NOTHING TO RUN ON (owner, 2026-10-09): an old LED headlamp,
+## lit through a whole night and the day after, with no oil carried, is still on.
+func test_the_headlamp_stays_on_with_nothing_to_run_on() -> void:
 	var g := Fx.flat()
 	g.inventory.add(&"lamp")
-	g.inventory.add(&"oil")
-	var lines: Array[String] = []
-	var on_line := func(t: String) -> void: lines.append(t)
-	Events.message.connect(on_line)
-	Survival.burn_lamp(g)
+	g.inventory.remove(&"oil", g.inventory.count(&"oil"))
 	g.body.lamp_lit = true
-	g.clock.skip(300.0)
-	Survival.burn_lamp(g)
-	check(g.body.lamp_lit, "lit on its first flask")
-	near(Survival.lamp_oil(g), 60.0 + 360.0, 1e-3, "an hour in the lamp and a flask carried")
-	g.clock.skip(120.0)
-	Survival.burn_lamp(g)
-	eq(g.inventory.count(&"oil"), 0, "the carried flask went in")
-	check(g.body.lamp_lit, "still lit")
-	g.clock.skip(400.0)
-	Survival.burn_lamp(g)
-	check(not g.body.lamp_lit, "out when dry")
-	check(lines.has("The lamp gutters, and goes out."), "and says so")
-	g.body.lamp_lit = true
-	g.clock.skip(1.0)
-	Survival.burn_lamp(g)
-	check(not g.body.lamp_lit, "a dry lamp will not stay lit")
-	g.body.lamp_lit = false
-	Events.message.disconnect(on_line)
+	for i in 30:
+		g.clock.skip(60.0)
+		Survival.keep_lamp(g)
+	check(g.body.lamp_lit, "thirty hours on, still lit")
+	eq(Items.display_name(&"lamp"), "headlamp", "and it is a headlamp")
 	Fx.done(g)
 
 
-func test_an_unlit_lamp_burns_nothing_and_no_lamp_means_no_light() -> void:
+func test_no_headlamp_carried_means_no_light() -> void:
 	var g := Fx.flat()
-	g.inventory.add(&"lamp")
-	Survival.burn_lamp(g)
-	g.clock.skip(2000.0)
-	Survival.burn_lamp(g)
-	near(Survival.lamp_oil(g), 360.0, 1e-3, "unlit keeps its oil")
-	g.inventory.remove(&"lamp")
+	g.inventory.remove(&"lamp", g.inventory.count(&"lamp"))
 	g.body.lamp_lit = true
-	Survival.burn_lamp(g)
+	Survival.keep_lamp(g)
 	check(not g.body.lamp_lit, "nothing to light")
 	Fx.done(g)
 
 
-func test_sleep_puts_the_lamp_out_and_keeps_its_oil() -> void:
+func test_sleep_switches_the_headlamp_off() -> void:
 	var g := Fx.flat(40, 22.0)
 	g.inventory.add(&"lamp")
-	Survival.burn_lamp(g)
 	g.body.lamp_lit = true
 	Survival.build(g, &"fire", true)
 	SurvivalState.of(g).woke_at = g.clock.minutes - 16.0 * 60.0
 	check(Survival.sleep(g), "slept")
-	check(not g.body.lamp_lit, "put out to sleep")
-	Survival.burn_lamp(g)
-	near(Survival.lamp_oil(g), 360.0, 1e-3, "no oil burnt through the night")
+	check(not g.body.lamp_lit, "switched off to sleep")
 	Fx.done(g)
 
 

@@ -233,7 +233,8 @@ func _play(g: Game) -> void:
 	g.inventory.wear_kit(&"kit_lens")
 	g.body.health = 7
 	g.body.arrests = 1
-	g.body.resist[&"cold"] = 0.25
+	# No resist set by hand: it is the fitted gear's (54_gear._refit), worked out
+	# again whenever the carried things change, a load among them.
 	g.body.lamp_lit = true
 	SurvivalState.of(g).wet_until = g.clock.minutes + 90.0
 	Weather.force(&"rain", 0.6)
@@ -298,7 +299,6 @@ func _live(g: Game) -> Dictionary:
 		"health": g.body.health,
 		"lamp": g.body.lamp_lit,
 		"fed": g.body.fed_until,
-		"lamp_oil": SurvivalState.of(g).lamp_oil,
 		"spent": SurvivalState.of(g).spent.duplicate(),
 		"seen": e.fraction() if e != null else -1.0,
 		"trail": e.trail.size() if e != null else -1,

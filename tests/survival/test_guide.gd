@@ -335,34 +335,25 @@ func test_the_survey_is_offered_once_the_wake_is_out_of_sight() -> void:
 	Fx.done(g)
 
 
-## A DRY LAMP IS NOT ASKED TO LIGHT (#99): at night with no oil in the lamp and
-## none carried, lighting it only gutters it (Survival.burn_lamp), so the goal
-## names what would light it and where it is found, and the key's lesson waits
-## until there is oil to light.
-func test_a_dry_lamp_in_the_dark_asks_for_oil_not_a_light() -> void:
+## AT NIGHT THE GOAL ASKS FOR THE HEADLAMP: it needs nothing to run on, so it is
+## always the answer to the dark, and its key is taught then.
+func test_the_dark_asks_for_the_headlamp_and_teaches_its_key() -> void:
 	Story.forget()
 	var g := Fx.flat(40, 23.0)
 	g.inventory.add(&"lamp")
-	SurvivalState.of(g).lamp_oil = 0.0
 	if g.inventory.count(&"oil") > 0:
 		g.inventory.remove(&"oil", g.inventory.count(&"oil"))
-	eq(Survival.lamp_oil(g), 0.0, "the lamp is dry and no flask is carried")
 	var goal := Guide.goal(g)
-	check(not goal.to_lower().contains("light the lamp"), "the goal does not ask him to light a dry lamp: %s" % goal)
-	check(goal.contains("Oil"), "it names what would light it: %s" % goal)
+	eq(goal, "Switch the headlamp on against the dark.", "with no oil carried, the headlamp is still the answer")
 	var r := Hud.goal_clip(goal)
 	check(UiBase.screen().encloses(r) and r.end.x < UiBase.SIZE.x * 0.7, "and fits the goal glass (%d px)" % UiFont.width(goal))
-	check(not _offered(g).has(&"lamp"), "and the key's lesson waits for oil")
+	check(_offered(g).has(&"lamp"), "and the key is taught")
 	var said: Array[String] = []
 	var hear := func(t: String) -> void: said.append(t)
 	Events.message.connect(hear)
 	check(not Survival.use(g), "use in the dark finds nothing")
 	Events.message.disconnect(hear)
-	check(said.has("Too dark to find anything."), "and says only that it is too dark: %s" % [said])
-	check(not said.has(Survival.DARK_LINE), "not to light the dry lamp")
-	g.inventory.add(&"oil", 1)
-	eq(Guide.goal(g), "Light the lamp against the dark.", "a flask carried, the lamp can be lit, and he is asked to")
-	check(_offered(g).has(&"lamp"), "and the key is taught")
+	check(said.has(Survival.DARK_LINE), "and says to switch the headlamp on: %s" % [said])
 	Fx.done(g)
 
 
