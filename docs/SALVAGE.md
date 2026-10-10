@@ -62,10 +62,12 @@ ground the cities were built on. Each form keeps its landscape's colour.
 
 ## In order
 
-- **E1, the old world's refuse** (this slice): the ore veins become the buried
-  old world above, in place; no world grows differently.
-- **E2, noise**: every take is as loud as its verb; machines hear it through
-  `StealthQuery`, and the prompt says so.
+- **E1, the old world's refuse** (built): the ore veins became the buried old
+  world above, in place; no world grows differently.
+- **E2, noise** (built): every take is as loud as its verb (`StealthNoise.ACTS`:
+  a hand gathering 4 tiles, a blade 7, turning a heap 9, digging 11, a pick on
+  concrete or plate 16), machines hear it through `StealthQuery.hears_noise`, and
+  the prompt says "(a machine will hear)" before the press (`Survival.would_be_heard`).
 - **E3, carcasses**: a beaten machine leaves a body to strip under threat: its
   plate, its parts, its own material. Kills stop paying scrap by themselves.
 - **E4, finds**: a tip, a drift and a ruin can turn up a thing with words on it.

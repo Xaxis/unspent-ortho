@@ -14,6 +14,15 @@ const ACTS := {
 	&"swing": 9.0,
 	&"hit": 12.0,
 	&"work": 10.0,
+	# A take is as loud as what it does (docs/SALVAGE.md): a hand gathering is
+	# barely heard and a pick on plate or concrete rings across a field, so where
+	# and when to take is a choice. `work` is any verb not named here.
+	&"gather": 4.0,
+	&"tap": 5.0,
+	&"scrape": 6.0,
+	&"cut": 7.0,
+	&"turn": 9.0,
+	&"dig": 11.0,
 	&"break": 16.0,
 	&"fell": 14.0,
 	&"make": 8.0,

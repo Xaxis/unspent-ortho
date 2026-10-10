@@ -358,7 +358,8 @@ static func describe_target(game: Game) -> String:
 		var c := _choose(game, SurvivalState.of(game), t)
 		var name := PropKind.NAMES[t.kind]
 		if c.ok:
-			return "%s - %s%s" % [name, c.option.verb, _hold_hint(game, t, c)]
+			var warn := " (a machine will hear)" if would_be_heard(game, c.option.verb) else _hold_hint(game, t, c)
+			return "%s - %s%s" % [name, c.option.verb, warn]
 		var alt := _tool_for(game, SurvivalState.of(game), t)
 		if alt != &"":
 			return "%s - %s" % [name, Items.verb(alt)]
@@ -379,6 +380,35 @@ static func describe_target(game: Game) -> String:
 		&"build":
 			return "campfire - build" if build_asked(game).is_finite() else "campfire - build?"
 	return ""
+
+
+## How far `act` done here carries now, in tiles: the verb's own loudness on
+## this ground, crouched or not, laden or not, and what is worn (the hush and the
+## listener's ear). 32_disposition makes the noise with exactly this, so the
+## prompt's warning and the noise itself can never disagree.
+static func noise_radius(game: Game, act: StringName) -> float:
+	var sim := game.player.sim if game.player != null else null
+	if sim == null:
+		return 0.0
+	var p := game.player.pos
+	var a := act if StealthNoise.ACTS.has(act) else &"work"
+	return StealthNoise.radius(a, game.world.ground_at(floori(p.x), floori(p.y)), game.body.crouched,
+		sim.moment.laden_tier, sim.hero.kit.hush) * sim.hero.kit.noise_scale()
+
+
+## Whether working with `verb` here now would reach a live machine's ears
+## (StealthQuery.hears_noise): what the prompt says before the press, so taking
+## near a machine is a choice made knowing (docs/SALVAGE.md).
+static func would_be_heard(game: Game, verb: StringName) -> bool:
+	var sim := game.player.sim if game.player != null else null
+	if sim == null:
+		return false
+	var r := noise_radius(game, verb)
+	var p := game.player.pos
+	for m in sim.mobs:
+		if m.alive and bool(m.row.get("machine", false)) and StealthQuery.hears_noise(m.row, m.pos, p, r, sim.moment):
+			return true
+	return false
 
 
 # --- The use action -------------------------------------------------------

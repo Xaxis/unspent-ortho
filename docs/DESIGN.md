@@ -61,7 +61,9 @@ Destination `docs/VISION.md`, fiction `docs/STORY.md`, look `docs/LOOK.md`, next
   plate takes nothing. A grip is broken by pulling. Outcomes: won, away, downed
   (hours lost) or carried (a shift of forced work).
 - **Taking**: `use` works the nearest prop with the held tool. `Harvest.target`
-  is the key's own answer and drives the mark. A consuming take works the thing
+  is the key's own answer and drives the mark. What is taken is salvage, never ore
+  (`SALVAGE.md`); a take is as loud as its verb and the prompt says when a machine
+  will hear it. A consuming take works the thing
   DOWN in five steps, never shrinks it. Tools: wood < iron < steel < crucible <
   found; an edge wears, never breaks.
 - **Survival**: health, wind, hunger, wet, load, lamp oil. A landscape's hazards

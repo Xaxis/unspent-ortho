@@ -439,10 +439,9 @@ func _on_hit(attacker: Object, target: Object, _damage: int, plate: bool, at: Ve
 
 
 func _noise(act: StringName, scale: float = 1.0) -> void:
-	var p := sim.hero.pos
-	var ground := game.world.ground_at(floori(p.x), floori(p.y))
-	# The listener's ear is heard as far as it hears (FightKit.listen).
-	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier, sim.hero.kit.hush) * scale * sim.hero.kit.noise_scale())
+	# The listener's ear is heard as far as it hears (FightKit.listen); the radius
+	# is the one the take prompt warns with (Survival.noise_radius).
+	sim.make_noise(sim.hero.pos, Survival.noise_radius(game, act) * scale)
 
 
 ## A job under way is a noise that keeps going, and a job on the plan's own
