@@ -35,6 +35,10 @@ var id := 0
 var kind: StringName = &""
 var row: Dictionary = {}
 var alive := true
+## What is still on a beaten machine (docs/SALVAGE.md E3): rows of {item, count},
+## stripped off one at a time with the use key (48_carcasses). A body that still
+## holds something lies where it fell (FightSim.CARCASS_MS) instead of its linger.
+var spoils: Array[Dictionary] = []
 var mood: StringName = IDLE
 var mood_at := 0.0
 var home := Vector2.ZERO

@@ -58,23 +58,36 @@ func _on_killed(kind: StringName, at: Vector3) -> void:
 		return
 	_kills += 1
 	var land := BiomeRegistry.at(game.world, game.player.pos).id
-	var said := PackedStringArray()
+	# What it was carrying stays on the body, to be stripped there (48_carcasses).
+	var body := _body(kind, at)
 	for row: Dictionary in GearEconomy.spoils(kind, game.world.seed_value, _kills, land):
 		var id := StringName(row.get("item", &""))
 		var n := int(row.get("count", 1))
 		if id == &"" or n <= 0 or Items.def(id).is_empty():
 			continue
-		game.inventory.add(id, n)
 		_given[id] = int(_given.get(id, 0)) + n
-		Events.took.emit(id, n)
-		if EliteStock.is_elite(id):
-			said.append(Items.display_name(id))
-	if said.is_empty():
-		return
-	# An elite part is the reason the fight was worth having: it is said out loud,
-	# once, in the words of the thing itself.
-	Events.sfx.emit(&"took", at)
-	Events.message.emit("Out of it: %s." % ", ".join(said))
+		if body != null:
+			body.spoils.append({"item": id, "count": n})
+		else:
+			game.inventory.add(id, n)
+			Events.took.emit(id, n)
+
+
+## The body that went down this step as `kind` at `at`: the one the spoils go on.
+func _body(kind: StringName, at: Vector3) -> MobState:
+	var sim := game.player.sim
+	if sim == null:
+		return null
+	var best: MobState = null
+	var best_d := INF
+	for m in sim.mobs:
+		if m.alive or m.kind != kind or m.dead_at != sim.now:
+			continue
+		var d := Vector2(at.x, at.z).distance_squared_to(m.pos)
+		if d < best_d:
+			best_d = d
+			best = m
+	return best
 
 
 # --- what a hard pour costs ----------------------------------------------------

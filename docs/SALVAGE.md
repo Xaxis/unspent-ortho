@@ -68,7 +68,9 @@ ground the cities were built on. Each form keeps its landscape's colour.
   a hand gathering 4 tiles, a blade 7, turning a heap 9, digging 11, a pick on
   concrete or plate 16), machines hear it through `StealthQuery.hears_noise`, and
   the prompt says "(a machine will hear)" before the press (`Survival.would_be_heard`).
-- **E3, carcasses**: a beaten machine leaves a body to strip under threat: its
-  plate, its parts, its own material. Kills stop paying scrap by themselves.
+- **E3, carcasses** (built): a beaten machine keeps its plate and parts on its
+  body (`MobState.spoils`) and `use` strips them a piece at a time (48_carcasses),
+  2.2 s of the hands and 8 minutes of the clock each, as loud as a pick on plate.
+  Kills stop paying by themselves; a body nobody strips lies 10 minutes, then goes.
 - **E4, finds**: a tip, a drift and a ruin can turn up a thing with words on it.
 - **E5, machine steel**: a steel edge is ground from a machine's own blade.

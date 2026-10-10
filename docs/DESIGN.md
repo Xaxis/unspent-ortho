@@ -104,7 +104,8 @@ Destination `docs/VISION.md`, fiction `docs/STORY.md`, look `docs/LOOK.md`, next
   entered with `use`; a crossing rebinds the world, not a new game. The era is
   the surface's own land in 2029.
 - **Loot**: all non-recipe spoils go through `Drops` (a body or a place); every
-  item has a path back to the world (`Sources.path_to`).
+  item has a path back to the world (`Sources.path_to`). A beaten machine's stay on
+  its body until `use` strips them (48_carcasses, `SALVAGE.md`).
 
 ## Story delivery
 

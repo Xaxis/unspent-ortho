@@ -20,6 +20,10 @@ extends RefCounted
 ##   crowd_warning (half way to it taking that as interference), disturbed,
 ##   drop_strike (a jump's landing thrown as a blow: FightSim.drop_strike)
 
+## How long a beaten machine with something still on it lies where it fell
+## (MobState.spoils): long enough to fight off what the stripping brought and go
+## back to it, not forever.
+const CARCASS_MS := 600000.0
 const NAV_EVERY_MS := 240.0
 ## THE HUSH (docs/HUSH.md H1): how far past a crags ring's stones no machine
 ## steps, how far round the player the rings are read, how often, and the hour
@@ -2480,7 +2484,10 @@ func _retire() -> void:
 	for m in mobs:
 		if m.alive or m.removed:
 			continue
-		if now - m.dead_at >= float(m.stat("linger", 30.0)) * 1000.0:
+		var lies := float(m.stat("linger", 30.0)) * 1000.0
+		if not m.spoils.is_empty():
+			lies = maxf(lies, CARCASS_MS)
+		if now - m.dead_at >= lies:
 			remove_mob(m)
 
 

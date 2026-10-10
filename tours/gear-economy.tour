@@ -85,10 +85,13 @@ try 26
   tap swing
   await killed 1.2
 end
-# No second `await killed` here: an await CONSUMES the event it waited for
-# (98_tour `_seen.erase`), so asking twice fails the second time even though the
-# body is lying right there. What is asked instead is a state — the filament edge
+# What it was carrying is still on it where it fell (48_carcasses): the hands
+# strip it a piece at a time, plate first, held down until the filament edge is
+# off it. No second `await killed` here: an await CONSUMES the event it waited for
+# (98_tour `_seen.erase`). What is asked instead is a state — the filament edge
 # is in the creel — which is the thing this section is actually about.
+await carcass 3
+press use 7
 await elite:mono_edge 5
 shot 08-what-it-was-carrying with spoils,land:bonelands
 

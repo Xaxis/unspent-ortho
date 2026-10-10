@@ -2,7 +2,7 @@
 
 Taking from the world, hunger and weather, hazards, tracks, gear and abilities, the economy, crafts, settlements.
 
-<!-- covers: system:44_crafts, system:46_settlements, system:50_survival, system:51_harvest, system:52_hazards, system:52_survival_fx, system:53_tracks, system:54_gear, system:56_economy -->
+<!-- covers: system:44_crafts, system:46_settlements, system:48_carcasses, system:50_survival, system:51_harvest, system:52_hazards, system:52_survival_fx, system:53_tracks, system:54_gear, system:56_economy -->
 
 "(h)" means the tour's header has its options. A power's test prints its bout.
 
@@ -20,6 +20,7 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   - Gate (walked through, breached first): `tools/test.sh test_gate`, `tools/shot.sh shots/x.png --scene=gallery --filter="holding gate"`.
   - Cellar (stores a raid cannot take): `tools/test.sh test_cellar`, gallery `--filter="holding cellar"`.
   - Stolen cell (unlocked by a keeper's core): `tools/test.sh test_unlocks`, gallery `--filter="holding stolen cell"`.
+- 48_carcasses `src/systems/48_carcasses.gd`: a beaten machine keeps its plate and parts on its body (`MobState.spoils`, put there by 40_fight and 56_economy), and `use` strips them a piece at a time, loud and minutes each; a body with something on it lies `FightSim.CARCASS_MS`: `tools/test.sh test_carcass`; in play, `tools/tour.sh tours/gear-economy.tour` (header options) strips a cutter for its filament edge (frame 08).
 - 50_survival `src/systems/50_survival.gd`: `tools/tour.sh tours/survival.tour`. The action prompt says what to hold for what the pinned goal wants (`Guide.goal_wants`, `GOAL_MAKES`, `Survival._hold_hint`): the holding goal's lean-to wants a rag, the pick in hand breaks wreckage for plate, and the prompt reads "wreckage - break (put the pick away for rags)": `tools/test.sh test_tool_hint`, and `tools/tour.sh tours/tool-hint.tour` (header options), frames 01-02. Sleep is asked for, never one press: an idle `use` at rest asks ("Again, and you sleep till morning.", the target reads `fire - sleep?`) and a second within BUILD_ASK_SECONDS sleeps; eating stays the fallback when hungry: `tools/test.sh test_first_hour:test_one_stray,test_taking,test_condition`, and the two-press sleep in `tours/core_loop.tour` and `tours/home-coast.tour`.
   - Salvage, never ore (`docs/SALVAGE.md`): the buried old world where the land is cut, `REBAR_SLAB`, `CABLE_DUCT`, `BOARD_DRIFT`, `COAL_TIP` (`src/models/props/salvage.gd`), giving `rebar`, `cable`, `boards`, `coal`, worked back into iron, copper and tin at a fire: `tools/shot.sh shots/g.png --scene=gallery --filter="rebar slab"` (and "cable duct", "board drift", "coal tip"); `tools/test.sh test_taking,test_progression,test_found_drawn`; a picked-over form of any keep take: `tools/shot.sh shots/p.png --seed=1 --put=boulder,tip --picked`.
   - The bag left on a heap where you were carried off ("your things"): `tools/test.sh test_bag_heap`, `tools/tour.sh tours/bag_heap.tour` (h).

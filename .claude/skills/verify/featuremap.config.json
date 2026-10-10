@@ -338,6 +338,13 @@
   },
   {
    "kind": "system",
+   "label": "48_carcasses",
+   "entry": "src/systems/48_carcasses.gd",
+   "reach": "tools/tour.sh tours/gear-economy.tour --seed=1 --hour=11 --weather=clear:0",
+   "area": "survival-gear"
+  },
+  {
+   "kind": "system",
    "label": "50_survival",
    "entry": "src/systems/50_survival.gd",
    "reach": "tools/tour.sh tours/survival.tour",

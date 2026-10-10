@@ -628,6 +628,14 @@
       "tests": []
     },
     {
+      "id": "system:48_carcasses",
+      "kind": "system",
+      "entry": "src/systems/48_carcasses.gd",
+      "reach": "tools/tour.sh tours/gear-economy.tour --seed=1 --hour=11 --weather=clear:0",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
       "id": "system:48_raids",
       "kind": "system",
       "entry": "src/systems/48_raids.gd",

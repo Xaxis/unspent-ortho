@@ -1097,11 +1097,11 @@ func _on_killed(e: Dictionary) -> void:
 	MobFx.puffs(fx, at, Vector2.ZERO, _dust_colour(m.pos), 5, 0.5 + m.radius * 0.6, m.id)
 	MobFx.ring(fx, at, MobFx.RING_INK, m.radius + 1.0, 0.4)
 	var drops: int = m.row.get("drops", 0)
-	# A kill somebody else made (a turret in the yard) puts nothing in the
-	# player's hands: what is left of it lies where it fell.
+	# Its plate stays on it, to be stripped where it fell (48_carcasses): nothing
+	# is in the pack until the hands have taken it off. A kill somebody else made
+	# (a turret in the yard) leaves nothing on it for him.
 	if m.machine and drops > 0 and by_player:
-		game.inventory.add(&"scrap", drops)
-		Events.took.emit(&"scrap", drops)
+		m.spoils.push_front({"item": &"scrap", "count": drops})
 
 
 func _on_snatch(m: MobState) -> void:
