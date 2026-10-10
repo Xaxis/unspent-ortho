@@ -21,6 +21,13 @@ uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
 // depth takes, w how far the chart is pulled to it. The sea never reads it.
 global uniform vec4 water_wash;
 
+// HIM IN THE SEA (player.gd sets it while he swims): x, z, his heading in the
+// ground plane, and his pace as a share of a stroke's (Tuning.SWIM_SPEED), or w
+// below zero when he is not in it. The water answers with what a body in it
+// makes: churned water and a broken collar of foam where he breaks the surface,
+// and behind a moving one a wake opening in a V, longer the harder he goes.
+global uniform vec4 swimmer;
+
 const vec3 BRINE0 = vec3(0.0392, 0.0824, 0.1412);
 const vec3 BRINE1 = vec3(0.0627, 0.1490, 0.2471);
 const vec3 BRINE2 = vec3(0.1059, 0.2471, 0.3765);
@@ -201,6 +208,53 @@ vec2 chop_slope(vec2 wp, float t) {
 		chop_at(wp + vec2(0.0, H), t) - chop_at(wp - vec2(0.0, H), t)) / (2.0 * H);
 }
 
+// How far behind him the wake reaches at a stroke's pace, and the V's half
+// angle as a slope (a ship's wake opens at about 19 degrees either side).
+const float WAKE_LONG = 2.6;
+const float WAKE_SLOPE = 0.36;
+
+vec3 swimmer_water(vec3 c, vec2 wp, vec2 px) {
+	vec2 rel = wp - swimmer.xy;
+	if (swimmer.w < 0.0 || dot(rel, rel) > 64.0) {
+		return c;
+	}
+	vec2 fwd = vec2(cos(swimmer.z), sin(swimmer.z));
+	float along = dot(rel, fwd);
+	float across = dot(rel, vec2(-fwd.y, fwd.x));
+	float go = clamp(swimmer.w, 0.0, 1.6);
+	float churn = ink_vnoise(wp * 5.0 + vec2(TIME * 2.1, -TIME * 1.6));
+	// The collar: round him treading, long along him as he lies flat to go,
+	// and thickest at his head, where he shoves the water out of his way.
+	float e = length(vec2((along - 0.1 * go) / mix(0.38, 0.75, min(go, 1.0)), across / 0.36));
+	float bow = smoothstep(-0.2, 0.5, along) * min(go, 1.0);
+	float fleck = ink_hash(floor(px / 2.0) + floor(TIME * 8.0));
+	if (e < 0.85) {
+		// Broken water against him, flecked with spray.
+		if (fleck < 0.06 + 0.1 * go) {
+			return mix(c, FOAM, 0.85);
+		}
+		c = mix(c, BRINE4, 0.12 + 0.18 * churn);
+	} else if (e < 1.04 + 0.35 * bow && churn > 0.52 - 0.3 * bow && fleck < 0.75) {
+		// Foam in patches, never a ring: gathered at his head, thin behind.
+		return mix(c, FOAM, 0.9);
+	}
+	// The wake, behind a body that is going somewhere.
+	float back = -along;
+	float reach = WAKE_LONG * go;
+	if (go > 0.05 && back > 0.2 && back < reach) {
+		float k = 1.0 - back / reach;
+		float arm = abs(abs(across) - (0.3 + back * WAKE_SLOPE));
+		if (arm < 0.05 + 0.03 * back && ink_hash(floor(px / 2.0) + floor(TIME * 6.0)) < 0.25 + 0.6 * k) {
+			return mix(c, FOAM, 0.8 * k + 0.15);
+		}
+		// Between the arms, the water he has churned, settling as it falls behind.
+		if (abs(across) < 0.22 + back * 0.12 && churn > 0.55 - 0.15 * k) {
+			c = mix(c, BRINE5, 0.45 * k);
+		}
+	}
+	return c;
+}
+
 // The swash: 0 drawn back .. 1 run up. Travels along the shore, so the foam
 // laps in one stretch while it draws back in the next.
 float swash(vec2 wp) {
@@ -279,6 +333,7 @@ void fragment() {
 		if (far < 0.5 && d > 0.18 && h < 0.08 && local.y == 3.0 && local.x >= 3.0 && local.x < 6.0 + floor(h * 20.0)) {
 			c = mix(c, FOAM, (d > 0.45 ? 0.35 : 0.5) * max(surf, 0.35));
 		}
+		c = swimmer_water(c, wp, px);
 	} else if (kind == 2) {
 		// Blackwater: green at the edges, an oily film in marbled bands.
 		c = d < 0.08 ? SPRUCE2 : (d < 0.22 ? SPRUCE1 : BRINE0);

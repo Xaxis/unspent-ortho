@@ -148,9 +148,9 @@ func test_it_carries_the_body_over_water_no_one_could_wade_and_the_sim_moves_it(
 ## is always a body that can take it.
 ##
 ## So the claim this file is really making about a raft is not ACCESS, it is that
-## the raft crosses without swimming: `Tuning.SWIM_FACTOR` is 0.4, so the water
-## costs a swimmer three fifths of their pace, and it is a wall only to the mobs
-## whose roster rows do not declare `crosses` (`Swim.may_cross`).
+## the raft crosses without swimming: a swimmer goes at `Tuning.SWIM_SPEED`,
+## under the raft's pace, and the water is a wall only to the mobs whose roster
+## rows do not declare `crosses` (`Swim.may_cross`).
 ##
 ## Restated to that, because the old assertion could only pass in a build where
 ## the owner's ruling had not landed.

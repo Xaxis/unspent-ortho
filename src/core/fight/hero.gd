@@ -86,12 +86,13 @@ static func ground_speed(world: WorldData, p: Vector2, running: bool, move_facto
 		return on.speed(running) * clampf(move_factor, 0.2, 1.5)
 	var s := Tuning.RUN_SPEED if running else Tuning.WALK_SPEED
 	if world != null:
-		# A stroke is slower than a wade, and a wade is every shallow water there
-		# is: a river and black water held a body up to the knees and took nothing
-		# off its pace, which was a rule nobody had written and nobody wanted.
+		# A swim is its own pace, run or not (Tuning.SWIM_SPEED); a wade is every
+		# shallow water there is: a river and black water held a body up to the
+		# knees and took nothing off its pace, which was a rule nobody had written
+		# and nobody wanted.
 		var g := world.ground_at(floori(p.x), floori(p.y))
 		if Ground.is_deep(g):
-			s = Tuning.WALK_SPEED * Tuning.SWIM_FACTOR
+			s = Tuning.SWIM_RUN if running else Tuning.SWIM_SPEED
 		elif Ground.is_shallow(g):
 			s *= Tuning.WADE_FACTOR
 	return s * clampf(move_factor, 0.2, 1.5)

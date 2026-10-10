@@ -210,8 +210,11 @@ func _process(delta: float) -> void:
 			MobFx.ring(_fx_parent(), _at3(sim.hero.pos), MobFx.RING_INK, 0.55, 0.28)
 	else:
 		_struggle_t = 0.0
-	if game.player.model.held != game.inventory.held:
-		game.player.model.set_held(game.inventory.held)
+	# In the sea the hands are for swimming: what he holds is stowed until he is
+	# out (still held: the inventory is not touched).
+	var shown := &"" if game.player.swimming else game.inventory.held
+	if game.player.model.held != shown:
+		game.player.model.set_held(shown)
 
 
 ## Marks are sized in pixels of the frame the camera players actually have, and

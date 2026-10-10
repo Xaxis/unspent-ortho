@@ -145,6 +145,10 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
+swimmer={
+"type": "vec4",
+"value": Vector4(0, 0, 0, -1)
+}
 eye_yield={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)

@@ -60,6 +60,12 @@ func test_a_dredger_may_stay_in_the_deep_it_swims() -> void:
 func test_the_waterline_is_the_one_the_mesher_draws() -> void:
 	near(Swim.WATER_Y, TerrainMesher.WATER_Y, 0.0001,
 		"Swim.WATER_Y and TerrainMesher.WATER_Y have drifted apart")
+	# And the one the see-through pass knows the sea by (render/behind.gdshader).
+	var code := (load("res://src/render/behind.gdshader") as Shader).code
+	var m := RegEx.create_from_string("const float SEA_Y = ([0-9.]+);").search(code)
+	check(m != null, "behind.gdshader names the sea's height")
+	if m != null:
+		near(float(m.get_string(1)), TerrainMesher.WATER_Y, 0.0001, "behind.gdshader's SEA_Y has drifted from the waterline")
 
 
 func test_a_swimmer_is_floated_to_the_surface_and_not_sunk_to_the_bed() -> void:

@@ -88,14 +88,21 @@ func test_a_stroke_is_slower_than_a_walk_and_a_wade_is_every_shallow() -> void:
 	var dry := Hero.ground_speed(w, Vector2(0.5, 0.5), false)
 	var deep := Hero.ground_speed(w, Vector2(1.5, 1.5), false)
 	var wade := Hero.ground_speed(w, Vector2(2.5, 1.5), false)
-	near(deep, Tuning.WALK_SPEED * Tuning.SWIM_FACTOR, 0.001, "a stroke is a stroke")
+	near(deep, Tuning.SWIM_SPEED, 0.001, "a stroke is a stroke")
 	near(wade, dry * Tuning.WADE_FACTOR, 0.001)
-	lt(deep, wade, "and slower than a wade")
+	lt(deep, dry, "and slower than a walk")
 	for at: Vector2 in [Vector2(2.5, 1.5), Vector2(3.5, 1.5), Vector2(4.5, 1.5)]:
 		near(Hero.ground_speed(w, at, false), dry * Tuning.WADE_FACTOR, 0.001,
 			"every shallow water wades the same: %s" % Ground.NAMES[w.ground_at(floori(at.x), floori(at.y))])
-	# Running is nothing in deep water: there is nothing to push against.
-	near(Hero.ground_speed(w, Vector2(1.5, 1.5), true), deep, 0.001, "no running a swim")
+	# The run key in deep water is a hard crawl: faster, and still under a run.
+	var crawl := Hero.ground_speed(w, Vector2(1.5, 1.5), true)
+	near(crawl, Tuning.SWIM_RUN, 0.001, "the run key is a hard crawl")
+	gt(crawl, deep, "faster than the stroke")
+	lt(crawl, Hero.ground_speed(w, Vector2(0.5, 0.5), true), "and slower than a run")
+	# The raft is still the faster way over (and the dry one).
+	var raft: Dictionary = CraftKinds.row(&"raft")
+	gt(float(raft.walk), deep, "a raft outpaces a stroke")
+	gt(float(raft.run), crawl, "and a crawl")
 
 
 static func _field(props: Array[Vector2], kind: int = PropKind.BROADLEAF) -> WorldQuery:

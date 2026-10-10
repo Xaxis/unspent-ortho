@@ -198,31 +198,25 @@ func model_centre() -> Vector3:
 ## is a stroke, the body is drawn at the waterline, and the slate's own rules
 ## about what a body may do from there are 40_fight's (Swim).
 var swimming := false
-var _wake_in := 0.0
 
 
-## What the water does about a body in it: a ring off each stroke, drawn on the
-## surface in the surf own broken white, and one where the body went in. The
-## figure itself draws over the water whatever its depth (people are drawn after
-## the outline pass), so the rings are what say it is IN the sea and not on it.
-const WAKE_EVERY := 0.55
-const WAKE_COLD := 3
-
-
-func _wake(delta: float, was_swimming: bool) -> void:
-	if not swimming:
-		_wake_in = 0.0
+## What the water does about a body in it is the water's to draw (water.gdshader
+## `swimmer`: the foam where he breaks the surface, the wake behind him), told
+## where he is and how hard he is going each frame he is in it; and going in is
+## heard.
+func _wake(was_swimming: bool) -> void:
+	if not swimming and not was_swimming:
 		return
-	var at := Vector3(pos.x, Swim.WATER_Y, pos.y)
-	if not was_swimming:
-		# Going in: a bigger ring, because that is the moment somebody hears.
-		MobFx.ring(get_parent(), at, Palette.COLD[WAKE_COLD], 1.05, 0.45)
-		Events.sfx.emit(&"splash", at)
-	_wake_in -= delta
-	if _wake_in > 0.0:
-		return
-	_wake_in = WAKE_EVERY
-	MobFx.ring(get_parent(), at, Palette.COLD[WAKE_COLD], 0.62 + minf(speed, 2.0) * 0.12, 0.5)
+	var pace := speed / Tuning.SWIM_SPEED if swimming else -1.0
+	RenderingServer.global_shader_parameter_set(&"swimmer", Vector4(pos.x, pos.y, facing, pace))
+	if swimming and not was_swimming:
+		Events.sfx.emit(&"splash", Vector3(pos.x, Swim.WATER_Y, pos.y))
+
+
+## A game put away with him in the sea leaves no foam on the next one's water.
+func _exit_tree() -> void:
+	if swimming:
+		RenderingServer.global_shader_parameter_set(&"swimmer", Vector4(0, 0, 0, -1))
 
 
 ## Something has hold: the figure shudders against it.
@@ -233,7 +227,7 @@ func shudder(seconds: float = 0.12) -> void:
 func _sync(delta: float) -> void:
 	var was_swimming := swimming
 	swimming = ride == null and Swim.deep(world, pos)
-	_wake(delta, was_swimming)
+	_wake(was_swimming)
 	var target := world.height_at(pos)
 	_z = target if delta == 0.0 else lerpf(_z, target, 1.0 - exp(-14.0 * delta))
 	if not hanging:

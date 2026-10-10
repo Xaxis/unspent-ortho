@@ -34,6 +34,11 @@ const PLAYER_CROUCH_HEIGHT := 1.1
 const WALK_SPEED := 3.4
 const RUN_SPEED := 5.4
 const WADE_FACTOR := 0.55
-## A stroke against a walk (owner, 2026-09-17: about two fifths). Running is not
-## faster in deep water: there is nothing to push against, so a swim is one pace.
+## What deep water takes off the pace of an animal or a machine that swims (the
+## roster's `crosses`): about two fifths of its own (owner, 2026-09-17).
 const SWIM_FACTOR := 0.4
+## His own swimming (owner, 2026-10-10: "far more agile and faster"): a stroke
+## at SWIM_SPEED, and the run key a hard front crawl at SWIM_RUN. Both a little
+## under the raft's (CraftKinds), still the faster way over and the dry one.
+const SWIM_SPEED := 2.0
+const SWIM_RUN := 3.0

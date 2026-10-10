@@ -8,6 +8,12 @@
 // People are in the transparent pass and never in the depth texture, so the
 // ground under them is further than they are and nothing is drawn; a machine's
 // own opaque body IS in it, and the margin keeps it from finding itself.
+//
+// THE SEA IS NOT A WALL. A swimmer is IN it: what is under the sheet is hidden
+// the way water hides it, and stippled through it the legs of a man treading
+// water stood on the waves in a checker (the swimming frames, 2026-10-10). The
+// hiding surface is known to be the sea by where it lies, flat at SEA_Y, which
+// no step of the land ever is (WorldData.STEP is 0.5).
 shader_type spatial;
 render_mode unshaded, depth_test_disabled, depth_draw_never, cull_back, shadows_disabled, fog_disabled, blend_mix;
 
@@ -21,6 +27,11 @@ uniform vec3 ink : source_color = vec3(0.86, 0.82, 0.72);
 // How much nearer the world must be, in world units, before a surface counts
 // as hidden: a body never finds its own skin, or the ground at its feet.
 uniform float margin = 0.6;
+// The sea's sheet (TerrainMesher.WATER_Y; tests/swim/test_swim.gd holds them
+// together), and how far off it a hiding surface still counts as the sea: the
+// open sea past the map is laid 0.02 under it.
+const float SEA_Y = 0.3;
+const float SEA_NEAR = 0.04;
 
 void fragment() {
 	// Only for the camera looking down, where a wall can stand between it and a
@@ -40,6 +51,11 @@ void fragment() {
 	float scene = -v.z / v.w;
 	float self = -VERTEX.z;
 	if (scene > self - margin) {
+		discard;
+	}
+	vec3 hider = (INV_VIEW_MATRIX * vec4(v.xyz / v.w, 1.0)).xyz;
+	vec3 here = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	if (abs(hider.y - SEA_Y) < SEA_NEAR && here.y < SEA_Y) {
 		discard;
 	}
 	// Half the pixels, on a pattern pinned to the screen in pairs, so it reads

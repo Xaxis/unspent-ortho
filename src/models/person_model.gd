@@ -191,7 +191,7 @@ func animate(speed: float, delta: float) -> void:
 	if swimming:
 		# A stroke keeps its own time: a body going nowhere in deep water is
 		# treading it, not standing in it.
-		var share := lerpf(PersonAnim.TREAD_SHARE, 1.0, clampf(_speed / 1.4, 0.0, 1.0))
+		var share := maxf(PersonAnim.TREAD_SHARE, _speed / PersonAnim.STROKE_PACE)
 		_phase = fposmod(_phase + delta * share / PersonAnim.STROKE_SECONDS, 1.0)
 	elif _speed > 0.05:
 		_phase = fposmod(_phase + delta * _speed / PersonAnim.cycle_length(_speed, leg), 1.0)
@@ -220,7 +220,7 @@ func animate(speed: float, delta: float) -> void:
 			_last = _resolved(ended, ended_len, ended_len)
 		return
 	var klass := HeldTools.klass(held)
-	var pose := PersonAnim.stroke(_phase, _speed, _clock, _dims, klass) if swimming \
+	var pose := PersonAnim.stroke(_phase, _speed, _dims) if swimming \
 		else PersonAnim.locomotion(_phase, _speed, _clock, _dims, klass)
 	if ended != &"":
 		_last = _resolved(ended, ended_len, ended_len)

@@ -372,58 +372,97 @@ static func locomotion(phase: float, speed: float, t: float, d: Dictionary, klas
 	return p
 
 
-## Seconds a stroke takes, and how much of one a body still turns over when it is
-## going nowhere: nobody floats still in deep water, they tread it.
-const STROKE_SECONDS := 1.45
-const TREAD_SHARE := 0.55
+## Seconds one whole stroke takes (both arms) at STROKE_PACE tiles a second; a
+## faster swimmer turns it over faster, and a still one treads at TREAD_SHARE.
+const STROKE_SECONDS := 1.05
+const STROKE_PACE := 2.0
+const TREAD_SHARE := 0.6
 
 
-## A stroke — what a person does in water over their head (Swim, owner
-## 2026-09-17). It is a breaststroke: the one somebody who was never taught still
-## does, and the only one that reads at this size and this angle, because both
-## arms make the same shape at the same time and the head stays up where the
-## player can see it.
-##
-## The body is drawn sunk to the chest (`Swim.drop_for`), so what carries this is
-## the arms and the head. The legs are under the water and their kick is only
-## felt in the roll.
-static func stroke(phase: float, speed: float, t: float, d: Dictionary, klass: StringName) -> Pose:
-	var st := _stand(d)
+## A stroke: what a person does in water over their head (Swim; owner,
+## 2026-10-10: "far more agile and faster"). Going somewhere it is a front
+## crawl, flat on the water with the back at the waterline, one arm wheeling
+## over the top while the other pulls under, the body rolling to the pull, the
+## head turning out to breathe and the legs kicking under; holding still it is
+## treading water, upright to the collarbones with the hands sculling. `speed`
+## (tiles/s) takes one into the other. The opaque sea cuts the figure at
+## Swim.WATER_Y (people test depth): what is out of it is what is drawn.
+static func stroke(phase: float, speed: float, d: Dictionary) -> Pose:
+	var going := smoothstep(0.3, 1.3, speed)
+	if going <= 0.0:
+		return _tread(phase, d)
+	if going >= 1.0:
+		return _crawl(phase, d)
+	return mix_keys(_tread(phase, d), _crawl(phase, d), going)
+
+
+## Treading water: up to the collarbones, hands out at the surface sculling,
+## the legs eggbeating out of sight under.
+static func _tread(phase: float, d: Dictionary) -> Pose:
 	var hip_y: float = d.get("hip_y", 0.6)
-	# 0 folded in at the chest, 1 swept right out; the pull is the fast half.
-	var out := 0.5 - 0.5 * cos(TAU * phase)
-	var pull := smoothstep(0.0, 0.55, phase) - smoothstep(0.55, 1.0, phase)
-	# The head rises on the pull (the breath) and settles on the recovery.
-	var lift := 0.5 - 0.5 * cos(TAU * phase)
-	var roll := sin(TAU * phase) * 0.06
-	# Lying in the water, face down the way the body is going, hips just under.
-	var flat := -1.18
-	var p := st.with({
-		"root": Vector3(roll, 0, flat + lift * 0.1),
-		# Up to the surface, not down to the bed: over deep water the ground plane
-		# a figure stands on is the sea floor clamped to zero and the water is
-		# drawn at Swim.WATER_Y above it, so a swimmer is RAISED to float. The
-		# body lies through the waterline: back and shoulders out, the rest under.
-		"@root": Vector3(-hip_y * 0.12, 0.02 + lift * 0.03, 0.0),
-		"spine": Vector3(0, 0, 0.16 + lift * 0.07),
-		"head": Vector3(0, 0, 0.62 + lift * 0.16),
-		# Arms: forward and together, out and back, in under the chest, forward again.
-		"arm_l": Vector3(0.35 + out * 0.95, 0, 1.75 - pull * 1.35),
-		"arm_r": Vector3(-0.35 - out * 0.95, 0, 1.75 - pull * 1.35),
-		"fore_l": Vector3(0, 0, 0.25 + (1.0 - out) * 0.85),
-		"fore_r": Vector3(0, 0, 0.25 + (1.0 - out) * 0.85),
-		# A frog kick, half a beat behind the arms and mostly felt, not seen.
-		"thigh_l": Vector3(0.12 + out * 0.3, 0, -0.1 - (1.0 - out) * 0.5),
-		"thigh_r": Vector3(-0.12 - out * 0.3, 0, -0.1 - (1.0 - out) * 0.5),
-		"shin_l": Vector3(0, 0, -(1.0 - out) * 1.25),
-		"shin_r": Vector3(0, 0, -(1.0 - out) * 1.25),
-		"foot_l": Vector3(0, 0, 0.35),
-		"foot_r": Vector3(0, 0, 0.35),
-		"hem": Vector3(0, 0, 0.2),
-		"aerial": Vector3(0.5, 0, -0.5),
-		"tool": Vector3(0, 0, -1.6),
+	var torso: float = d.get("torso", 0.45)
+	var s := sin(TAU * phase)
+	var c := cos(TAU * phase)
+	var sink := Swim.WATER_Y + 0.04 - (hip_y + torso - 0.025)
+	return _stand(d).with({
+		"@root": Vector3(0, sink + sin(TAU * phase * 2.0) * 0.025, 0),
+		"spine": Vector3(0, 0, -0.08), "head": Vector3(0, 0, 0.12),
+		"arm_l": Vector3(0.95, 0, 0.45 + s * 0.3), "fore_l": Vector3(0, 0, 0.5 - s * 0.25),
+		"arm_r": Vector3(-0.95, 0, 0.45 - s * 0.3), "fore_r": Vector3(0, 0, 0.5 + s * 0.25),
+		"thigh_l": Vector3(0.2, 0, 0.7 + c * 0.35), "shin_l": Vector3(0, 0, -1.1 - s * 0.4),
+		"thigh_r": Vector3(-0.2, 0, 0.7 - c * 0.35), "shin_r": Vector3(0, 0, -1.1 + s * 0.4),
+		"foot_l": Vector3(0, 0, 0.4), "foot_r": Vector3(0, 0, 0.4),
+		"hem": Vector3(0, 0, 0.3), "aerial": Vector3(0.3, 0, -0.3), "tool": Vector3(0, 0, -1.4),
 	})
-	return p
+
+
+## The front crawl: flat, face down, the back and head breaking the surface.
+static func _crawl(phase: float, d: Dictionary) -> Pose:
+	var hip_y: float = d.get("hip_y", 0.6)
+	var depth: float = d.get("depth", 0.22)
+	var flat := 1.47
+	var left := phase
+	var right := fposmod(phase + 0.5, 1.0)
+	var kick := sin(TAU * phase * 3.0)
+	# Turned out to one side for a breath while that arm comes over.
+	var breathe := smoothstep(0.05, 0.18, phase) - smoothstep(0.3, 0.45, phase)
+	return _stand(d).with({
+		"root": Vector3(0, 0, -flat),
+		# The hips a little under the waterline and the body's middle over the
+		# figure's own origin, so the wake and the shadow are under him.
+		"@root": Vector3(-0.2 - hip_y * sin(flat), Swim.WATER_Y - depth * 0.3 - hip_y * cos(flat), 0),
+		"spine": Vector3(0, sin(TAU * phase) * 0.4, 0.02),
+		"head": Vector3(0, breathe * 1.1, 0.35),
+		"arm_l": Vector3(_wheel_out(left), 0, _wheel(left)), "fore_l": Vector3(0, 0, _wheel_bend(left)),
+		"arm_r": Vector3(-_wheel_out(right), 0, _wheel(right)), "fore_r": Vector3(0, 0, _wheel_bend(right)),
+		# Kicking under, the legs a little down from the body so no boot breaks
+		# the surface on its own (the first crawl frames: a boot afloat).
+		"thigh_l": Vector3(0.06, 0, 0.3 + kick * 0.22), "shin_l": Vector3(0, 0, -0.15 - maxf(0.0, kick) * 0.2),
+		"thigh_r": Vector3(-0.06, 0, 0.3 - kick * 0.22), "shin_r": Vector3(0, 0, -0.15 - maxf(0.0, -kick) * 0.2),
+		"foot_l": Vector3(0, 0, 1.1), "foot_r": Vector3(0, 0, 1.1),
+		"hem": Vector3(0, 0, 0.2), "aerial": Vector3(0.5, 0, -0.5), "tool": Vector3(0, 0, -1.6),
+	})
+
+
+## Where an arm is through a crawl's stroke `u` (0 at the hip), as its swing:
+## up out of the water and over the top fast (to 0.4, entering ahead of the
+## head), then the long pull under the chest back to the hip.
+static func _wheel(u: float) -> float:
+	if u < 0.4:
+		return -PI * smoothstep(0.0, 1.0, u / 0.4)
+	return -PI - PI * (u - 0.4) / 0.6
+
+
+## Out from the body while the arm is over the water, so it clears the back.
+static func _wheel_out(u: float) -> float:
+	return 0.15 + 0.3 * sin(PI * clampf(u / 0.4, 0.0, 1.0))
+
+
+## The elbow: bent high over the water, nearly straight into the pull.
+static func _wheel_bend(u: float) -> float:
+	if u < 0.4:
+		return 0.9 * sin(PI * u / 0.4)
+	return 0.3 * sin(PI * (u - 0.4) / 0.6)
 
 
 ## How the held thing rides while walking: blades forward in the fist, heavy
@@ -507,7 +546,7 @@ static func action(name: StringName, t: float, seconds: float, d: Dictionary, to
 		&"eat":
 			return eat(t, d)
 		&"swim":
-			return stroke(fposmod(t / STROKE_SECONDS, 1.0), 1.0, t, d, klass)
+			return stroke(fposmod(t / STROKE_SECONDS, 1.0), STROKE_PACE, d)
 		&"carried":
 			return carried(t, d)
 		&"downed":

@@ -242,6 +242,35 @@ func test_builds_differ_in_silhouette() -> void:
 	lt(PersonBody.dims(&"boy").hip_y, PersonBody.dims(&"man").hip_y * 0.75, "boy is short")
 
 
+## Swimming (PersonAnim.stroke): the sea is drawn at Swim.WATER_Y and cuts the
+## figure, so the pose decides what shows. Crawling, the head comes up out of it
+## and no boot ever breaks it on its own (the first crawl frames: a boot afloat);
+## treading, the head is out the whole stroke. On every build, over a stroke.
+func test_a_swimmer_is_drawn_at_the_waterline_on_every_build() -> void:
+	for b: StringName in PersonLook.BUILDS:
+		for go: float in [0.0, Tuning.SWIM_SPEED, Tuning.SWIM_RUN]:
+			var p := PersonModel.make({"build": b})
+			p.swimming = true
+			# The middle of the head, not its bone's root at the neck.
+			var mid := Vector3(0, float(PersonBody.dims(b).head) * 0.5, 0)
+			var head_low := INF
+			var head_high := -INF
+			var boot_high := -INF
+			for i in 24:
+				p.animate(go, PersonAnim.STROKE_SECONDS / 24.0)
+				var head := (p.rig.bone_global(p.rig.find(&"head")) * mid).y
+				head_low = minf(head_low, head)
+				head_high = maxf(head_high, head)
+				for f: StringName in [&"foot_l", &"foot_r"]:
+					boot_high = maxf(boot_high, p.rig.bone_global(p.rig.find(f)).origin.y)
+			if go > 0.0:
+				gt(head_high, Swim.WATER_Y, "%s at %.1f: the head comes up out of the water" % [b, go])
+				lt(boot_high, Swim.WATER_Y - 0.02, "%s at %.1f: no boot breaks the surface" % [b, go])
+			else:
+				gt(head_low, Swim.WATER_Y + 0.05, "%s treading: the head stays out" % b)
+			p.free()
+
+
 func test_play_action_contract() -> void:
 	var p := PersonModel.make({}, &"knife")
 	for a: StringName in PersonAnim.ACTIONS:
