@@ -53,6 +53,32 @@ func test_the_ground_under_your_hands_beats_a_notice_across_the_square() -> void
 	await frames(1)
 
 
+## A THING WITH NOTHING LEFT FOR THE KEY DOES NOT KEEP IT. A bush picked over at
+## his feet kept the press from the villager he faced (tours/holdfast.tour, line
+## 444): the ground under the hands wins only when a press would take something.
+func test_a_picked_over_thing_under_the_hands_leaves_the_key_to_the_words() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"]))
+	await frames(4)
+	var story := _story(g)
+	var at := g.player.pos
+	g.player.facing = 0.0
+	g.player.hero.facing = 0.0
+	var sign_prop := Survival.add_prop(g, PropKind.SIGN, at + Vector2(2.2, 0.0), 0.0, 0.3)
+	check(sign_prop != null, "a notice stands two tiles ahead")
+	var bush := Survival.add_prop(g, PropKind.BUSH, at + Vector2(0.6, 0.0), 0.0, 0.3)
+	await frames(2)
+	check(WorldProp.same(Survival.use_target(g), bush), "the bush is what the hands are on")
+	var state := SurvivalState.of(g)
+	for j in Takes.options(PropKind.BUSH).size():
+		state.spent[SurvivalState.key(bush.id, j)] = INF
+	await frames(2)
+	eq(Harvest.target(g).get("state"), Harvest.PICKED_OVER, "and it is picked over")
+	story._open_what_is_in_front()
+	check(story.view.showing(), "the press goes to the words in front, not the spent bush")
+	g.queue_free()
+	await frames(1)
+
+
 ## A RELAY HAS WORDS ON IT AND IS ALSO THE PLAN'S WORKS. The same prop answers
 ## both readers at exactly the same distance, so the read won every time and two
 ## of the six plan works could never be robbed for the rest of the game — and the

@@ -308,7 +308,7 @@ func _what_is_in_front() -> Dictionary:
 	var slot_d: float = slot.get("_d", INF) if not slot.is_empty() else INF
 	if slot_d < person_d and slot_d < prop_d:
 		var take_first := Survival.use_target(game)
-		if take_first == null or _edge_to(take_first) >= slot_d:
+		if take_first == null or _edge_to(take_first) >= slot_d or not _takes_now(take_first):
 			return {"slot": slot.id}
 	# THE GROUND UNDER YOUR HANDS WINS WHEN IT IS NEARER. This system's reach is
 	# generous on purpose, so a notice five tiles off was outranking the driftwood
@@ -319,7 +319,7 @@ func _what_is_in_front() -> Dictionary:
 	var take := Survival.use_target(game)
 	if take != null:
 		var take_d := _edge_to(take)
-		if take_d < person_d and take_d < prop_d:
+		if take_d < person_d and take_d < prop_d and _takes_now(take):
 			return {}
 		# ONE THING THAT IS BOTH. A relay and a survey post have words on them AND
 		# are the plan's works, so the same prop answers both readers at exactly
@@ -334,6 +334,17 @@ func _what_is_in_front() -> Dictionary:
 	if prop != null:
 		return {"prop": prop}
 	return {}
+
+
+## Whether a press now would take something from `take`, the thing under his
+## hands: it is worked with what is held, with a tool he carries, or it is his own
+## heap. Picked over, under the tide, too hard or wanting a tool he has none of,
+## it has nothing for the key, and the person he faces gets the press: a picked
+## bush at his feet kept the key from the villager in front of him (holdfast.tour).
+func _takes_now(take: WorldProp) -> bool:
+	var h := Harvest.target(game)
+	return WorldProp.same(h.get("prop") as WorldProp, take) \
+		and StringName(str(h.get("state", &""))) in [Harvest.WORKABLE, Harvest.OTHER_TOOL, Harvest.YOURS]
 
 
 ## Whether the words on this thing have already been read. A fragment is picked
