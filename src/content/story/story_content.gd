@@ -3565,6 +3565,195 @@ const FRAGMENTS := {
 			"A zero would mean something had counted.",
 		],
 	},
+	# --- finds (docs/SALVAGE.md E4): small things of 2029-2036 turned up by
+	# taking the old world apart, read the moment they come out. Their owners'
+	# words, people who did not know what was coming. Colour: they land no beat,
+	# and none of them names the cast or says what a revelation keeps.
+	&"find_freezer_bag": {
+		"kind": &"find", "title": "a phone in a freezer bag", "lands": ["coast", "drowned_city"],
+		"lines": [
+			"A phone sealed in a freezer bag, dead.",
+			"On tape across the bag, in marker:",
+			"",
+			"  PIN 0412",
+			"  THE VIDEOS ARE FOR NAN.",
+			"  SHE HASN'T SEEN THE BABY.",
+		],
+	},
+	&"find_lanyard": {
+		"kind": &"find", "title": "a lanyard and a card", "lands": ["ruined_metropolis"],
+		"lines": [
+			"A lanyard, and on it a pass in a sleeve:",
+			"  MERIDIAN HOUSE  -  LEVEL 14",
+			"  VISITOR  -  RETURN TO RECEPTION",
+			"",
+			"On the back, in biro: wifi guest, pw guest :)",
+		],
+	},
+	&"find_receipt": {
+		"kind": &"find", "title": "a till receipt", "lands": [],
+		"lines": [
+			"  FRESHWAYS  -  14/11/32  09:02",
+			"  RICE 1KG ........... 1  LIMIT 1",
+			"  CANDLES 6 .......... 1  LIMIT 1",
+			"  TOTAL .............. 41.80",
+			"  YOU SAVED 0.00 TODAY. SEE YOU SOON!",
+		],
+	},
+	&"find_list": {
+		"kind": &"find", "title": "a list on an envelope", "lands": [],
+		"lines": [
+			"On the back of an envelope, in pencil:",
+			"  milk, bread",
+			"  batteries (ALL of them)",
+			"  tape for the windows",
+			"  dog food",
+			"  card for Sam, 7 on Sat!!",
+		],
+	},
+	&"find_photograph": {
+		"kind": &"find", "title": "the back of a photograph", "lands": [],
+		"lines": [
+			"On the back, in a careful hand:",
+			"  Dad's 80th. August 2030. Everyone came.",
+			"",
+			"The front has faded to white.",
+		],
+	},
+	&"find_school_letter": {
+		"kind": &"find", "title": "a letter home from school", "lands": [],
+		"lines": [
+			"  Dear Parents and Carers,",
+			"  Sports day will not go ahead this year.",
+			"  From Monday every child must carry a card",
+			"  with their name and yours on it.",
+			"  Thank you for your understanding.",
+		],
+	},
+	&"find_rota": {
+		"kind": &"find", "title": "a rota, pinned through", "lands": [],
+		"lines": [
+			"  EMERGENCY DEPT  -  ROTA W/C 12/12/33",
+			"  ALL LEAVE CANCELLED",
+			"",
+			"Under it, in two other pens:",
+			"  can't do tues, nobody to have the kids",
+			"  I'll do tues x",
+		],
+	},
+	&"find_cairn_card": {
+		"kind": &"find", "title": "a card from a box", "lands": [],
+		"lines": [
+			"From the bottom of a box, a welcome card:",
+			"  CAIRN HOME",
+			"  THE HOUSE THAT KNOWS YOU",
+			"  Just say hello. It will learn the rest.",
+			"  No setup. No passwords. Nothing to forget.",
+		],
+	},
+	&"find_news_book": {
+		"kind": &"find", "title": "a page from a child's news book", "lands": ["the_middens"],
+		"lines": [
+			"MY NEWS  Monday",
+			"At the weekend we slept at the sports centre",
+			"with evrybody. The lights stayed on all",
+			"night and I had the top bunk.",
+			"",
+			"In green pen, a tick, and: Lovely!",
+		],
+	},
+	&"find_complaint": {
+		"kind": &"find", "title": "a letter, stamped, never posted", "lands": ["the_middens", "slums"],
+		"lines": [
+			"  Dear Sir or Madam,",
+			"  The bins on Calder Road have not been",
+			"  collected for six weeks. I appreciate that",
+			"  things are difficult at present, but",
+			"",
+			"It stops there, halfway down the page.",
+		],
+	},
+	&"find_flood_magnet": {
+		"kind": &"find", "title": "a fridge magnet", "lands": ["drowned_city"],
+		"lines": [
+			"  YOUR FLOOD ZONE: C",
+			"  THREE HORNS: GO UP, NOT OUT",
+			"  ONE LONG HORN: ALL CLEAR",
+			"",
+			"Stuck to it, a scrap of note:",
+			"  on 4th floor at Kath's. we're fine x",
+		],
+	},
+	&"find_roe_card": {
+		"kind": &"find", "title": "a card in a soldier's sleeve", "lands": ["scrapwood"],
+		"lines": [
+			"  ROE CARD B",
+			"  ENGAGE ONLY ON A VERIFIED ORDER",
+			"",
+			"On the back, in pencil, the other side's",
+			"call signs. Against every one: ours.",
+		],
+	},
+	&"find_site_pass": {
+		"kind": &"find", "title": "a site pass, cracked", "lands": ["server_fields", "pinewood"],
+		"lines": [
+			"  NORTHFIELD COMPUTE  -  PHASE 4 BUILD",
+			"  GROUNDWORKS ONLY. NOT PAST FENCE C.",
+			"  HARD HATS ON. PHONES IN LOCKERS.",
+			"  VALID TO 03/2031",
+		],
+	},
+	&"find_seed_packet": {
+		"kind": &"find", "title": "a seed packet", "lands": ["grey_orchards"],
+		"lines": [
+			"A seed packet, folded over and pegged:",
+			"  RUNNER BEAN  'PAINTED LADY'",
+			"  SOW APRIL TO MAY. PICK OFTEN:",
+			"  THE MORE YOU PICK, THE MORE YOU GET.",
+			"",
+			"Half the seeds are still in it.",
+		],
+	},
+	&"find_lift_pass": {
+		"kind": &"find", "title": "a lift pass on its elastic", "lands": ["snowfield"],
+		"lines": [
+			"  WINTER 2030-31  -  ADULT  -  ALL LIFTS",
+			"  NOT TRANSFERABLE",
+			"",
+			"Notched along its edge, a mark a day.",
+			"The marks go on long past the spring.",
+		],
+	},
+	&"find_cache_tin": {
+		"kind": &"find", "title": "a tin with a logbook in it", "lands": ["bonelands"],
+		"lines": [
+			"  12/05/29  found it!! TFTC - the Hallorans",
+			"  03/08/30  quick one before the rain",
+			"  21/01/33  still here. so are we.",
+			"",
+			"The rest of the book is empty, and dry.",
+		],
+	},
+	&"find_callout": {
+		"kind": &"find", "title": "a call-out slip in a bag", "lands": ["limestone_caves"],
+		"lines": [
+			"  PARTY:    31, and the dog",
+			"  ENTERED:  Sat 4pm",
+			"  OUT BY:   when it's over",
+			"  IF NOT OUT BY THEN, CALL:",
+			"",
+			"The last line is blank.",
+		],
+	},
+	&"find_parking_fine": {
+		"kind": &"find", "title": "a parking fine in its sleeve", "lands": ["green_towers"],
+		"lines": [
+			"A parking fine, off the windscreen of a car",
+			"the trees have grown up through:",
+			"  PENALTY CHARGE NOTICE  -  22/06/31",
+			"  PAY WITHIN 14 DAYS FOR A 50% DISCOUNT",
+		],
+	},
 }
 
 # --- words that belong to one place --------------------------------------------

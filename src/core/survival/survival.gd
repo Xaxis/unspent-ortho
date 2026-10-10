@@ -382,6 +382,35 @@ static func describe_target(game: Game) -> String:
 	return ""
 
 
+## The old world's things a find can come out of (docs/SALVAGE.md E4): a landfill
+## tip, a drift of appliances, a ruin, a wreck, a shack, a car, a broken slab.
+const FIND_KINDS: Array[int] = [PropKind.TIP, PropKind.BOARD_DRIFT, PropKind.RUIN, PropKind.WRECKAGE,
+	PropKind.SHACK, PropKind.VEHICLE, PropKind.REBAR_SLAB, PropKind.HULL, PropKind.DEBRIS]
+## The share of takes from them that turn something up.
+const FIND_CHANCE := 0.14
+
+
+## A find: taking the old world apart sometimes turns up a thing with words on
+## it, which opens the moment it comes out (Events.turned_up, 49_story). Rolled
+## off the world's seed, the prop and the take, so a reload cannot reroll it, and
+## a thing already read never turns up twice.
+static func _turn_up(game: Game, prop: WorldProp, takes: int) -> void:
+	var id := find_for(game, prop, takes)
+	if id != &"" and not Story.knows(id):
+		Events.turned_up.emit(id)
+
+
+## Which find the `takes`-th take from `prop` turns up, or &"": pure, so the
+## same world, prop and take always answer the same.
+static func find_for(game: Game, prop: WorldProp, takes: int) -> StringName:
+	if not FIND_KINDS.has(prop.kind):
+		return &""
+	if Rng.hash01(game.world.seed_value, prop.id, takes, 0xF1D) >= FIND_CHANCE:
+		return &""
+	var land := BiomeRegistry.at(game.world, prop.pos).id
+	return StoryFragments.pick(StoryFragments.FIND, land, game.world.seed_value, prop.id * 16 + takes)
+
+
 ## How far `act` done here carries now, in tiles: the verb's own loudness on
 ## this ground, crouched or not, laden or not, and what is worn (the hush and the
 ## listener's ear). 32_disposition makes the noise with exactly this, so the
@@ -607,6 +636,7 @@ static func finish_work(game: Game) -> bool:
 	if not bonus.is_empty() and Rng.hash01(game.world.seed_value, prop.id, takes, floori(game.clock.minutes / 60.0), 0xB0) < float(bonus[1]):
 		inv.add(bonus[0], 1)
 		Events.took.emit(bonus[0], 1)
+	_turn_up(game, prop, takes)
 	var tool: StringName = job.tool
 	if tool != &"" and inv.wear(tool, 1):
 		Events.message.emit(Inventory.DULL_LINE)

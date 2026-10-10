@@ -75,6 +75,7 @@ func setup(g: Game) -> void:
 	Events.raid_ended.connect(_on_raid_ended)
 	Events.ring_held.connect(_on_ring_held)
 	Events.story_chose.connect(_on_chose)
+	Events.turned_up.connect(_on_turned_up)
 
 
 func started() -> void:
@@ -167,6 +168,18 @@ func _exit_tree() -> void:
 		Events.ring_held.disconnect(_on_ring_held)
 	if Events.story_chose.is_connected(_on_chose):
 		Events.story_chose.disconnect(_on_chose)
+	if Events.turned_up.is_connected(_on_turned_up):
+		Events.turned_up.disconnect(_on_turned_up)
+
+
+## A find came out of what he was taking apart (Survival._turn_up). It goes in the
+## journal and is named, never opened over him: a page that took the keys mid-take
+## would leave him standing blind with whatever the noise brought.
+func _on_turned_up(id: StringName) -> void:
+	if not Story.read(id):
+		return
+	var line := "Out of it, with words on it: " + StoryFragments.title_of(id) + ". %s to read it."
+	Events.message.emit(PlayerSettings.spell(line, [&"journal"]))
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the

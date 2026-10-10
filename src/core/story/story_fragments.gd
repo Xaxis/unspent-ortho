@@ -25,13 +25,16 @@ class_name StoryFragments
 
 ## The kinds of readable thing. A placer picks the one its object is: a gate sign
 ## is a SIGN, a dead worker's book is a NOTEBOOK, a machine's own screen is a
-## TERMINAL, and a thing somebody scratched is a MARK.
+## TERMINAL, a thing somebody scratched is a MARK, and a FIND is a small thing of
+## the old world's turned up by taking it apart (docs/SALVAGE.md E4): no placer
+## stands it anywhere; Survival deals it out of the salvage itself.
 const SIGN := &"sign"
 const NOTEBOOK := &"notebook"
 const TERMINAL := &"terminal"
 const MARK := &"mark"
+const FIND := &"find"
 
-const KINDS: Array[StringName] = [SIGN, NOTEBOOK, TERMINAL, MARK]
+const KINDS: Array[StringName] = [SIGN, NOTEBOOK, TERMINAL, MARK, FIND]
 
 
 static func kinds() -> Array[StringName]:

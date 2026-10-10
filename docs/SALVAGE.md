@@ -72,5 +72,9 @@ ground the cities were built on. Each form keeps its landscape's colour.
   body (`MobState.spoils`) and `use` strips them a piece at a time (48_carcasses),
   2.2 s of the hands and 8 minutes of the clock each, as loud as a pick on plate.
   Kills stop paying by themselves; a body nobody strips lies 10 minutes, then goes.
-- **E4, finds**: a tip, a drift and a ruin can turn up a thing with words on it.
+- **E4, finds** (built): a take from the old world's things (a tip, a drift, a
+  ruin, a wreck, a shack, a car, a slab) turns up a thing with words on it one
+  time in seven (`Survival.FIND_CHANCE`), dealt per landscape like any fragment
+  (`StoryFragments.FIND`), never twice, filed in the journal and named, never
+  opened over him mid-take (49_story `_on_turned_up`).
 - **E5, machine steel**: a steel edge is ground from a machine's own blade.

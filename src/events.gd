@@ -89,6 +89,9 @@ signal raid_ended(settlement_id: int, outcome: StringName)
 ## The story (docs/STORY.md): a thing read for the first time, a reply chosen,
 ## a beat of an arc landed. 49_story emits all three; anything may listen.
 signal story_found(id: StringName)
+## A thing with words on it came out of something being taken apart (a find,
+## docs/SALVAGE.md E4): Survival rolls it, 49_story opens it.
+signal turned_up(id: StringName)
 signal story_chose(id: StringName, pick: StringName)
 signal story_beat(id: StringName)
 ## A machine hunting the player stopped at a crags ring's edge with the player
