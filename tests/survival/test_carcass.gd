@@ -87,3 +87,34 @@ func test_a_body_with_something_on_it_lies_where_it_fell() -> void:
 func m_gap() -> float:
 	return 1.4
 
+
+
+## A BODY BESIDE HIM NEVER TAKES THE PRESS FROM WHAT HE FACES: a bush in front of
+## him and a beaten harvester lying at his side, and the key gathers (holdfast.tour
+## lost its berries to the yard fight's bodies until it did).
+func test_the_bush_he_faces_keeps_the_key_from_a_body_beside_him() -> void:
+	var g := _game()
+	await frames(4)
+	var sim := g.player.sim
+	var at := g.player.pos
+	g.player.facing = 0.0
+	g.player.hero.facing = 0.0
+	var bush := Survival.add_prop(g, PropKind.BUSH, at + Vector2(0.7, 0.0), 0.0, 0.3)
+	var m := sim.add_mob(&"harvester", at + Vector2(0.0, m_gap()))
+	await frames(2)
+	sim._kill(m, true)
+	await frames(3)
+	check(not m.spoils.is_empty(), "the body beside him has its plate on it")
+	var sys := _carcasses(g)
+	await frames(2)
+	check(sys.get("reachable") == m, "and is in reach")
+	check(WorldProp.same(Harvest.target(g).get("prop") as WorldProp, bush), "the bush is what he faces")
+	check(not bool(sys.call(&"_wins")), "so the body does not take the press")
+	eq(String(sys.call(&"use_line")), "", "and says nothing on the prompt")
+	# Turned to the body, it is the body's.
+	g.player.facing = PI * 0.5
+	g.player.hero.facing = PI * 0.5
+	await frames(2)
+	check(bool(sys.call(&"_wins")), "turned to the body, the press is its")
+	g.queue_free()
+	await frames(1)

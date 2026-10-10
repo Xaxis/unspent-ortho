@@ -76,8 +76,11 @@ func _edge(m: MobState) -> float:
 	return m.pos.distance_to(sim.hero.pos) - m.radius
 
 
-## The body has the press when nothing nearer means it: words in front, or a thing
-## under the hands that a press would take from (Harvest.target).
+## The body has the press when nothing he means more is there: words in front,
+## or a thing under the hands that a press would take from (Harvest.target) and
+## that he faces more squarely. Judged as `Survival.use_target` judges two props
+## (its edge, and 0.6 a unit of turning away), so a body lying beside him never
+## takes the press from the bush he is facing (holdfast.tour, its berries).
 func _wins() -> bool:
 	if reachable == null:
 		return false
@@ -88,7 +91,20 @@ func _wins() -> bool:
 	if h.is_empty() or not (StringName(str(h.get("state", &""))) in [Harvest.WORKABLE, Harvest.OTHER_TOOL, Harvest.YOURS]):
 		return true
 	var take := h.get("prop") as WorldProp
-	return take == null or game.query.edge_to(take, game.player.pos) >= d
+	if take == null:
+		return true
+	var p := game.player.pos
+	var c := game.query.reach_circle(take, p)
+	var to_take := Vector2(c.x, c.y) - p
+	var take_score := _score(to_take.length() - c.z, to_take)
+	return _score(d, reachable.pos - p) < take_score
+
+
+## How much the press means something `edge` tiles off in the direction `to`.
+func _score(edge: float, to: Vector2) -> float:
+	var ahead := Vector2.from_angle(game.player.facing)
+	var dot := ahead.dot(to.normalized()) if to.length() > 0.01 else 1.0
+	return edge + (1.0 - dot) * 0.6
 
 
 ## A system numbered before this one spent the press (a door, a shaft).
