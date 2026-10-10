@@ -50,6 +50,9 @@ var _spent_frame := -10
 var _up_down := false
 var _down_down := false
 var _back_down := false
+## The mouse button last frame, and where the pointer was (the talk's replies).
+var _click_down := false
+var _pointer_was := Vector2.INF
 var _folk: Node
 var _cast: Node = null
 ## The journal on the slate (UiJournalScreen): what has been found, kept.
@@ -229,6 +232,7 @@ func _process(delta: float) -> void:
 	_up_down = InputMap.has_action(&"move_up") and Keys.down(&"move_up")
 	_down_down = InputMap.has_action(&"move_down") and Keys.down(&"move_down")
 	_back_down = InputMap.has_action(&"pause") and Keys.down(&"pause")
+	_click_down = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	if game.input_blocked():
 		return
 	if use_pressed and not _use_already_spent():
@@ -683,24 +687,47 @@ func _read_talk_keys(use_pressed: bool) -> void:
 	if back_pressed:
 		_close()
 		return
+	# A click is the use key on the words: it finishes a line, goes on, or says
+	# the reply under it.
+	var click := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var clicked := click and not _click_down
+	_click_down = click
 	if talk == null:
 		# A thing being read: any of the keys puts it down.
-		if use_pressed:
+		if use_pressed or clicked:
 			_close()
 		return
+	if use_pressed or clicked:
+		if view.advance():
+			return
 	var up := InputMap.has_action(&"move_up") and Keys.down(&"move_up")
 	var down := InputMap.has_action(&"move_down") and Keys.down(&"move_down")
 	var up_pressed := up and not _up_down
 	var down_pressed := down and not _down_down
 	_up_down = up
 	_down_down = down
+	if not view.lines_done():
+		return
 	var count := talk.replies().size()
 	if count > 0 and (up_pressed or down_pressed):
 		view.choice = posmod(view.choice + (1 if down_pressed else -1), count)
 		Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
 		view.refresh()
 		return
-	if not use_pressed:
+	# The pointer over a reply lights it; a click says that one.
+	var at := view.pointer()
+	if at != _pointer_was:
+		_pointer_was = at
+		var under := view.reply_at(at)
+		if under >= 0 and under != view.choice:
+			view.choice = under
+			view.refresh()
+	if clicked:
+		var under := view.reply_at(at)
+		if under < 0:
+			return
+		view.choice = under
+	elif not use_pressed:
 		return
 	if not talk.pick(view.choice):
 		# A conversation may close onto a page (`after`): the channel closes onto
