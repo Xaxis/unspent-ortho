@@ -420,7 +420,7 @@ func _start_game() -> void:
 		# body made on the character page.
 		GameConfig.fill_new_game(o)
 		o.avatar = _avatar.duplicate(true)
-		# A player's new game wakes in the surf (48_wake).
+		# A player's new game wakes washed up on the tideline (48_wake).
 		o.wake = true
 	if o.seed_value != _raised_for and _raised_for != -1:
 		# A save from another island: what was raised behind the title is not its world.

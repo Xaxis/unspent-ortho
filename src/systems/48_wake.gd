@@ -1,26 +1,28 @@
 extends GameSystem
 ## THE WAKE, the first morning (ROADMAP slice 1, step 1a; docs/STORY.md "Waking
-## in the surf"): a new game starts him under the water in the shallows off the
-## spawn beach (WakeSpot), the black site in the sea behind him and Maren at the
-## water's edge ahead. He rises through the water line on the real clock, held
-## still only while he rises, and the record says its first lines on the moments
-## the staging makes (StoryContent.WAKE): `surface` as he breaks the water,
-## `shallows` as he stands. Then he has his legs, and nothing waits for him to
-## reach the sand.
+## in the surf"): a new game opens on him washed up at the tideline of the spawn
+## beach (WakeSpot), face down on the sand with the sea running up to his boots,
+## the black site out in the water behind him and Maren a few paces off, who
+## pulled him out. He lies there, out cold, until he comes to (or the player
+## presses something), then gets up off the sand on the real clock (the person's
+## `rise`), held still only while he is down. The record says its first lines on
+## the moments the staging makes (StoryContent.WAKE): `comes_to` as he stirs,
+## `stands` as he is up. Then he has his legs, and nothing waits for him.
 ##
 ## ONLY A PLAYER'S NEW GAME WAKES: the title's New game and dev mode's play set
 ## `BootOptions.wake` (`--wake` on a command line). A game booted straight into
 ## a world is a test, a shot or a tour standing where it means to. A LOADED GAME
 ## HAS WOKEN (Story.began, saved), and a start named by `--at`, `--place` or
-## `--village` is staging something else: none is put in the surf. Such a first morning still hears the lines, all at
-## once on the first frame, as the old opening was.
+## `--village` is staging something else: none is put on the tideline. Such a
+## first morning still hears the lines, all at once on the first frame.
 ##
 ## Numbered before 49_story, which reads the story after the first morning is
-## marked, and 49_cast, whose Maren it stands at the water once she is cast.
+## marked, and 49_cast, whose Maren it stands by him once she is cast.
 
-## How far under the ground he starts, and how long the rise takes.
-const DEPTH := 1.7
-const RISE := 1.6
+## How long he lies out cold before he comes to by himself, and how soon a press
+## may bring him round: the opening frame is seen before anything cuts it short.
+const OUT := 2.4
+const OUT_LEAST := 0.8
 ## The wake is over once he has spoken to her and the talk is closed, or is this
 ## far from where she waited.
 const MAREN_LEAVE := 16.0
@@ -40,7 +42,7 @@ const SIGHT_TIP := 0.5
 const SIGHT_FOV := 72.0
 
 ## THE OPENING HOLDS THE COAST (Coast.opening; owner, playtest 2026-10-09: no
-## machine walks into the scene while he is still learning to play). From the surf
+## machine walks into the scene while he is still learning to play). From the sand
 ## until Maren has given him somewhere to go, or he has walked this far from where
 ## he woke without asking her, or OPENING_MOST seconds after he stood up.
 const OPENING_LEAVE := 40.0
@@ -51,7 +53,8 @@ var _staged: Dictionary = {}
 var _coast: Coast = null
 var _opening_t := -1.0
 var _t := -1.0
-var _said_shallows := false
+var _rise_at := -1.0
+var _stood := false
 var _maren_home := Vector2.INF
 var _sight_at := INF
 var _sighted := false
@@ -76,9 +79,11 @@ func started() -> void:
 		_coast.opening = true
 	var p: Vector2 = _staged.at
 	game.player.place(p, float(_staged.face))
-	game.player.sunk = DEPTH
 	game.view.ensure_near(p)
 	game.camera.snap_to(game.player.position)
+	_lie()
+	# Out of the sea: soaked through, however dry the sand he lies on.
+	SurvivalState.of(game).wet_until = game.clock.minutes + Condition.WET_MINUTES
 
 
 func _process(delta: float) -> void:
@@ -87,41 +92,56 @@ func _process(delta: float) -> void:
 	if not _first:
 		return
 	if _staged.is_empty():
-		# Not in the surf: the lines, once, on the first frame (the slate's message
-		# line is built by 90_ui, after this system starts).
+		# Not on the tideline: the lines, once, on the first frame (the slate's
+		# message line is built by 90_ui, after this system starts).
 		_first = false
-		for beat: StringName in [&"surface", &"shallows"]:
+		for beat: StringName in [&"comes_to", &"stands"]:
 			_say(beat)
 		return
 	if _t < 0.0:
-		# THE RISE WAITS FOR THE PAGE: a new game's first frames are drawn under
-		# the loading page, and a rise behind it is a rise nobody sees, its lines
+		# THE WAKE WAITS FOR THE PAGE: a new game's first frames are drawn under
+		# the loading page, and a waking behind it is one nobody sees, its lines
 		# said to a message line that drops what arrives while a page is up.
+		_hold(OUT + PersonAnim.RISE_SECONDS)
 		if not get_tree().get_nodes_in_group(&"boot_page").is_empty():
-			game.scripted_move = Vector2.ZERO
-			game.scripted_seconds = RISE
 			return
 		_t = 0.0
 		_stand_maren()
-		_say(&"surface")
-		# Held still while he rises: the input the body is driven by this long is none.
-		game.scripted_move = Vector2.ZERO
-		game.scripted_seconds = RISE
 	_t += delta
-	var k := clampf(_t / RISE, 0.0, 1.0)
-	game.player.sunk = DEPTH * (1.0 - k) * (1.0 - k)
-	if k >= 1.0 and not _said_shallows:
-		_said_shallows = true
-		game.player.sunk = 0.0
-		_say(&"shallows")
+	if _rise_at < 0.0:
+		if _t >= OUT or (_t >= OUT_LEAST and Input.is_anything_pressed()):
+			_rise_at = _t
+			_say(&"comes_to")
+			game.player.model.play_action(&"rise", 0.0)
+			_hold(PersonAnim.RISE_SECONDS)
+		else:
+			_hold(OUT + PersonAnim.RISE_SECONDS)
+	if _rise_at >= 0.0 and not _stood and _t - _rise_at >= PersonAnim.RISE_SECONDS:
+		_stood = true
+		_say(&"stands")
 		_sight_at = _t + SIGHT_AFTER
-	if _said_shallows and not _sighted and _t >= _sight_at:
+	if _stood and not _sighted and _t >= _sight_at:
 		_sighted = true
 		_first_sight()
 	var met := Story.met(&"maren") and not game.talking
 	var gone := game.player.pos.distance_to(_staged.maren) > MAREN_LEAVE
-	if _said_shallows and _sighted and not _stage_looking() and (met or gone):
+	if _stood and _sighted and not _stage_looking() and (met or gone):
 		_first = false
+
+
+## Out cold on the sand: the body lying as a fall leaves it, breathing.
+func _lie() -> void:
+	var model := game.player.model
+	if model == null:
+		return
+	model.pose_at(&"downed", 1.0)
+	model.unfreeze()
+
+
+## Held still while he is down: the input the body is driven by this long is none.
+func _hold(seconds: float) -> void:
+	game.scripted_move = Vector2.ZERO
+	game.scripted_seconds = seconds
 
 
 ## Let the coast go once he has a reason to (see OPENING_LEAVE). Timed from the
@@ -151,13 +171,13 @@ func _send_maren_home() -> void:
 	_maren_home = Vector2.INF
 
 
-## While he rises out of the surf the view looks down on him, even in a game that
-## opens over the shoulder (41_shoulder asks): the shoulder's eye sat on the water.
+## While he is down on the sand the view looks down on him, even in a game that
+## opens over the shoulder (41_shoulder asks): the shoulder's eye sat in the sand.
 func keeps_view_down() -> bool:
-	return _first and not _staged.is_empty() and game.player != null and game.player.sunk > 0.0
+	return _first and not _staged.is_empty() and not _stood
 
 
-## THE WAKE HOLDS THE GLASS from the moment he is put in the surf until it is
+## THE WAKE HOLDS THE GLASS from the moment he is put on the tideline until it is
 ## over (he has met Maren, or walked off): no goal line, no key hint and no line
 ## but the record's over his first breath (58_guide asks, and 90_ui and the Hud
 ## ask the guide). The first thing to
@@ -203,8 +223,8 @@ func _say(beat: StringName) -> void:
 		Events.message.emit(line)
 
 
-## Maren waits at the water's edge nearest him, facing him, until he has come
-## to her or gone.
+## Maren waits a few paces off along the water's edge, facing him, until he has
+## come to her or gone.
 func _stand_maren() -> void:
 	var cast := _cast()
 	if cast == null:
@@ -220,15 +240,15 @@ func _cast() -> Node:
 	return null
 
 
-## `waking`: he is in the surf and has not yet risen (not `wake`, which is the
-## ring's shards, 19_orbit). `woken`: the rise is over. `wake:staged`: this game
-## put him in the surf at all.
+## `waking`: he is down on the tideline and not yet up (not `wake`, which is the
+## ring's shards, 19_orbit). `woken`: he is on his feet. `wake:staged`: this game
+## put him on the tideline at all.
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"waking":
-			return not _staged.is_empty() and not _said_shallows
+			return not _staged.is_empty() and not _stood
 		&"woken":
-			return _said_shallows
+			return _stood
 		&"wake:staged":
 			return not _staged.is_empty()
 	return false

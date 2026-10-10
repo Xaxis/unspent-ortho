@@ -5921,17 +5921,17 @@ const TALKS := {
 # it means, because he does not know yet either.
 #
 # THE WAKE (48_wake): the record's first lines, only what could be seen, one
-# staged moment each. `surface` as his head breaks the water line; `shallows`
-# when the rise ends and he stands in the surf with the black site behind him
-# and Maren at the water's edge, which is also where the staging hands him his
-# legs. No line waits for him to reach the sand: a line for walking onto a tile
-# is the one thing the record never says (docs/STORY.md). "Came up out of the
+# staged moment each. `comes_to` as he stirs, face down on the tideline where
+# the sea left him; `stands` when he is up off the sand with the black site
+# behind him and Maren along the water's edge, which is also where the staging
+# hands him his legs. A line for walking onto a tile is the one thing the record
+# never says (docs/STORY.md). "Came up out of the
 # water" is Maren's to say, in her talk, and the black site stays "something"
 # until somebody names it. `tether` when the view turns once to the far
 # horizon and tips up (48_wake, 42_stage); the line and its light stay unnamed.
 const WAKE := {
-	&"surface": ["You break the surface.", "Your first breath is salt."],
-	&"shallows": [
+	&"comes_to": ["Salt in your mouth. Sand under your cheek.", "You cough up the sea."],
+	&"stands": [
 		"Behind you, something stands in the sea.",
 		"Someone at the water's edge is watching you.",
 		"You do not remember the water.",
