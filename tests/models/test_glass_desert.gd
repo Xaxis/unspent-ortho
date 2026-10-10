@@ -109,7 +109,7 @@ func test_each_does_to_a_body_what_the_landscape_says() -> void:
 	var car: Array = Takes.options(PropKind.FUSED_CAR)
 	eq(car.size(), 2, "strip, then pry")
 	eq(car[0].item, &"scrap")
-	eq(car[1].item, &"copper_ore")
+	eq(car[1].item, &"cable")
 	eq(car[1].stuff, &"steel", "the copper wants a steel edge")
 	for o: Dictionary in car:
 		check(bool(o.keep), "the car stands (%s)" % o.verb)

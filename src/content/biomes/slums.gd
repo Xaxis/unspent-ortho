@@ -316,14 +316,14 @@ static func make() -> BiomeDef:
 		PropKind.VENT, PropKind.VENT_CAP, PropKind.STACK, PropKind.WATER_TANK, PropKind.SLAG_HEAP,
 		PropKind.RELAY, PropKind.CHECKPOINT, PropKind.ARCHIVE, PropKind.MEMORIAL, PropKind.GRAVE,
 		PropKind.BOULDER, PropKind.STUMP, PropKind.BUSH, PropKind.DEAD_TREE,
-		PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.STONE_ORE, PropKind.COAL_ORE,
+		PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.STONE_ORE, PropKind.COAL_TIP,
 		# The wall somebody painted, and what got bolted over it. This landscape
 		# is the only one that declares it, and until it did, nothing in the game
 		# placed a mural and the kind was unreachable code.
 		PropKind.MURAL]
 	# What a city's rock gives is what was poured into it: iron and copper come
 	# up out of the rubble easily, stone hardly at all.
-	d.ore = [[PropKind.IRON_ORE, 0.055], [PropKind.COPPER_ORE, 0.095], [PropKind.COAL_ORE, 0.115],
+	d.ore = [[PropKind.REBAR_SLAB, 0.055], [PropKind.CABLE_DUCT, 0.095], [PropKind.COAL_TIP, 0.115],
 		[PropKind.STONE_ORE, 0.125]]
 	d.gravel_ore = true
 	d.reed_chance = 0.0

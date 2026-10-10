@@ -81,12 +81,12 @@ static func make() -> BiomeDef:
 	# Limestone dust: the pale of the clints themselves, carried on the wind.
 	d.weather_style = {&"dust": {"air": Color(0.84, 0.80, 0.70), "thick": 1.0}}
 	d.props = [PropKind.PINE, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS, PropKind.BOULDER,
-		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.TIN_ORE, PropKind.COAL_ORE,
+		PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.BOARD_DRIFT, PropKind.COAL_TIP,
 		PropKind.BONES, PropKind.GORSE, PropKind.CLINTS, PropKind.STANDING_STONE,
 		PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK]
 	# The richest seams in the world, and they show in the pavement's joints.
-	d.ore = [[PropKind.STONE_ORE, 0.05], [PropKind.IRON_ORE, 0.075], [PropKind.COPPER_ORE, 0.1],
-		[PropKind.TIN_ORE, 0.12], [PropKind.COAL_ORE, 0.135]]
+	d.ore = [[PropKind.STONE_ORE, 0.05], [PropKind.REBAR_SLAB, 0.075], [PropKind.CABLE_DUCT, 0.1],
+		[PropKind.BOARD_DRIFT, 0.12], [PropKind.COAL_TIP, 0.135]]
 	d.gravel_ore = true
 	d.reed_chance = 0.14
 	d.sites = {"tips": 3, "stone_circles": 3, "summit": 2, "kiln_ground": Ground.LIMESTONE}

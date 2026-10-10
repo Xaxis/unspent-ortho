@@ -53,14 +53,14 @@ func test_survival_works_builds_and_draws_inside_a_running_game() -> void:
 	game.inventory.add(&"pick")
 	Survival.hold(game, &"pick")
 	game.player.facing += PI * 0.5
-	var vein := _put(PropKind.IRON_ORE)
+	var vein := _put(PropKind.REBAR_SLAB)
 	check(Survival.use(game), "first blow")
 	sys.set("scripted_use_held", true)
 	for i in 8:
 		await _run(1.0)
 		if game.world.depleted.has(vein.id):
 			break
-	eq(game.inventory.count(&"iron_ore"), 3, "three takes from one press held down")
+	eq(game.inventory.count(&"rebar"), 3, "three takes from one press held down")
 	check(game.world.depleted.has(vein.id), "worked out")
 	await _run(0.5)
 	check(not Survival.busy(game), "and it stops there")

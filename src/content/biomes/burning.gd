@@ -75,11 +75,11 @@ static func make() -> BiomeDef:
 	# alight — and its sky is thick with ash. A bright night sky on top of that
 	# would take the fires' own light off it, which is the whole picture here.
 	d.night_sky = 0.90
-	d.props = [PropKind.DEAD_TREE, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE,
-		PropKind.COPPER_ORE, PropKind.IRON_ORE, PropKind.BONES, PropKind.VENT,
+	d.props = [PropKind.DEAD_TREE, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_TIP,
+		PropKind.CABLE_DUCT, PropKind.REBAR_SLAB, PropKind.BONES, PropKind.VENT,
 		PropKind.DRIFTWOOD, PropKind.MUSSEL_ROCK]
-	d.ore = [[PropKind.STONE_ORE, 0.02], [PropKind.COAL_ORE, 0.05], [PropKind.COPPER_ORE, 0.068],
-		[PropKind.IRON_ORE, 0.085]]
+	d.ore = [[PropKind.STONE_ORE, 0.02], [PropKind.COAL_TIP, 0.05], [PropKind.CABLE_DUCT, 0.068],
+		[PropKind.REBAR_SLAB, 0.085]]
 	d.sites = {"tips": 2, "ruins": true, "fumaroles": 4, "summit": 5}
 	d.tip_ground = Ground.CLINKER
 	d.beached_wrecks = false

@@ -20,7 +20,8 @@ class_name Recipes
 ##   without trade that loop had no way in. Wood picked up is the way in.
 ## - Plate from a tip makes only the way-in tools: a knife and a pick. Every
 ##   other edge (axe, mattock, billhook) needs iron, and iron comes only from
-##   ore, so the first pick has a job to do. (The source bought these.)
+##   rebar broken out of the old world's slabs, so the first pick has a job to
+##   do. (The source bought these.)
 ## - Re-edging costs charcoal, not coin.
 ## - Pacing (M1.5): the source's minutes jumped the clock from a menu, so a first
 ##   pick landed at night. Station work runs at about a third of them and
@@ -50,10 +51,12 @@ const LIST: Array[Dictionary] = [
 	{"id": &"charcoal", "at": &"fire", "minutes": 40.0, "needs": {&"driftwood": 4}, "makes": {&"charcoal": 2}},
 	{"id": &"charcoal_deadwood", "at": &"fire", "minutes": 40.0, "needs": {&"deadwood": 4}, "makes": {&"charcoal": 2}},
 	{"id": &"charcoal_wood", "at": &"fire", "minutes": 40.0, "needs": {&"timber": 2}, "makes": {&"charcoal": 2}},
-	{"id": &"tin", "at": &"fire", "minutes": 80.0, "needs": {&"tin_ore": 3, &"charcoal": 2}, "makes": {&"tin": 1}},
-	{"id": &"iron", "at": &"fire", "minutes": 100.0, "needs": {&"iron_ore": 3, &"charcoal": 2}, "makes": {&"iron": 1}},
-	{"id": &"iron_coal", "at": &"fire", "minutes": 100.0, "needs": {&"iron_ore": 3, &"coal": 2}, "makes": {&"iron": 1}},
-	{"id": &"copper", "at": &"fire", "minutes": 80.0, "needs": {&"copper_ore": 3, &"charcoal": 2}, "makes": {&"copper": 1}},
+	# WORKED BACK INTO STOCK, NEVER SMELTED (docs/SALVAGE.md): solder melted off
+	# boards, rebar beaten straight into bar, cable burnt out of its sheath.
+	{"id": &"tin", "at": &"fire", "minutes": 80.0, "needs": {&"boards": 3, &"charcoal": 2}, "makes": {&"tin": 1}},
+	{"id": &"iron", "at": &"fire", "minutes": 100.0, "needs": {&"rebar": 3, &"charcoal": 2}, "makes": {&"iron": 1}},
+	{"id": &"iron_coal", "at": &"fire", "minutes": 100.0, "needs": {&"rebar": 3, &"coal": 2}, "makes": {&"iron": 1}},
+	{"id": &"copper", "at": &"fire", "minutes": 80.0, "needs": {&"cable": 3, &"charcoal": 2}, "makes": {&"copper": 1}},
 	{"id": &"pitch", "at": &"fire", "minutes": 70.0, "needs": {&"resin": 4}, "makes": {&"pitch": 1}},
 	{"id": &"oil", "at": &"fire", "minutes": 90.0, "needs": {&"resin": 2}, "makes": {&"oil": 1}},
 	# The shore's lamp oil: whelks rendered down. Slower and dearer than pine resin.

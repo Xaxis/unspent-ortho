@@ -143,7 +143,7 @@ static func make() -> BiomeDef:
 		# kind places nothing until a recipe returns it.
 		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT,
 		PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]
-	d.ore = [[PropKind.IRON_ORE, 0.03], [PropKind.COPPER_ORE, 0.026], [PropKind.STONE_ORE, 0.02]]
+	d.ore = [[PropKind.REBAR_SLAB, 0.03], [PropKind.CABLE_DUCT, 0.026], [PropKind.STONE_ORE, 0.02]]
 	d.sites = {"tips": 3, "ruins": true}
 	d.beached_wrecks = false
 	d.pools = {"order": 3, "cell": 36, "chance": 0.3, "r_min": 1.8, "r_max": 3.6, "ground": Ground.WATER}

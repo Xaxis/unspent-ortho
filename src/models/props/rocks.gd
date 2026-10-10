@@ -1,8 +1,9 @@
 extends RefCounted
-## Stone: boulders, ore nodes, standing stones, clints, cairns, mussel rock and
-## peat banks. The rock takes the country's geology: slate on the coast, mossy
-## in the wet, snow-capped in the cold, pale limestone on the bones, basalt in
-## the burning. Ore shows as bright facets on the faces toward the camera.
+## Stone: boulders, a quarried face, standing stones, clints, cairns, mussel rock
+## and peat banks. The rock takes the country's geology: slate on the coast,
+## mossy in the wet, snow-capped in the cold, pale limestone on the bones, basalt
+## in the burning. Metal never comes out of rock: it is the buried old world's
+## (props/salvage.gd, docs/SALVAGE.md).
 ## What the machine age cast (a standing stone that is a concrete leg with bent
 ## rebar, a lens set on a cairn, a pipe through a peat face) is FOUND.
 
@@ -15,10 +16,6 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	match kind:
 		PropKind.BOULDER: boulder(k, v, c)
 		PropKind.STONE_ORE: stone_ore(k, v, c)
-		PropKind.IRON_ORE: iron_ore(k, v, c)
-		PropKind.COPPER_ORE: copper_ore(k, v, c)
-		PropKind.COAL_ORE: coal_ore(k, v, c)
-		PropKind.TIN_ORE: tin_ore(k, v, c)
 		PropKind.STANDING_STONE: standing_stone(k, v, c)
 		PropKind.CLINTS: clints(k, v, c)
 		PropKind.CAIRN: cairn(k, v, c)
@@ -321,104 +318,6 @@ static func stone_ore(k: Kit, v: int, c: int) -> void:
 
 
 ## Iron: a knobbly ironstone boss, rust-red and ochre in bold slanting beds.
-static func iron_ore(k: Kit, v: int, c: int) -> void:
-	var s := 7600 + v * 41 + c
-	var cols := [P.RUST[2], P.EARTH[2], P.RUST[3], P.RUST[1], P.RUST[4], P.EARTH[3]]
-	k.made.push(Transform3D(Basis(Vector3.BACK, 0.28) * Basis(Vector3.RIGHT, 0.12), Vector3(0, -0.08, 0)))
-	banded(k, [0.52, 0.56, 0.5, 0.44, 0.34, 0.2], [0.0, 0.16, 0.3, 0.44, 0.56, 0.66], cols, Vector3(0.04, 0.74, 0.02), 7, s)
-	k.made.pop()
-	# Ironstone nodules standing out of the boss.
-	for i in 3 + v:
-		var a := float(i) * 2.2 + 0.4
-		k.stone(cos(a) * 0.42, 0.1 + i * 0.08, sin(a) * 0.36, 0.14, 0.16, s + 20 + i, P.RUST[3] if i % 2 else P.RUST[1], 5, 0.2)
-	# Ochre stain fanned out on the ground below it. BOTH WOUND THE OTHER WAY
-	# ROUND than they read: `MeshKit.tri` takes its normal from (c - b) x (a - b),
-	# so these two faced the ground and the stain had never been drawn once —
-	# the fifth instance of the same trap, and the first that a test found rather
-	# than a person (tests/render/test_found_drawn.gd).
-	k.made.tri(Vector3(0.3, 0.01, 0.3), Vector3(0.6, 0.01, 0.75), Vector3(0.95, 0.01, 0.2), P.RUST[4])
-	k.made.tri(Vector3(0.3, 0.01, 0.3), Vector3(0.1, 0.01, 0.62), Vector3(0.6, 0.01, 0.75), P.EARTH[3])
-
-
-## Copper: a tall jagged spur of dark slate in weathered beds of its own, cut
-## by two thin veins of verdigris at heights of its own, one bright and one
-## gone back half into the rock, with the green run down its faces from them.
-##
-## IT WAS FIVE EVEN BANDS, rock and green in turn, and under a cave's near light
-## a spur of it read as a post painted in stripes (cave-dark.tour, heading 3).
-## The green is what says copper, so it stays; it is a vein, not a coat.
-static func copper_ore(k: Kit, v: int, c: int) -> void:
-	var g := geology(c)
-	var s := 7700 + v * 41 + c
-	var host := P.SLATE[1].lerp(g[1], 0.3)
-	# The beds: the rock's own three tones, uneven in height.
-	var beds: Array[Color] = [Kit.tone(host, 0.9), host, Kit.tone(host, 1.08)]
-	var lo := 0.16 + Rng.hash01(s, 1) * 0.2
-	var hi := lo + 0.3 + Rng.hash01(s, 2) * 0.28
-	var vein_a := 0.07 + Rng.hash01(s, 3) * 0.04
-	var vein_b := 0.05 + Rng.hash01(s, 4) * 0.03
-	var heights: Array = [-0.06, lo, lo + vein_a, hi, hi + vein_b, 0.95 + Rng.hash01(s, 5) * 0.1, 1.12]
-	var radii: Array = []
-	for h: float in heights:
-		radii.append(0.4 - (h + 0.06) / 1.18 * 0.26 + Kit.j(s, int(h * 100.0), 0.015))
-	var weathered := P.SPRUCE[5].lerp(host, 0.5)
-	var cols: Array = [beds[0], P.SPRUCE[4], beds[1], weathered, beds[2], beds[1]]
-	k.made.push(Transform3D(Basis(Vector3.BACK, -0.14), Vector3.ZERO))
-	banded(k, radii, heights, cols, Vector3(0.08, 1.4, -0.04), 5, s)
-	k.made.pop()
-	# The green runs down the seen faces from the veins, thin and toned into the
-	# rock, not bold stripes from the top.
-	for i in 3:
-		var a := -0.5 + i * 0.5 + Kit.j(s, i + 10, 0.15)
-		var from_y: float = lo if i % 2 == 0 else hi
-		var top := Vector3(cos(a) * 0.3, from_y, sin(a) * 0.3)
-		var out := Vector3(cos(a), 0.0, sin(a)) * 0.08
-		var side := Vector3(-sin(a), 0.0, cos(a)) * (0.025 + Rng.hash01(s, i + 20) * 0.02)
-		var run := P.SPRUCE[4].lerp(host, 0.35) if i % 2 == 0 else weathered
-		k.made.quad(top + out * 0.6 - side, top + out * 0.6 + side, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out + side * 0.4, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out - side * 0.4, run)
-	if v == 1:
-		k.stone(0.42, -0.04, 0.28, 0.2, 0.34, s + 3, host, 5, 0.3, P.SPRUCE[4].lerp(host, 0.4))
-
-
-## Coal: a low wide bank of grey beds with thick black seams between, the
-## seams catching a glint; slack spilled at its foot.
-static func coal_ore(k: Kit, v: int, c: int) -> void:
-	var g := geology(c)
-	var s := 7800 + v * 41 + c
-	var bed := P.STONE[3].lerp(g[0], 0.25)
-	k.made.push(Transform3D(Basis(Vector3.BACK, 0.08), Vector3.ZERO))
-	# The seam is the darkest thing in the land, and it is still ink: `banded`
-	# tones its bands down, so drawing it at INK[0] put coal under the pen
-	# (docs/LOOK.md section 6, nothing is pure black).
-	banded(k, [0.78, 0.74, 0.7, 0.62, 0.52], [-0.06, 0.12, 0.26, 0.4, 0.5], [bed, GroundColors.glint(P.INK[1]), bed, P.INK[1], GroundColors.up(bed, 0.2)], Vector3(0.0, 0.56, 0.0), 8, s, 0.62)
-	k.made.pop()
-	for i in 6:
-		var a := float(i) * 1.1 + 0.3
-		k.stone(0.55 + cos(a) * 0.3, -0.03, 0.25 + sin(a) * 0.25, 0.07, 0.06, s + 30 + i, P.INK[1] if i % 2 else P.INK[2], 4)
-	if v == 1:
-		k.slab(-0.62, -0.04, -0.32, 0.4, 0.14, 0.3, s + 40, P.INK[1], P.INK[2], 0.03, 0.1, 0.0)
-
-
-## Tin: a cluster of angular pale quartz prisms with dark crystals in them,
-## white veins that glint across a grey host.
-static func tin_ore(k: Kit, v: int, c: int) -> void:
-	var g := geology(c)
-	var s := 7900 + v * 41 + c
-	var host := P.STONE[2].lerp(g[0], 0.3)
-	banded(k, [0.42, 0.44, 0.34], [-0.06, 0.16, 0.34], [host, P.STONE[5], host], Vector3(0.0, 0.42, 0.0), 6, s)
-	var spikes := [[0.0, 0.3, 0.0, 0.16, 0.62, 0.1], [0.24, 0.2, 0.16, 0.12, 0.5, -0.3], [-0.22, 0.18, 0.12, 0.12, 0.44, 0.35], [0.06, 0.2, -0.26, 0.1, 0.4, -0.2]]
-	for i in spikes.size():
-		if v == 1 and i == 3:
-			continue
-		var sp := PackedFloat64Array(spikes[i])
-		k.made.push(Transform3D(Basis(Vector3.BACK, float(sp[5])) * Basis(Vector3.RIGHT, float(sp[5]) * 0.6), Vector3(sp[0], sp[1], sp[2])))
-		k.made.prism(0, 0, 0, sp[3], sp[4] * 0.7, float(sp[3]) * 0.85, 5, P.ASH[4] if i % 2 == 0 else P.STONE[4], GroundColors.glint(P.STONE[5]))
-		k.made.prism(0, sp[4] * 0.7, 0, float(sp[3]) * 0.85, sp[4], 0.0, 5, P.STONE[5])
-		# A dark cassiterite crystal set in it.
-		k.made.quad(Vector3(sp[3] * 0.9, 0.1, -0.03), Vector3(sp[3] * 0.9, 0.1, 0.03), Vector3(sp[3] * 0.9, 0.22, 0.03), Vector3(sp[3] * 0.9, 0.22, -0.03), P.INK[1])
-		k.made.pop()
-
-
 static func standing_stone(k: Kit, v: int, c: int) -> void:
 	var g := geology(c)
 	var d := BiomeDressing.of(c)
@@ -445,11 +344,11 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 			k.chamfer(0.0, 0.62, 0.0, 0.5, 0.08, 0.42, 0.08, GroundColors.down(concrete, 0.35), concrete)
 			k.found.quad(Vector3(0.2, 0.9, 0.181), Vector3(0.2, 0.9, 0.06), Vector3(0.2, 1.14, 0.09), Vector3(0.2, 1.1, 0.181), P.STONE[4])
 			k.rod(Vector3(0.212, 0.86, 0.13), Vector3(0.212, 1.2, 0.13), 0.014, 4, P.RUST[2])
-			_rebar(k, [Vector3(-0.12, 1.5, 0.09), Vector3(0.1, 1.42, 0.1), Vector3(-0.1, 1.5, -0.1), Vector3(0.12, 1.4, -0.09)],
+			rebar(k, [Vector3(-0.12, 1.5, 0.09), Vector3(0.1, 1.42, 0.1), Vector3(-0.1, 1.5, -0.1), Vector3(0.12, 1.4, -0.09)],
 				[Vector3(-0.34, 1.9, 0.2), Vector3(0.42, 1.62, 0.26), Vector3(-0.2, 2.02, -0.3), Vector3(0.36, 1.2, -0.2)])
 			# Rust runs down the faces from the bars.
-			_run(k, Vector3(0.1, 1.38, 0.182), 0.09, 0.95, Vector3(0, 0, 1))
-			_run(k, Vector3(0.222, 1.36, -0.02), 0.07, 0.7, Vector3(1, 0, 0))
+			rust_run(k, Vector3(0.1, 1.38, 0.182), 0.09, 0.95, Vector3(0, 0, 1))
+			rust_run(k, Vector3(0.222, 1.36, -0.02), 0.07, 0.7, Vector3(1, 0, 0))
 			# A number cast into the side, three ticks under a bar.
 			k.found.quad(Vector3(-0.14, 0.3, 0.183), Vector3(0.02, 0.3, 0.183), Vector3(0.02, 0.33, 0.183), Vector3(-0.14, 0.33, 0.183), P.STONE[2])
 			for i in 3:
@@ -467,12 +366,12 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 			k.found.push(Transform3D(Basis.IDENTITY, Vector3(-0.04, 0.0, 0.02)))
 			cast_leg(k, 0.44, 0.38, 0.07, 0.46, stump, 0.74, GroundColors.down(concrete, 0.15), GroundColors.down(concrete, 0.25))
 			k.found.pop()
-			_rebar(k, [Vector3(-0.16, 0.9, 0.1), Vector3(0.08, 0.8, 0.12), Vector3(-0.14, 0.95, -0.1), Vector3(0.1, 0.78, -0.08)],
+			rebar(k, [Vector3(-0.16, 0.9, 0.1), Vector3(0.08, 0.8, 0.12), Vector3(-0.14, 0.95, -0.1), Vector3(0.1, 0.78, -0.08)],
 				[Vector3(-0.5, 1.08, 0.2), Vector3(0.36, 0.64, 0.42), Vector3(-0.26, 1.3, -0.2), Vector3(0.44, 0.9, -0.3)])
 			k.found.prism(0.3, 0.5, 0.26, 0.035, 0.62, 0.035, 6, P.STONE[1], P.STONE[4])
 			k.found.prism(-0.3, 0.5, -0.26, 0.04, 0.54, 0.04, 6, P.INK[1])
-			_run(k, Vector3(0.18, 0.76, 0.2), 0.07, 0.3, Vector3(0, 0, 1))
-			_run(k, Vector3(0.4, 0.47, 0.1), 0.1, 0.5, Vector3(1, 0, 0))
+			rust_run(k, Vector3(0.18, 0.76, 0.2), 0.07, 0.3, Vector3(0, 0, 1))
+			rust_run(k, Vector3(0.4, 0.47, 0.1), 0.1, 0.5, Vector3(1, 0, 0))
 			# A chunk lies where it fell, a bar still in it.
 			k.found.push(Transform3D(Basis(Vector3.UP, 0.7) * Basis(Vector3.BACK, 0.4), Vector3(0.66, -0.04, -0.46)))
 			var chunk: Array[float] = [0.22, 0.18, 0.12, 0.1, 0.14, 0.2, 0.24, 0.25]
@@ -537,7 +436,7 @@ static func cast_leg(k: Kit, w: float, d: float, cut: float, y0: float, tops: Ar
 
 ## Reinforcing bars out of a break: each from its root to where it was bent,
 ## with a knee part way so it reads as bent, not stuck on.
-static func _rebar(k: Kit, roots: Array, ends: Array) -> void:
+static func rebar(k: Kit, roots: Array, ends: Array) -> void:
 	for i in roots.size():
 		var a: Vector3 = roots[i]
 		var b: Vector3 = ends[i]
@@ -550,7 +449,7 @@ static func _rebar(k: Kit, roots: Array, ends: Array) -> void:
 ## to a thread `length` below. `out` is the face's outward normal.
 ## Wound from the direction it is meant to be seen from, not from corner order:
 ## see props/works.gd `run`, which had the same fault and never drew at all.
-static func _run(k: Kit, top: Vector3, width: float, length: float, out: Vector3) -> void:
+static func rust_run(k: Kit, top: Vector3, width: float, length: float, out: Vector3) -> void:
 	var along := Vector3(out.z, 0, -out.x) * width * 0.5
 	if along.cross(Vector3.DOWN).dot(out) < 0.0:
 		along = -along

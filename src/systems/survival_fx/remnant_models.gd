@@ -39,8 +39,8 @@ static func for_kind(kind: int) -> StringName:
 	match kind:
 		PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE:
 			return &"stump"
-		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, \
-				PropKind.TIN_ORE, PropKind.CLINTS, PropKind.RUIN, \
+		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP, \
+				PropKind.BOARD_DRIFT, PropKind.CLINTS, PropKind.RUIN, \
 				# A carved face broken up for its hushstone is a boulder broken up:
 				# what is left is its own rock (props/crags.gd).
 				PropKind.CARVED_FACE, \

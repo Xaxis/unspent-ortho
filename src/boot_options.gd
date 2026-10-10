@@ -100,7 +100,7 @@ extends RefCounted
 ## --fauna=KIND:N,...  N animals of KIND in a ring round the player, e.g. gull:3 (characters)
 ## --give=ID:N,ID:N    put items in the creel at start (survival)
 ## --held=ID           hold this item at start, given if not carried (survival)
-## --use[=KIND]        at start, face the nearest workable prop (of KIND, e.g. iron_ore) and use (survival)
+## --use[=KIND]        at start, face the nearest workable prop (of KIND, e.g. rebar_slab) and use (survival)
 ## --build=STATION     at start, put a fire/bench/kiln in front of the player, free (survival)
 ## --put=KIND[,KIND]   at start, place these props (e.g. tip,driftwood) in an arc in front of the player (survival)
 ## --taken             the --put props start already taken, laid in a row across the screen (their leavings show)

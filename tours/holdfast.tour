@@ -15,28 +15,28 @@
 coast calm
 wait 0.6
 try 4
-  at prop:iron_ore
+  at prop:rebar_slab
   walk 0,0 0.05
   press use 0.1
-  await took:iron_ore 14
+  await took:rebar 14
 end
 try 4
-  at prop:iron_ore
+  at prop:rebar_slab
   walk 0,0 0.05
   press use 0.1
-  await took:iron_ore 14
+  await took:rebar 14
 end
 try 4
-  at prop:iron_ore
+  at prop:rebar_slab
   walk 0,0 0.05
   press use 0.1
-  await took:iron_ore 14
+  await took:rebar 14
 end
 try 4
-  at prop:iron_ore
+  at prop:rebar_slab
   walk 0,0 0.05
   press use 0.1
-  await took:iron_ore 14
+  await took:rebar 14
 end
 wait 1.0
 shot 01-iron-for-the-crew with goal:crew

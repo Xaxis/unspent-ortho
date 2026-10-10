@@ -168,8 +168,8 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.6
 	d.props = [PropKind.MOSS_CORE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.RUIN, PropKind.DEBRIS,
 		PropKind.VEHICLE, PropKind.MURAL, PropKind.STUMP, PropKind.WRECKAGE,
-		PropKind.IRON_ORE, PropKind.COPPER_ORE]
-	d.ore = [[PropKind.IRON_ORE, 0.028], [PropKind.COPPER_ORE, 0.024]]
+		PropKind.REBAR_SLAB, PropKind.CABLE_DUCT]
+	d.ore = [[PropKind.REBAR_SLAB, 0.028], [PropKind.CABLE_DUCT, 0.024]]
 	d.sites = {"ruins": true, "tips": 2}
 	d.beached_wrecks = false
 	d.pools = {"order": 2, "cell": 28, "chance": 0.55, "r_min": 2.0, "r_max": 4.2, "ground": Ground.WATER}
@@ -253,8 +253,8 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 		return PropKind.VEHICLE if r < 0.044 else BiomeScatter.NONE
 	if g == Ground.ROCK:
 		if r < 0.030:
-			return PropKind.IRON_ORE
-		return PropKind.COPPER_ORE if r < 0.042 else BiomeScatter.NONE
+			return PropKind.REBAR_SLAB
+		return PropKind.CABLE_DUCT if r < 0.042 else BiomeScatter.NONE
 	if g == Ground.MUD:
 		if r < 0.026:
 			return PropKind.STUMP

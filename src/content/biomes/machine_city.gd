@@ -116,7 +116,7 @@ static func make() -> BiomeDef:
 	d.decks_grounded = true
 	d.props = [PropKind.RELAY, PropKind.PYLON, PropKind.CONSOLE, PropKind.STACK,
 		PropKind.CHECKPOINT, PropKind.FENCE, PropKind.PLATFORM, PropKind.WATER_TANK]
-	d.ore = [[PropKind.COPPER_ORE, 0.024], [PropKind.IRON_ORE, 0.02]]
+	d.ore = [[PropKind.CABLE_DUCT, 0.024], [PropKind.REBAR_SLAB, 0.02]]
 	d.sites = {"tips": 1}
 	# The runs the plant was laid out around, put down ruled on the survey bearing
 	# rather than dealt loose by the scatter (`GenWorks.RUNS`): conveyor first,

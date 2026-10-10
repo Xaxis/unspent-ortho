@@ -4,7 +4,7 @@
 # the coast's own first, the machine that walks here. The goal line never says
 # it: nobody pointed him at it, so up there it read as a recipe out of nowhere.
 # With no lead given the goal line is empty (frame 01).
-#   tools/tour.sh tours/late_goal.tour --seed=7 --hour=11 --weather=clear:0 --give=pick:1,iron_ore:1
+#   tools/tour.sh tours/late_goal.tour --seed=7 --hour=11 --weather=clear:0 --give=pick:1,rebar:1
 coast calm
 place spawn
 wait 3.0

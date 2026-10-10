@@ -88,7 +88,7 @@ const ROWS := {
 		# The ore is the reason and the cut is the barrier: what is worth taking is
 		# in the face, and the face is a drop.
 		"ground": Ground.SCREE, "radius": 7.0, "wants": ANY,
-		"props": [[PropKind.STONE_ORE, 4, 5.0], [PropKind.IRON_ORE, 3, 5.0],
+		"props": [[PropKind.STONE_ORE, 4, 5.0], [PropKind.REBAR_SLAB, 3, 5.0],
 			[PropKind.DEBRIS, 3, 6.0], [PropKind.CONVEYOR, 1, 3.0]],
 		"holds": &"iron", "behind": HEIGHT, "guard": 0.25, "clear": 26.0,
 	},

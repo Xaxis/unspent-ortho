@@ -103,9 +103,9 @@ static func make() -> BiomeDef:
 	d.night_sky = 1.0
 	d.wet = 0.15
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
-		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.TIN_ORE, PropKind.GORSE,
+		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.BOARD_DRIFT, PropKind.GORSE,
 		PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK]
-	d.ore = [[PropKind.STONE_ORE, 0.035], [PropKind.TIN_ORE, 0.05], [PropKind.IRON_ORE, 0.055]]
+	d.ore = [[PropKind.STONE_ORE, 0.035], [PropKind.BOARD_DRIFT, 0.05], [PropKind.REBAR_SLAB, 0.055]]
 	d.reed_chance = 0.14
 	d.shore_bush = PropKind.GORSE
 	d.sites = {"tips": 4, "ruins": true, "summit": 4, "kiln_ground": Ground.SAND}

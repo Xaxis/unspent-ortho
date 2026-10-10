@@ -5,7 +5,7 @@
 # under weather"), then names the war's archive across the water (war_archive):
 # the goal line and the survey carry him on to the next leg.
 #
-#   tools/tour.sh tours/vera-way-on.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead,reaper_down,built_halcyon,holdfast_hope --give=pick:1,iron_ore:1,kit_plate:1
+#   tools/tour.sh tours/vera-way-on.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead,reaper_down,built_halcyon,holdfast_hope --give=pick:1,rebar:1,kit_plate:1
 #
 # `at cast:NAME` asks 49_cast where a person stands; nothing is a coordinate.
 coast calm

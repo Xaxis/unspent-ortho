@@ -85,7 +85,7 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.8
 	d.props = [PropKind.SERVER_BLADE, PropKind.RELAY, PropKind.WATER_TANK, PropKind.INTAKE,
 		PropKind.PYLON, PropKind.CONSOLE, PropKind.DEBRIS, PropKind.STACK, PropKind.FENCE]
-	d.ore = [[PropKind.COPPER_ORE, 0.02], [PropKind.IRON_ORE, 0.016]]
+	d.ore = [[PropKind.CABLE_DUCT, 0.02], [PropKind.REBAR_SLAB, 0.016]]
 	d.sites = {"tips": 3}
 	# Pipe is the crop here, so it is laid THICK and as runs, on the bearing
 	# (`GenWorks.RUNS`) -- never a piece at a time from the scatter.

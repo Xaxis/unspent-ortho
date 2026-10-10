@@ -974,7 +974,7 @@ func test_ore_is_richest_in_the_bonelands() -> void:
 	for c in w.country:
 		area[c] += 1.0
 	for p in w.each_prop():
-		if p.kind in [PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]:
+		if p.kind in [PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP, PropKind.BOARD_DRIFT]:
 			ore[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
 	var bone := ore[Country.BONELANDS] / area[Country.BONELANDS]
 	for c: int in BiomeRegistry.land_indices_in(w.realm):

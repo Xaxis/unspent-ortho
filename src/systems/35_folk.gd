@@ -66,7 +66,7 @@ const STUCK_S := 1.2
 ## every frame, island-wide, took a crowded holding's tour down to 1 fps.
 const RULES_REACH := 40.0
 const TREES: Array[int] = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.SNOW_PINE]
-const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
+const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP, PropKind.BOARD_DRIFT]
 const GREEN: Array[int] = [PropKind.REEDS, PropKind.BUSH, PropKind.GORSE]
 
 ## One villager: {id, model, pos, home, door, role, trade, target, facing, t, wait,

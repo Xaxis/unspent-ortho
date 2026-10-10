@@ -31,7 +31,7 @@ func test_the_state_says_what_the_key_would_do() -> void:
 	g.world.depleted[rock.id] = INF
 
 	# An iron seam with a knife in hand and a pick in the creel: the key would take the pick out.
-	var iron := Fx.put(g, PropKind.IRON_ORE, Vector2(1.0, 0.0))
+	var iron := Fx.put(g, PropKind.REBAR_SLAB, Vector2(1.0, 0.0))
 	Fx.face(g, iron)
 	eq(Harvest.target(g).state, Harvest.NO_TOOL, "a knife does not break ore, and nothing else is carried")
 	g.inventory.add(&"pick")
@@ -44,7 +44,7 @@ func test_the_state_says_what_the_key_would_do() -> void:
 	g.world.depleted[iron.id] = INF
 
 	# An iron pick on a steel seam rings off it.
-	var copper := Fx.put(g, PropKind.COPPER_ORE, Vector2(1.0, 0.0))
+	var copper := Fx.put(g, PropKind.CABLE_DUCT, Vector2(1.0, 0.0))
 	Fx.face(g, copper)
 	eq(Harvest.target(g).state, Harvest.TOO_HARD, "copper wants steel")
 	Fx.done(g)
@@ -53,7 +53,7 @@ func test_the_state_says_what_the_key_would_do() -> void:
 func test_the_mark_agrees_with_the_key() -> void:
 	# Whatever the mark says, pressing the key does exactly that: WORKABLE and
 	# OTHER_TOOL start work, every other state is refused.
-	var kinds: Array[int] = [PropKind.DRIFTWOOD, PropKind.BOULDER, PropKind.IRON_ORE, PropKind.COPPER_ORE,
+	var kinds: Array[int] = [PropKind.DRIFTWOOD, PropKind.BOULDER, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT,
 		PropKind.REEDS, PropKind.BUSH, PropKind.PINE, PropKind.WRECK, PropKind.PEAT_BANK]
 	var kits: Array = [[], [&"pick"], [&"axe_hand", &"mattock"]]
 	for kind in kinds:

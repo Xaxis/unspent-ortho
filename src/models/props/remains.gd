@@ -184,7 +184,7 @@ static func streak(k: Kit, top: Vector3, width: float, length: float, out: Vecto
 	# most of why a run read as a strap somebody painted on. The taper is kept:
 	# these lie on hulls and drums that curve away, and a widening foot leaves
 	# the surface — `Works.run` may widen because a panel is flat, and
-	# `Rocks._run` may not for the same reason this may not.
+	# `Rocks.rust_run` may not for the same reason this may not.
 	var mid := top + Vector3(0, -length * 0.5, 0)
 	var foot := top + Vector3(0, -length, 0)
 	k.made.quad(top - along + lift, top + along + lift, mid + along * 0.45 + lift, mid - along * 0.6 + lift, col)
@@ -784,7 +784,7 @@ static func _infill(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
 		k.slab(-0.2, 0.0, sz * 0.95, 0.32, 2.2 + Kit.j(s, int(sz) + 1, 0.1), 0.32, s + int(sz), GroundColors.down(con, 0.1), GroundColors.up(con, 0.12), 0.03, 0.0, Kit.j(s, int(sz) + 4, 0.02))
 	k.slab(-0.2, 2.15, 0.0, 0.4, 0.3, 2.3, s + 3, con, GroundColors.up(con, 0.15), 0.03)
 	# The reinforcement out of the columns' tops: the tower went on up from here.
-	PropModels.Rocks._rebar(k, [Vector3(-0.2, 2.45, -0.9), Vector3(-0.15, 2.45, 0.95), Vector3(-0.25, 2.45, 0.2)],
+	PropModels.Rocks.rebar(k, [Vector3(-0.2, 2.45, -0.9), Vector3(-0.15, 2.45, 0.95), Vector3(-0.25, 2.45, 0.2)],
 		[Vector3(-0.35, 2.75, -1.1), Vector3(0.0, 2.7, 1.05), Vector3(-0.5, 2.65, 0.3)])
 	# The doors across the bay, TIMBER: three of them, the middle one ajar on
 	# its hinge, the dark of the room showing in the gap.

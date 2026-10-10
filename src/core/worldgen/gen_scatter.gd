@@ -672,9 +672,9 @@ static func _way_in_lay(c: GenContext, best: Vector2i) -> void:
 	# props land, which is the same mistake as counting placements and calling
 	# them drawn.
 	var own: int = w.country[best.y * c.size + best.x]
-	var any := _declares_ore(c, own, PropKind.IRON_ORE) or _declares_ore(c, own, PropKind.STONE_ORE)
-	_seam(c, PropKind.IRON_ORE, centre + Vector2.from_angle(a) * 0.9, not any)
-	_seam(c, PropKind.IRON_ORE, centre + Vector2.from_angle(a + 2.3) * 1.1, not any)
+	var any := _declares_ore(c, own, PropKind.REBAR_SLAB) or _declares_ore(c, own, PropKind.STONE_ORE)
+	_seam(c, PropKind.REBAR_SLAB, centre + Vector2.from_angle(a) * 0.9, not any)
+	_seam(c, PropKind.REBAR_SLAB, centre + Vector2.from_angle(a + 2.3) * 1.1, not any)
 	_seam(c, PropKind.STONE_ORE, centre + Vector2.from_angle(a + 4.2) * 1.2)
 
 

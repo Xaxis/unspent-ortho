@@ -161,7 +161,7 @@ func test_the_making_page_points_at_the_foundry_once_the_glass_is_held() -> void
 	var g := Fx.flat()
 	Survival.build(g, &"fire", true)
 	g.inventory.add(&"pick", 1)
-	g.inventory.add(&"iron_ore", 1)
+	g.inventory.add(&"rebar", 1)
 	check(not Guide.within_reach(g).contains("foundry"), "not before the glass: %s" % Guide.within_reach(g))
 	g.inventory.add(&"cinder_glass", 1)
 	var line := Guide.within_reach(g)

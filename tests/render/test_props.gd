@@ -160,8 +160,8 @@ func test_no_two_scrapwood_trees_wear_the_same_crown() -> void:
 
 
 ## The rock kinds (props/rocks.gd), every variant in every landscape.
-const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE,
-	PropKind.TIN_ORE, PropKind.STANDING_STONE, PropKind.CLINTS, PropKind.CAIRN, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK]
+const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP,
+	PropKind.BOARD_DRIFT, PropKind.STANDING_STONE, PropKind.CLINTS, PropKind.CAIRN, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK]
 ## How far from its foot a rock is drawn, at most, at scale 1: the widest whole
 ## rock (a peat bank, a stone ore) reaches 1.25.
 const ROCK_REACH_MOST := 1.5

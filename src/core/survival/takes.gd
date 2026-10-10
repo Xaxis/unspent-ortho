@@ -10,7 +10,7 @@ class_name Takes
 ##   min       bare-hand world minutes (a matching tool's speed and edge shorten it)
 ##   regrow    hours until it can be taken again; NEVER = a permanent world edit
 ##   stuff     hardness the tool must reach (wood iron steel crucible)
-##   uses      takes before the option is exhausted (a vein works out, a tip is picked over)
+##   uses      takes before the option is exhausted (a slab is broken up, a tip is picked over)
 ##   keep      true: the prop stays standing when exhausted (a rock after its mussels);
 ##             false: it is taken away (WorldData.depleted) until it regrows
 ##   tide      &"low": only when the water is off it (see TIDE_GATES)
@@ -23,8 +23,9 @@ class_name Takes
 ## Departures from the source, for a game without trade:
 ## - A boulder gives a loose stone by hand (so a fire ring needs no pick);
 ##   breaking it with a pick gives more and takes it away.
-## - Ore is broken with a pick OR dug with a mattock, and iron needs only iron,
-##   so the first pick opens the iron rung. Copper (not in the source) needs steel.
+## - Nothing is mined (docs/SALVAGE.md): the old world's metal is broken out of
+##   where the land shows it, with a pick OR a mattock. Rebar needs only iron, so
+##   the first pick opens the iron rung; armoured cable needs steel.
 ## - Driftwood comes two at a time: the first fire should not be a chore.
 ## - Any tree gives dead wood by hand, and a ruin gives a little plate, so the
 ##   way in (a fire, a haft, a pick) opens inland as well as on the shore.
@@ -103,8 +104,11 @@ static func _build() -> Dictionary:
 	# (tests/gear_economy/test_obtainable.gd).
 	t[PropKind.CLINTS] = [_o(&"break", &"limestone", 2, 13.0, NEVER,
 		{"stuff": &"iron", "uses": 2, "ground": [Ground.LIMESTONE]})]
-	for pair: Array in [[PropKind.COAL_ORE, &"coal", 22.0, &"iron"], [PropKind.TIN_ORE, &"tin_ore", 22.0, &"iron"],
-			[PropKind.IRON_ORE, &"iron_ore", 30.0, &"iron"], [PropKind.COPPER_ORE, &"copper_ore", 30.0, &"steel"]]:
+	# THE BURIED OLD WORLD (docs/SALVAGE.md): a power station's coal tip, a drift
+	# of dead appliances, a road deck's rebar, a duct's armoured cable, each
+	# broken or dug out three times before it is worked out.
+	for pair: Array in [[PropKind.COAL_TIP, &"coal", 22.0, &"iron"], [PropKind.BOARD_DRIFT, &"boards", 22.0, &"iron"],
+			[PropKind.REBAR_SLAB, &"rebar", 30.0, &"iron"], [PropKind.CABLE_DUCT, &"cable", 30.0, &"steel"]]:
 		t[pair[0]] = [
 			_o(&"break", pair[1], 1, pair[2], NEVER, {"stuff": pair[3], "uses": 3}),
 			_o(&"dig", pair[1], 1, pair[2], NEVER, {"stuff": pair[3], "uses": 3}),
@@ -221,7 +225,7 @@ static func _signature(t: Dictionary) -> void:
 	# Filings drawn up into a cone by a dead frame's field: shovelled out, they are
 	# iron to smelt, once; a shard pulled off by hand comes back, because the field
 	# stands another one up (props/scrap.gd).
-	t[PropKind.MAGNET_HEAP] = [_o(&"dig", &"iron_ore", 1, 18.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 2}),
+	t[PropKind.MAGNET_HEAP] = [_o(&"dig", &"rebar", 1, 18.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 2}),
 		_o(&"turn", &"scrap", 1, 15.0, 72.0, {"keep": true})]
 	# The drowned city (docs/LANDSCAPES.md: "break stone x2"). A length of cast
 	# wall is broken for its blocks and still stands; it is cover more than quarry.
@@ -357,7 +361,7 @@ static func _glass(t: Dictionary) -> void:
 	# wants everywhere else, so it opens nothing early. It stands, either way:
 	# it is cover (Cover.PROPS) and it is in the sheet to its sills.
 	t[PropKind.FUSED_CAR] = [_o(&"break", &"scrap", 2, 26.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 3}),
-		_o(&"dig", &"copper_ore", 1, 30.0, NEVER, {"stuff": &"steel", "keep": true})]
+		_o(&"dig", &"cable", 1, 30.0, NEVER, {"stuff": &"steel", "keep": true})]
 	# The plan's rod: its copper stripped by hand, once, and it stands there
 	# dead. A plan work below, so robbing it is filed.
 	t[PropKind.STRIKE_ROD] = [_o(&"turn", &"copper", 1, 18.0, NEVER, {"keep": true})]

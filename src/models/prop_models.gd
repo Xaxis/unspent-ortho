@@ -25,6 +25,7 @@ class_name PropModels
 const Kit := preload("res://src/models/props/kit.gd")
 const Trees := preload("res://src/models/props/trees.gd")
 const Rocks := preload("res://src/models/props/rocks.gd")
+const Salvage := preload("res://src/models/props/salvage.gd")
 const Shore := preload("res://src/models/props/shore.gd")
 const Built := preload("res://src/models/props/built.gd")
 const Houses := preload("res://src/models/props/houses.gd")
@@ -107,8 +108,8 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 		# odd ones a bolted pipe, and each pair differs in size and stance.
 		PropKind.VENT:
 			return 4
-		PropKind.TIP, PropKind.WRECK, PropKind.KILN, PropKind.STONE_ORE, PropKind.IRON_ORE, \
-		PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE:
+		PropKind.TIP, PropKind.WRECK, PropKind.KILN, PropKind.STONE_ORE, PropKind.REBAR_SLAB, \
+		PropKind.CABLE_DUCT, PropKind.COAL_TIP, PropKind.BOARD_DRIFT:
 			return 2
 		PropKind.SIGN:
 			return 4
@@ -272,9 +273,10 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 	match kind:
 		PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.GORSE, PropKind.REEDS:
 			Trees.build(k, kind, variant, country)
-		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE, \
-		PropKind.STANDING_STONE, PropKind.CLINTS, PropKind.CAIRN, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK:
+		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.STANDING_STONE, PropKind.CLINTS, PropKind.CAIRN, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK:
 			Rocks.build(k, kind, variant, country)
+		PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP, PropKind.BOARD_DRIFT:
+			Salvage.build(k, kind, variant, country)
 		PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.BONES, PropKind.WRECK, PropKind.TIP, PropKind.VENT:
 			Shore.build(k, kind, variant, country)
 		PropKind.RUIN when BiomeDressing.of(country).ruin_form == &"tower":

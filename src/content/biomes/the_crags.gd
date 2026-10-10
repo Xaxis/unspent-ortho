@@ -130,7 +130,7 @@ static func make() -> BiomeDef:
 		# rack are the survey bench's (`_works`).
 		PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.HOLLOW_WAY,
 		PropKind.THEODOLITE_MAST, PropKind.CORE_RACK]
-	d.ore = [[PropKind.STONE_ORE, 0.028], [PropKind.IRON_ORE, 0.012]]
+	d.ore = [[PropKind.STONE_ORE, 0.028], [PropKind.REBAR_SLAB, 0.012]]
 	# The barrow (SiteKinds): a mound with a cairn, a trilithon at its mouth and
 	# the dead round it, claimed as a rate per 1,000 tiles of each region.
 	d.sites = {"stone_circles": 3, "ruins": true, "summit": 1, "barrow": 0.12}

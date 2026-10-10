@@ -94,8 +94,8 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.6
 	d.props = [PropKind.MIDDEN_BALE, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP,
 		PropKind.VEHICLE, PropKind.HULL, PropKind.BARRICADE, PropKind.SLAG_HEAP,
-		PropKind.IRON_ORE, PropKind.COPPER_ORE]
-	d.ore = [[PropKind.IRON_ORE, 0.05], [PropKind.COPPER_ORE, 0.042], [PropKind.TIN_ORE, 0.03]]
+		PropKind.REBAR_SLAB, PropKind.CABLE_DUCT]
+	d.ore = [[PropKind.REBAR_SLAB, 0.05], [PropKind.CABLE_DUCT, 0.042], [PropKind.BOARD_DRIFT, 0.03]]
 	# The richest ground in the game for taking, and the hardest to get out of.
 	d.sites = {"tips": 4}
 	d.beached_wrecks = false
@@ -212,8 +212,8 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 		return PropKind.VEHICLE if r < 0.040 else BiomeScatter.NONE
 	if g == Ground.ROCK:
 		if r < 0.030:
-			return PropKind.IRON_ORE
-		return PropKind.COPPER_ORE if r < 0.042 else BiomeScatter.NONE
+			return PropKind.REBAR_SLAB
+		return PropKind.CABLE_DUCT if r < 0.042 else BiomeScatter.NONE
 	if g == Ground.MUD:
 		return PropKind.WRECKAGE if r < 0.024 else BiomeScatter.NONE
 	if g == Ground.GRAVEL:

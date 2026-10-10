@@ -140,8 +140,8 @@ static func make() -> BiomeDef:
 	d.grade = Vector4(0.0, -0.02, -0.05, 0.02)
 	# Dry air and no cloud: a hard bright night with black shadows under the walls.
 	d.night_sky = 1.1
-	d.props = [PropKind.BOULDER, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.IRON_ORE,
-		PropKind.COPPER_ORE, PropKind.BUSH, PropKind.STUMP,
+	d.props = [PropKind.BOULDER, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.REBAR_SLAB,
+		PropKind.CABLE_DUCT, PropKind.BUSH, PropKind.STUMP,
 		# Its own (docs/LANDSCAPES.md, src/models/props/mesas.gd), declared here
 		# so the mesas are the ONE landscape whose things these are: that is what
 		# makes the span wire's gate the mesas' (Sources.lands_yielding). The
@@ -150,7 +150,7 @@ static func make() -> BiomeDef:
 		# returns it.
 		PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN,
 		PropKind.SPAN_PYLON]
-	d.ore = [[PropKind.STONE_ORE, 0.03], [PropKind.IRON_ORE, 0.026], [PropKind.COPPER_ORE, 0.02]]
+	d.ore = [[PropKind.STONE_ORE, 0.03], [PropKind.REBAR_SLAB, 0.026], [PropKind.CABLE_DUCT, 0.02]]
 	d.sites = {"tips": 2, "summit": 2, "stone_circles": 1}
 	d.beached_wrecks = false
 	d.pools = {"order": 3, "cell": 44, "chance": 0.28, "r_min": 1.8, "r_max": 3.4, "ground": Ground.WATER}
@@ -246,8 +246,8 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 		if r < 0.040:
 			return PropKind.BOULDER
 		if r < 0.052:
-			return PropKind.IRON_ORE
-		return PropKind.COPPER_ORE if r < 0.062 else BiomeScatter.NONE
+			return PropKind.REBAR_SLAB
+		return PropKind.CABLE_DUCT if r < 0.062 else BiomeScatter.NONE
 	if g == Ground.SAND:
 		if r > 0.70 and r < 0.7075:
 			return PropKind.DEAD_TREE

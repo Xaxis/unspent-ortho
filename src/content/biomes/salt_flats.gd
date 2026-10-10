@@ -177,10 +177,10 @@ static func make() -> BiomeDef:
 	# of plain crust with two stumps on it.
 	d.typical_among = Vector2i(PropKind.SALT_RIDGE, 16)
 	d.props = [PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.BOULDER,
-		PropKind.BONES, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.TIN_ORE, PropKind.COPPER_ORE,
+		PropKind.BONES, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.BOARD_DRIFT, PropKind.CABLE_DUCT,
 		PropKind.DRIFTWOOD, PropKind.GORSE, PropKind.BUSH]
 	# Evaporites: what the brine left is worth taking, and the stone under it.
-	d.ore = [[PropKind.STONE_ORE, 0.03], [PropKind.TIN_ORE, 0.045], [PropKind.COPPER_ORE, 0.055]]
+	d.ore = [[PropKind.STONE_ORE, 0.03], [PropKind.BOARD_DRIFT, 0.045], [PropKind.CABLE_DUCT, 0.055]]
 	d.sites = {"tips": 2, "ruins": true, "summit": 0}
 	d.villages = 1
 	d.village_names = ["Panfoot", "Bitter Cross", "Rakeshead"]

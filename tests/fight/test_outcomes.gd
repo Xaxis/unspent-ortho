@@ -39,8 +39,8 @@ func test_downed_costs_180_minutes_and_the_toll() -> void:
 
 func test_carried_costs_a_shift_and_wakes_at_the_rock_facing_it() -> void:
 	var w := F.flat_world(96)
-	var ore := WorldProp.new(1, PropKind.IRON_ORE, Vector2(70.5, 60.5), 0.0, 1.0)
-	var far_ore := WorldProp.new(2, PropKind.COAL_ORE, Vector2(90.5, 90.5), 0.0, 1.0)
+	var ore := WorldProp.new(1, PropKind.REBAR_SLAB, Vector2(70.5, 60.5), 0.0, 1.0)
+	var far_ore := WorldProp.new(2, PropKind.COAL_TIP, Vector2(90.5, 90.5), 0.0, 1.0)
 	w.add_prop(ore)
 	w.add_prop(far_ore)
 	var q := WorldQuery.new(w)

@@ -8,7 +8,7 @@ class_name Outcomes
 ##            you were taken (Survival.leave_bag, which 40_fight calls); near a
 ##            holding of your own, you wake at its hearth (home_hearth)
 
-const ORE := [PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
+const ORE := [PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP, PropKind.BOARD_DRIFT]
 const ROCK := [PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE]
 ## Uses a hard-enough breaking tool loses over a forced shift (the source's 16 at iron).
 const SHIFT_WEAR := 16

@@ -13,7 +13,7 @@ extends SceneTree
 ## `Takes` says can yield the item at all. It ignores whether the bot has the
 ## tool yet, which is the test's business -- this only answers "is it THERE".
 
-const WANT: Array[StringName] = [&"deadwood", &"timber", &"iron_ore", &"stone", &"plate"]
+const WANT: Array[StringName] = [&"deadwood", &"timber", &"rebar", &"stone", &"plate"]
 const SIZE := 512
 
 

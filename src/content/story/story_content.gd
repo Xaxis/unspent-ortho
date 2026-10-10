@@ -4170,7 +4170,7 @@ const TALKS := {
 			# Her lead (docs/ROADMAP.md, step 2): the first hour's work and why, and
 			# the camp at the end of it. The guide says it back (StoryContent.LEAD).
 			&"lead": {
-				"says": ["A fire before dark. Charcoal off it for a pick. The pick for the iron in the rock.", "The crew past the old works pay for iron. Take it to them. Not them to me."],
+				"says": ["A fire before dark. Charcoal off it for a pick. The pick for the iron in the slabs.", "The crew past the old works pay for iron. Take it to them. Not them to me."],
 				"beats": [&"marens_lead"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
@@ -4227,7 +4227,7 @@ const TALKS := {
 					{"text": "Who paid you?", "pick": &"asked_payer", "to": &"payer"},
 					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
 					{"text": "Teague sells our roads to the Covenant.", "when": &"teague_sold", "pick": &"told_rook_teague", "to": &"teague"},
-					{"text": "[hold out the iron]", "has": [&"iron_ore", &"iron"], "to": &"iron"},
+					{"text": "[hold out the iron]", "has": [&"rebar", &"iron"], "to": &"iron"},
 					# Armoured before anyone has named what keeps the yard: he points
 					# at the tide-pickers (Guide.hob_goal says it after).
 					{"text": "[show him the armour]", "has": [&"kit_plate"], "unless": &"reaper_named", "to": &"keeper"},
@@ -5768,7 +5768,7 @@ const LEAD := {
 	&"haft": "A haft for the pick, whittled from wood.",
 	&"plate": "Plate for the pick's head: turn over the tip.",
 	&"pick": "A pick for the iron, made at {at}.",
-	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
+	&"ore": "The crew past the old works pay for iron. Take the pick to a slab.",
 	&"camp": "Iron for the crew, so they stay away from her fire: the survey marks the camp.",
 	# Hob's errand, from `reaper_named` until the keeper falls (Guide.reaper_goal).
 	&"reaper": "The Tide Reaper, for the tide-pickers' shore: end it at its yard past the point.",
@@ -5830,7 +5830,7 @@ const LEAD := {
 # crew pay for iron in plate, three to a piece of plate armour (Recipes
 # `kit_plate`).
 const PAID := {
-	&"rook.iron": {"pick": &"paid", "takes": [&"iron_ore", &"iron"], "gives": {&"scrap": 3}, "makes": &"kit_plate"},
+	&"rook.iron": {"pick": &"paid", "takes": [&"rebar", &"iron"], "gives": {&"scrap": 3}, "makes": &"kit_plate"},
 	# Tull's bowl (talk tull, `deal`): what the crater grows, for anything it can't.
 	&"tull.deal": {"pick": &"paid", "takes": [&"salt", &"fish"], "gives": {&"soup": 1}},
 }

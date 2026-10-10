@@ -83,7 +83,7 @@ func test_it_steps_back_where_the_generator_already_placed_things() -> void:
 func test_found_leavings_are_drawn_by_the_ruler_and_made_ones_by_hand() -> void:
 	for kind: int in [PropKind.WRECK, PropKind.POLE, PropKind.PYLON]:
 		check(RemnantModels.is_found(RemnantModels.for_kind(kind)), "%s leaves plate" % PropKind.NAMES[kind])
-	for kind: int in [PropKind.BOULDER, PropKind.IRON_ORE, PropKind.RUIN, PropKind.PINE, PropKind.REEDS]:
+	for kind: int in [PropKind.BOULDER, PropKind.REBAR_SLAB, PropKind.RUIN, PropKind.PINE, PropKind.REEDS]:
 		check(not RemnantModels.is_found(RemnantModels.for_kind(kind)), "%s leaves something made" % PropKind.NAMES[kind])
 	check(RemnantModels.is_found(RemnantModels.worked_for(PropKind.TIP, &"turn")), "a picked tip has plate turned out round it")
 	eq(RemnantModels.worked_for(PropKind.PINE, &"tap"), &"tapped")

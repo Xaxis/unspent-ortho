@@ -5,7 +5,7 @@ extends TestCase
 
 ## Kinds a player actually takes from, one of each family the cut has to survive:
 ## a rounded rock, an ore body, a built wreck, a bank of peat.
-const WORKED: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.WRECK, PropKind.PEAT_BANK]
+const WORKED: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.WRECK, PropKind.PEAT_BANK]
 
 
 func _made(kind: int, worked: int) -> MeshKit:

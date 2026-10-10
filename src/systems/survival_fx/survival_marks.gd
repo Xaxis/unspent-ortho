@@ -16,7 +16,7 @@ class_name SurvivalMarks
 ## A mark colour meaning "ink or paper, whichever reads on what is behind it" (mark.gdshaderinc).
 const CONTRAST := Color(0.0, 0.0, 0.0, 0.5)
 
-const GLYPHS: Array[StringName] = [&"log", &"stone", &"lime", &"ore_iron", &"ore_copper", &"ore_tin", &"coal",
+const GLYPHS: Array[StringName] = [&"log", &"stone", &"lime", &"rebar", &"cable", &"board", &"coal",
 	&"brim", &"plate", &"shell", &"green", &"weed", &"resin", &"turf", &"tool", &"lump"]
 
 static var _mat: ShaderMaterial
@@ -162,12 +162,12 @@ static func glyph_for(item: StringName) -> StringName:
 			return &"stone"
 		&"limestone", &"lime", &"salt", &"kelp_ash":
 			return &"lime"
-		&"iron_ore", &"iron":
-			return &"ore_iron"
-		&"copper_ore", &"copper":
-			return &"ore_copper"
-		&"tin_ore", &"tin":
-			return &"ore_tin"
+		&"rebar", &"iron":
+			return &"rebar"
+		&"cable", &"copper":
+			return &"cable"
+		&"boards", &"tin":
+			return &"board"
 		&"coal", &"charcoal":
 			return &"coal"
 		&"brimstone":
@@ -206,15 +206,26 @@ static func glyph(name: StringName) -> ArrayMesh:
 				k.rock(0, 0, 0, 0.09, 0.11, 11, Palette.STONE[4], 5)
 			&"lime":
 				k.rock(0, 0, 0, 0.09, 0.09, 12, Palette.LINEN[5], 5)
-			&"ore_iron":
-				k.rock(0, 0, 0, 0.09, 0.11, 13, Palette.SLATE[3], 5)
-				k.rock(0.03, 0.06, 0.03, 0.045, 0.06, 14, Palette.RUST[4], 4)
-			&"ore_copper":
-				k.rock(0, 0, 0, 0.09, 0.11, 15, Palette.SLATE[3], 5)
-				k.rock(0.03, 0.06, 0.03, 0.045, 0.06, 16, Palette.SPRUCE[4], 4)
-			&"ore_tin":
-				k.rock(0, 0, 0, 0.09, 0.11, 17, Palette.SLATE[3], 5)
-				k.rock(0.03, 0.06, 0.03, 0.045, 0.06, 18, Palette.RIME[5], 4)
+			&"rebar":
+				# Two bars bent where they tore out of the slab, a crumb of it still on one.
+				k.strut(Vector3(-0.15, 0.02, -0.03), Vector3(0.02, 0.05, -0.01), 0.016, 4, Palette.RUST[3])
+				k.strut(Vector3(0.02, 0.05, -0.01), Vector3(0.14, 0.12, 0.03), 0.016, 4, Palette.RUST[3])
+				k.strut(Vector3(-0.12, 0.02, 0.05), Vector3(0.13, 0.04, 0.07), 0.016, 4, Palette.RUST[2])
+				k.rock(-0.13, 0.0, 0.0, 0.05, 0.05, 13, Palette.STONE[4], 4)
+			&"cable":
+				# A short loop of black cable, the cut end bright with copper.
+				var prev := Vector3(0.1, 0.03, 0.0)
+				for i in range(1, 7):
+					var a := float(i) / 6.0 * TAU * 0.85
+					var p := Vector3(cos(a) * 0.1, 0.03 + i * 0.008, sin(a) * 0.08)
+					k.strut(prev, p, 0.022, 5, Palette.INK[3])
+					prev = p
+				k.strut(prev, prev + Vector3(0.05, 0.02, -0.03), 0.01, 3, Palette.COPPER[4])
+			&"board":
+				# A green card with a chip on it, solder bright along one edge.
+				k.prism(0.0, 0.0, 0.0, 0.11, 0.012, 0.11, 4, Palette.SPRUCE[4], Palette.SPRUCE[5], PI * 0.25)
+				k.prism(-0.02, 0.012, 0.01, 0.04, 0.03, 0.04, 4, Palette.INK[2], Palette.INK[3], PI * 0.25)
+				k.strut(Vector3(-0.07, 0.016, 0.07), Vector3(0.07, 0.016, 0.07), 0.008, 3, Palette.STONE[5])
 			&"coal":
 				k.rock(0, 0, 0, 0.08, 0.1, 19, Palette.INK[3], 5)
 			&"brim":

@@ -26,7 +26,7 @@ extends GameSystem
 ## Review it in real frames (it lives outside src/models, so not in the gallery):
 ##   tools/shot.sh s.png --put=pine --held=axe_hand --use --hold=0.4 --frames=40    a blow, caught
 ##   tools/shot.sh s.png --put=pine --held=axe_hand --use --hold=1.9 --frames=130   the tree down
-##   tools/shot.sh s.png --put=pine,iron_ore,reeds,wreck,tip,peat_bank --taken      what each leaves
+##   tools/shot.sh s.png --put=pine,rebar_slab,reeds,wreck,tip,peat_bank --taken      what each leaves
 ##   tools/shot.sh s.png --build=fire --hour=22 --frames=90                          a fire at night
 ##   tools/shot.sh s.png --give=driftwood:3,stone:2 --use --hold=0.6 --frames=50    the ring an ask draws
 
@@ -54,8 +54,8 @@ const FALL_DROP := 0.62
 const FALL_LIE := 0.9
 
 const TREES: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE]
-const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE,
-	PropKind.COAL_ORE, PropKind.TIN_ORE, PropKind.CLINTS, PropKind.RUIN, PropKind.VENT]
+const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT,
+	PropKind.COAL_TIP, PropKind.BOARD_DRIFT, PropKind.CLINTS, PropKind.RUIN, PropKind.VENT]
 const SCRAP: Array[int] = [PropKind.TIP, PropKind.WRECK, PropKind.POLE, PropKind.PYLON]
 
 var _mat: ShaderMaterial
@@ -441,13 +441,13 @@ func _colors(kind: int, verb: StringName) -> Array[Color]:
 		return [Palette.SAND[5], Palette.EARTH[3], Palette.SAND[4]]
 	match kind:
 		# Broken rock shows its pale inside, so flecks read on any ground; the ore shows its colour.
-		PropKind.IRON_ORE:
+		PropKind.REBAR_SLAB:
 			return [Palette.STONE[5], Palette.RUST[4], Palette.RUST[5]]
-		PropKind.COPPER_ORE:
+		PropKind.CABLE_DUCT:
 			return [Palette.STONE[5], Palette.SPRUCE[4], Palette.SPRUCE[5]]
-		PropKind.COAL_ORE:
+		PropKind.COAL_TIP:
 			return [Palette.INK[3], Palette.STONE[5], Palette.INK[4]]
-		PropKind.TIN_ORE:
+		PropKind.BOARD_DRIFT:
 			return [Palette.STONE[5], Palette.RIME[5], Palette.ASH[4]]
 		PropKind.CLINTS:
 			return [Palette.LINEN[5], Palette.LINEN[4], Palette.STONE[4]]
@@ -877,9 +877,9 @@ func _refresh_remnants() -> void:
 			mm.set_instance_transform(j, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * s), w.to_3d(p.pos)))
 			var tint := Color.WHITE
 			match p.kind:
-				PropKind.COPPER_ORE:
+				PropKind.CABLE_DUCT:
 					tint = Color(0.86, 1.0, 0.92)
-				PropKind.COAL_ORE:
+				PropKind.COAL_TIP:
 					tint = Color(0.6, 0.6, 0.68)
 				PropKind.DEAD_TREE:
 					tint = Color(0.8, 0.82, 0.88)

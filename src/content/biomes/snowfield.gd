@@ -75,8 +75,8 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.20
 	d.lip_snow = true
 	d.props = [PropKind.SNOW_PINE, PropKind.DEAD_TREE, PropKind.BOULDER, PropKind.STONE_ORE,
-		PropKind.IRON_ORE, PropKind.TIN_ORE, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK]
-	d.ore = [[PropKind.STONE_ORE, 0.014], [PropKind.IRON_ORE, 0.026], [PropKind.TIN_ORE, 0.034]]
+		PropKind.REBAR_SLAB, PropKind.BOARD_DRIFT, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK]
+	d.ore = [[PropKind.STONE_ORE, 0.014], [PropKind.REBAR_SLAB, 0.026], [PropKind.BOARD_DRIFT, 0.034]]
 	d.sites = {"tips": 2, "summit": 1}
 	d.beached_wrecks = false
 	d.pools = {"order": 2, "cell": 30, "chance": 0.5, "r_min": 2.6, "r_max": 4.8, "ground": Ground.ICE}
@@ -156,8 +156,8 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 		if r < 0.050:
 			return PropKind.STONE_ORE
 		if r < 0.060:
-			return PropKind.IRON_ORE
-		return PropKind.TIN_ORE if r < 0.068 else BiomeScatter.NONE
+			return PropKind.REBAR_SLAB
+		return PropKind.BOARD_DRIFT if r < 0.068 else BiomeScatter.NONE
 	if g == Ground.SHINGLE:
 		if r < 0.040:
 			return PropKind.DRIFTWOOD

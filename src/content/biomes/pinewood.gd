@@ -88,9 +88,9 @@ static func make() -> BiomeDef:
 	d.canopy_drip = 1.5
 	d.wet = 0.2
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
-		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.IRON_ORE, PropKind.SNOW_PINE,
+		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_TIP, PropKind.REBAR_SLAB, PropKind.SNOW_PINE,
 		PropKind.GORSE, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK]
-	d.ore = [[PropKind.STONE_ORE, 0.035], [PropKind.COAL_ORE, 0.06], [PropKind.IRON_ORE, 0.07]]
+	d.ore = [[PropKind.STONE_ORE, 0.035], [PropKind.COAL_TIP, 0.06], [PropKind.REBAR_SLAB, 0.07]]
 	d.reed_chance = 0.14
 	d.sites = {"tips": 2, "ruins": true, "summit": 3}
 	d.pools = {"order": 3, "cell": 40, "chance": 0.35, "r_min": 2.4, "r_max": 4.2, "ground": Ground.RIVER}

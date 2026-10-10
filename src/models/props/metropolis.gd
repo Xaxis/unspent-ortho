@@ -130,7 +130,7 @@ static func deck_span(k: Kit, v: int, c: int) -> void:
 		var z := -SPAN_WIDE * 0.45 + i * SPAN_WIDE * 0.22
 		roots.append(Vector3(-0.05, SPAN_HIGH - 0.2 + Kit.j(s, i, 0.1), z))
 		ends.append(Vector3(-0.5 - Rng.hash01(s, i, 43) * 0.4, SPAN_HIGH - 0.6 - Rng.hash01(s, i, 44) * 0.5, z + Kit.j(s, i + 8, 0.2)))
-	Rocks._rebar(k, roots, ends)
+	Rocks.rebar(k, roots, ends)
 	# What broke off it, at the pier's foot and under the span: concrete in
 	# lumps, the land's own rubble, and the land's growth in the shelter it makes.
 	for i in 7:
@@ -185,7 +185,7 @@ static func lift_shaft(k: Kit, v: int, c: int) -> void:
 				var x := -0.5 + i * 0.5
 				roots.append(Vector3(x, y + 0.12, sz * (1.11 + reach)))
 				ends.append(Vector3(x + Kit.j(s, i + level, 0.3), y - 0.2 - Rng.hash01(s, i, 52 + level) * 0.4, sz * (1.11 + reach + 0.3 + Rng.hash01(s, i, 53) * 0.3)))
-			Rocks._rebar(k, roots, ends)
+			Rocks.rebar(k, roots, ends)
 	# The head: the sheave beam across the top, and the cable off it.
 	k.rod(Vector3(-0.8, high - 0.1, 0.0), Vector3(0.8, high - 0.1, 0.0), 0.06, 6, P.PLATE[2])
 	k.hoop(Vector3(0.0, high - 0.1, 0.0), 0.2, 8, 0.02, P.PLATE[3], Vector3.BACK)
@@ -417,7 +417,7 @@ static func infill(k: Kit, c: int) -> void:
 		var sz := 1.0 if i < 2 else -1.0
 		roots.append(Vector3(sx * 1.75, col_h + 0.8, sz * 1.75))
 		ends.append(Vector3(sx * (1.75 + Rng.hash01(s, i, 31) * 0.3), col_h + 0.85 + Rng.hash01(s, i, 32) * 0.15, sz * 1.75 + Kit.j(s, i + 40, 0.3)))
-	Rocks._rebar(k, roots, ends)
+	Rocks.rebar(k, roots, ends)
 	# The bay walled in: the doors along the front, the gap and its curtain.
 	var doors: Array[Color] = [GroundColors.made(P.EARTH[2], GroundColors.TIMBER), GroundColors.made(dress.timber[0], GroundColors.TIMBER),
 		GroundColors.made(P.SLATE[2].lerp(P.EARTH[1], 0.4), GroundColors.TIMBER), GroundColors.made(P.LINEN[2].lerp(P.EARTH[2], 0.5), GroundColors.TIMBER),
@@ -528,7 +528,7 @@ static func deck_house(k: Kit, c: int) -> void:
 		var z := Kit.j(s, i + 20, 1.6)
 		k.stone(x, -0.04, z, 0.16 + Rng.hash01(s, i, 46) * 0.18, 0.2 + Rng.hash01(s, i, 47) * 0.4, s + 50 + i,
 			GroundColors.down(dress.concrete, 0.1) if i % 2 == 0 else P.STONE[3], 5)
-	Rocks._rebar(k, [Vector3(-2.05, rise - 0.2, -0.6), Vector3(-2.05, rise - 0.15, 0.3), Vector3(-2.05, rise - 0.25, 0.9)],
+	Rocks.rebar(k, [Vector3(-2.05, rise - 0.2, -0.6), Vector3(-2.05, rise - 0.15, 0.3), Vector3(-2.05, rise - 0.25, 0.9)],
 		[Vector3(-2.5, rise - 0.6, -0.7), Vector3(-2.45, rise - 0.55, 0.25), Vector3(-2.4, rise - 0.7, 1.0)])
 	if not dress.cold():
 		k.clump(1.2, -0.05, 0.9, 0.2, 0.12, s + 60, dress.growth, 6)
@@ -603,7 +603,7 @@ static func shaft_loft(k: Kit, c: int) -> void:
 		var y := 2.4 + level * 2.5
 		var sz := 1.0 if level == 0 else -1.0
 		k.slab(0.0, y, sz * 1.31, 1.6, 0.24, 0.4, s + 40 + level, GroundColors.down(con, 0.08), con, 0.05)
-		Rocks._rebar(k, [Vector3(-0.3, y + 0.12, sz * 1.5), Vector3(0.4, y + 0.12, sz * 1.5)],
+		Rocks.rebar(k, [Vector3(-0.3, y + 0.12, sz * 1.5), Vector3(0.4, y + 0.12, sz * 1.5)],
 			[Vector3(-0.4, y - 0.3, sz * 1.55), Vector3(0.5, y - 0.2, sz * 1.58)])
 	Remains.streak(k, Vector3(-0.3, high - 0.5, 1.113), 0.14, 2.0, Vector3.BACK, GroundColors.down(wall, 0.3))
 	Remains.streak(k, Vector3(0.5, high - 0.7, -1.113), 0.1, 1.5, Vector3.FORWARD, GroundColors.down(wall, 0.4))

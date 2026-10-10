@@ -156,7 +156,7 @@ func test_a_chapter_is_asked_again_only_when_something_could_have_moved_it() -> 
 		check(sig.is_connected(Callable(holds, "_chapters_moved")),
 			"the holds system is listening to what can move a chapter")
 	# Each of the four marks it, and a frame spends the mark exactly once.
-	Events.took.emit(&"iron_ore", 1)
+	Events.took.emit(&"rebar", 1)
 	eq(holds.get("_dirty"), true, "ore taken asks the chapters again")
 	holds.call("_process", 0.016)
 	eq(holds.get("_dirty"), false, "and one frame answers it once")

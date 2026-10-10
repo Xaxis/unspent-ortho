@@ -63,23 +63,23 @@ func test_work_is_busy_until_finished_and_charges_time_at_the_end() -> void:
 func test_tool_verbs_refuse_with_the_source_lines_and_cost_nothing() -> void:
 	_listen()
 	var g := Fx.flat()
-	var ore := Fx.put(g, PropKind.IRON_ORE, Vector2(0.9, 0))
+	var ore := Fx.put(g, PropKind.REBAR_SLAB, Vector2(0.9, 0))
 	var t0 := g.clock.minutes
 	check(not Fx.take(g), "a knife does not break ore")
 	eq(_messages[-1], "Not with that.")
 	Survival.hold(g, &"")
 	check(not Fx.take(g), "nor do hands")
 	eq(_messages[-1], "Not with your hands.")
-	eq(Survival.describe_target(g), "iron ore - no tool")
+	eq(Survival.describe_target(g), "rebar slab - no tool")
 	near(g.clock.minutes, t0, 0.001, "refusals are free")
 	g.world.depleted[ore.id] = INF
-	var copper := Fx.put(g, PropKind.COPPER_ORE, Vector2(0.9, 0.05))
+	var copper := Fx.put(g, PropKind.CABLE_DUCT, Vector2(0.9, 0.05))
 	g.inventory.add(&"pick")
 	Survival.hold(g, &"pick")
 	eq(Survival.use_target(g), copper)
 	check(not Fx.take(g), "iron pick on a steel seam")
 	eq(_messages[-1], "It rings, and nothing comes away.")
-	eq(Survival.describe_target(g), "copper ore - too hard")
+	eq(Survival.describe_target(g), "cable duct - too hard")
 	eq(g.inventory.edge(&"pick"), 10000, "a refused seam does not wear the tool")
 	Fx.done(g)
 
@@ -88,10 +88,10 @@ func test_a_vein_gives_three_takes_then_is_gone_for_good() -> void:
 	var g := Fx.flat()
 	g.inventory.add(&"pick")
 	Survival.hold(g, &"pick")
-	var ore := Fx.put(g, PropKind.IRON_ORE, Vector2(0.9, 0))
+	var ore := Fx.put(g, PropKind.REBAR_SLAB, Vector2(0.9, 0))
 	for i in 3:
 		check(Fx.take(g), "take %d" % i)
-	eq(g.inventory.count(&"iron_ore"), 3)
+	eq(g.inventory.count(&"rebar"), 3)
 	eq(g.world.depleted.get(ore.id, 0.0), INF, "never grows back")
 	g.clock.skip(60.0 * 24.0 * 30.0)
 	Survival.sweep(g, 1.0)
@@ -103,8 +103,8 @@ func test_a_carried_tool_is_taken_in_hand_when_the_held_one_cannot_do_it() -> vo
 	var g := Fx.flat()
 	g.inventory.add(&"pick")
 	Survival.hold(g, &"knife")
-	Fx.put(g, PropKind.COAL_ORE, Vector2(0.9, 0))
-	eq(Survival.describe_target(g), "coal ore - break", "the prompt names what the carried pick would do")
+	Fx.put(g, PropKind.COAL_TIP, Vector2(0.9, 0))
+	eq(Survival.describe_target(g), "coal tip - break", "the prompt names what the carried pick would do")
 	check(Fx.take(g), "worked with the pick")
 	eq(g.inventory.held, &"pick", "pick in hand")
 	eq(g.inventory.count(&"coal"), 1)
@@ -246,7 +246,7 @@ func test_reach_is_in_front_and_close() -> void:
 
 func test_a_workable_target_beats_a_closer_refused_one() -> void:
 	var g := Fx.flat()
-	Fx.put(g, PropKind.IRON_ORE, Vector2(0.75, -0.2))
+	Fx.put(g, PropKind.REBAR_SLAB, Vector2(0.75, -0.2))
 	var drift := Fx.put(g, PropKind.DRIFTWOOD, Vector2(1.0, 0.2))
 	eq(Survival.use_target(g), drift, "the driftwood you can take")
 	Fx.done(g)
@@ -411,7 +411,7 @@ func test_the_sweep_makes_no_prop_for_what_is_not_due() -> void:
 			w.country[y * 40 + x] = Country.SEA if rim else Country.COAST
 	w.spawn = Vector2(20.5, 20.5)
 	for i in 200:
-		w.add_prop(WorldProp.new(w.next_id(), PropKind.IRON_ORE, Vector2(2.5 + i % 30, 2.5 + i / 30), 0.0, 1.0))
+		w.add_prop(WorldProp.new(w.next_id(), PropKind.REBAR_SLAB, Vector2(2.5 + i % 30, 2.5 + i / 30), 0.0, 1.0))
 	GenIds.run(w)
 	check(w.packed, "a packed world, where a prop is a view")
 	var g := Fx.from_world(w)

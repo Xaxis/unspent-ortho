@@ -29,9 +29,9 @@ await took 20
 wait 1.2
 shot 04-the-seam-worked-out
 # A copper seam: the iron pick rings off it, and the mark says so before the key does.
-near copper_ore
+near cable_duct
 wait 0.6
-shot 05-copper-too-hard-for-iron with harvest_target:too_hard,prop:copper_ore
+shot 05-copper-too-hard-for-iron with harvest_target:too_hard,prop:cable_duct
 # A bush picked bare stands whole, marked only by the ring.
 near bush
 press use 0.1

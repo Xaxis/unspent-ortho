@@ -209,8 +209,8 @@ static func _goal_of(game: Game) -> String:
 		if Story.landed(REAPER_DOWN) and StoryContent.LEAD.has(&"crew"):
 			_key = &"crew"
 			return String(StoryContent.LEAD[&"crew"])
-		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
-			return _led(&"ore", "Take the pick to the ore in the rock.")
+		if not inv.has(&"rebar") and not inv.has(&"iron"):
+			return _led(&"ore", "Take the pick to a rebar slab.")
 		return camp_goal()
 	var armour := armour_goal(game)
 	if armour != "":

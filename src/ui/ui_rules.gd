@@ -14,7 +14,7 @@ const CREEL := 40.0
 const PROP_VERBS := {
 	PropKind.PINE: "fell", PropKind.SNOW_PINE: "fell", PropKind.BROADLEAF: "fell", PropKind.DEAD_TREE: "fell",
 	PropKind.BOULDER: "break", PropKind.STONE_ORE: "break", PropKind.CLINTS: "break", PropKind.WRECK: "break",
-	PropKind.IRON_ORE: "dig", PropKind.COPPER_ORE: "dig", PropKind.COAL_ORE: "dig", PropKind.TIN_ORE: "dig",
+	PropKind.REBAR_SLAB: "dig", PropKind.CABLE_DUCT: "dig", PropKind.COAL_TIP: "dig", PropKind.BOARD_DRIFT: "dig",
 	PropKind.REEDS: "cut", PropKind.GORSE: "cut", PropKind.PEAT_BANK: "cut",
 	PropKind.DRIFTWOOD: "gather", PropKind.WRACK: "gather", PropKind.MUSSEL_ROCK: "gather",
 	PropKind.TIP: "turn",

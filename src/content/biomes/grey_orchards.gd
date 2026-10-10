@@ -112,7 +112,7 @@ static func make() -> BiomeDef:
 		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY,
 		# The sprayers that keep the rows, one to a block (`_works`).
 		PropKind.SPRAYER_GANTRY]
-	d.ore = [[PropKind.IRON_ORE, 0.014], [PropKind.COPPER_ORE, 0.012]]
+	d.ore = [[PropKind.REBAR_SLAB, 0.014], [PropKind.CABLE_DUCT, 0.012]]
 	d.sites = {"tips": 2}
 	d.beached_wrecks = false
 	d.pools = {"order": 3, "cell": 30, "chance": 0.45, "r_min": 2.0, "r_max": 4.2, "ground": Ground.WATER}

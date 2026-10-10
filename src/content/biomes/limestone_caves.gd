@@ -179,12 +179,12 @@ static func make() -> BiomeDef:
 	d.water_wash = Color(0.31, 0.47, 0.51, 0.70)
 	d.hard_rock = true
 	d.props = [PropKind.DRIPSTONE, PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE,
-		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE,
-		PropKind.TIN_ORE, PropKind.BONES, PropKind.DEBRIS]
+		PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP,
+		PropKind.BOARD_DRIFT, PropKind.BONES, PropKind.DEBRIS]
 	# Deep seams: what the surface only shows at a broken face is everywhere here,
 	# and that is the reason to come down (VISION §6.1, elite materials by place).
-	d.ore = [[PropKind.STONE_ORE, 0.075], [PropKind.IRON_ORE, 0.115],
-		[PropKind.COPPER_ORE, 0.140], [PropKind.COAL_ORE, 0.158], [PropKind.TIN_ORE, 0.170]]
+	d.ore = [[PropKind.STONE_ORE, 0.075], [PropKind.REBAR_SLAB, 0.115],
+		[PropKind.CABLE_DUCT, 0.140], [PropKind.COAL_TIP, 0.158], [PropKind.BOARD_DRIFT, 0.170]]
 	d.gravel_ore = true
 	d.reed_chance = 0.0
 	d.shore_bush = PropKind.BOULDER

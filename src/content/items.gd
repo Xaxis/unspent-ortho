@@ -164,11 +164,14 @@ const DEFS := {
 	&"stone": {"name": "stone", "bulk": 3.0, "group": &"material"},
 	&"coal": {"name": "coal", "bulk": 3.0, "group": &"material"},
 	&"charcoal": {"name": "charcoal", "bulk": 2.0, "group": &"material"},
-	&"tin_ore": {"name": "tin ore", "bulk": 4.0, "group": &"material"},
+	# THE OLD WORLD'S METAL (docs/SALVAGE.md): nothing alive mines rock for it.
+	# Rebar out of a broken slab, cable out of a split duct, boards out of a drift
+	# of dead appliances, each worked back into stock at a fire.
+	&"boards": {"name": "circuit board", "many": "boards", "bulk": 3.0, "group": &"material"},
 	&"tin": {"name": "tin", "bulk": 1.0, "group": &"material"},
-	&"iron_ore": {"name": "iron ore", "bulk": 4.0, "group": &"material"},
+	&"rebar": {"name": "length of rebar", "many": "rebar", "bulk": 4.0, "group": &"material"},
 	&"iron": {"name": "iron", "bulk": 1.0, "group": &"material"},
-	&"copper_ore": {"name": "copper ore", "bulk": 4.0, "group": &"material"},
+	&"cable": {"name": "length of cable", "many": "cable", "bulk": 4.0, "group": &"material"},
 	&"copper": {"name": "copper", "bulk": 1.0, "group": &"material"},
 	# Cut out of a pressure block on the frost sea with a steel edge (Takes): the
 	# clear heart of a slab of sea ice, the raw the deep ice lens is ground from.

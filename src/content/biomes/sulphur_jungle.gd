@@ -113,8 +113,8 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.75
 	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.VENT, PropKind.VENT_CAP,
 		PropKind.REEDS, PropKind.BOULDER, PropKind.STUMP, PropKind.STONE_ORE,
-		PropKind.COPPER_ORE, PropKind.SLAG_HEAP]
-	d.ore = [[PropKind.COPPER_ORE, 0.034], [PropKind.STONE_ORE, 0.026], [PropKind.TIN_ORE, 0.02]]
+		PropKind.CABLE_DUCT, PropKind.SLAG_HEAP]
+	d.ore = [[PropKind.CABLE_DUCT, 0.034], [PropKind.STONE_ORE, 0.026], [PropKind.BOARD_DRIFT, 0.02]]
 	# Its fields lie in its own crust, the ground its vents stand in (`_scatter`).
 	d.sites = {"fumaroles": 4, "fumarole_ground": Ground.SALT, "tips": 1}
 	d.beached_wrecks = false

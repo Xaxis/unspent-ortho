@@ -168,7 +168,7 @@ static func make() -> BiomeDef:
 		# piles, and the works row that stands the lock, are the placement
 		# wave's; declaring a kind places nothing until a recipe returns it.
 		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE]
-	d.ore = [[PropKind.IRON_ORE, 0.02], [PropKind.COPPER_ORE, 0.018]]
+	d.ore = [[PropKind.REBAR_SLAB, 0.02], [PropKind.CABLE_DUCT, 0.018]]
 	# The flooded hall (SiteKinds), a rate per 1,000 tiles of each region.
 	d.sites = {"tips": 2, "ruins": true, "flooded_hall": 0.05}
 	d.beached_wrecks = true

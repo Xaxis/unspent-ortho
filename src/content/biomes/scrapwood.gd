@@ -137,11 +137,11 @@ static func make() -> BiomeDef:
 	d.water_wash = Color(0.125, 0.140, 0.110, 0.86)
 	d.props = [PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP, PropKind.BROADLEAF, PropKind.PINE,
 		PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER, PropKind.REEDS,
-		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.DRIFTWOOD]
+		PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP, PropKind.DRIFTWOOD]
 	# The seams here are what the machines left, not what the rock holds: iron
 	# and copper come up easily, stone hardly at all.
-	d.ore = [[PropKind.IRON_ORE, 0.05], [PropKind.COPPER_ORE, 0.08], [PropKind.STONE_ORE, 0.09],
-		[PropKind.COAL_ORE, 0.1]]
+	d.ore = [[PropKind.REBAR_SLAB, 0.05], [PropKind.CABLE_DUCT, 0.08], [PropKind.STONE_ORE, 0.09],
+		[PropKind.COAL_TIP, 0.1]]
 	d.reed_chance = 0.12
 	d.sites = {"tips": 4, "ruins": true, "summit": 0}
 	d.pools = {"order": 5, "cell": 34, "chance": 0.45, "r_min": 2.4, "r_max": 4.0, "ground": Ground.BLACKWATER}

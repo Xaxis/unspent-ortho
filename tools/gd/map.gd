@@ -179,7 +179,7 @@ func _prop_color(kind: int) -> Color:
 			return Palette.EARTH[4]
 		PropKind.BOULDER, PropKind.CLINTS, PropKind.MUSSEL_ROCK, PropKind.STANDING_STONE, PropKind.CAIRN:
 			return Palette.STONE[4]
-		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE:
+		PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP, PropKind.BOARD_DRIFT:
 			return Palette.COPPER[4]
 		PropKind.VENT:
 			return Palette.EMBER[4]

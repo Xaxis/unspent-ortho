@@ -231,7 +231,7 @@ static func mark_of(kind: int) -> int:
 			return MARK_CONIFER
 		PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.GORSE:
 			return MARK_TREE
-		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE, PropKind.CLINTS, PropKind.STANDING_STONE, PropKind.CAIRN:
+		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.REBAR_SLAB, PropKind.CABLE_DUCT, PropKind.COAL_TIP, PropKind.BOARD_DRIFT, PropKind.CLINTS, PropKind.STANDING_STONE, PropKind.CAIRN:
 			return MARK_ROCK
 		PropKind.REEDS, PropKind.PEAT_BANK:
 			return MARK_REEDS

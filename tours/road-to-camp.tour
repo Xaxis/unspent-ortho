@@ -4,7 +4,7 @@
 # and keeps the note to himself (its hand is the Echo's, slice 4); then he takes
 # the iron and pays in plate, and the want is the armour it is for.
 #
-#   tools/tour.sh tours/road-to-camp.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead --give=pick:1,iron_ore:1
+#   tools/tour.sh tours/road-to-camp.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead --give=pick:1,rebar:1
 #
 # `at cast:rook` asks 49_cast where he stands; nothing here is a coordinate.
 coast calm

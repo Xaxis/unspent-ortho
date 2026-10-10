@@ -2,7 +2,7 @@ extends TestCase
 ## The first ten minutes, played by a bot on generated worlds through the same
 ## calls the keys and the crafting screen make:
 ##   knife -> shore food and wood -> loose stone -> a campfire -> charcoal
-##   -> a haft -> plate from a tip -> a pick -> iron ore -> iron -> an axe -> timber
+##   -> a haft -> plate from a tip -> a pick -> rebar -> iron -> an axe -> timber
 ##
 ## Honest: the bot may only use what is in the world after a game's setup (the
 ## generator, plus the strand survival lays near the spawn). It never places a
@@ -22,7 +22,7 @@ const MENU_SECONDS := 4.0
 ## clock already charges every step of the walk. A distance cap as well was a
 ## second and weaker assertion of the same thing, and it is the one that failed
 ## first -- when a landscape moved every seed's island, seed 2's nearest iron
-## went to 162 tiles and this reported "nothing within 100 tiles gives iron_ore"
+## went to 162 tiles and this reported "nothing within 100 tiles gives iron_ore" (rebar since)
 ## about a start the bot had otherwise played straight through: wood, fire,
 ## charcoal, mussels, all of it.
 ##
@@ -117,7 +117,7 @@ func _play(s: int) -> void:
 	_sleep_if_night(fire)
 
 	# Iron: the new pick breaks a vein; wood for the charcoal to smelt it.
-	_gather(&"iron_ore", 3)
+	_gather(&"rebar", 3)
 	eq(g.inventory.held, &"pick", "the pick went into the hand for the ore")
 	_gather_wood(8)
 	_gather(&"mussels", 2)
