@@ -1111,7 +1111,8 @@ const TOUR_PLACES: Array[String] = ["holding_ask", "shutters"]
 
 
 ## `holding_ask`: beside one of the people of the village he is in, out on the
-## land and clear of any door (a door takes the key, 21_doors), facing them.
+## land and clear of any door (a door takes the key, 21_doors) and of anything
+## standing (a prop under his hands takes it too), facing them.
 ## `shutters`: out in front of the boards of the holding he is at, on the side
 ## away from the bed they bar, facing them: what a machine in the yard would see.
 func tour_place(what: String) -> Vector2:
@@ -1126,18 +1127,22 @@ func tour_place(what: String) -> Vector2:
 	var folk := _folk()
 	var doors := game.get_node_or_null(^"21_doors")
 	for row: Dictionary in folk.call(&"out_of", v, centre):
-		var p: Vector2 = (row.pos as Vector2) + Vector2(1.0, 0.0)
-		var clear := true
-		if doors != null:
-			for t: Threshold in doors.get("doors"):
-				if t.door.distance_to(p) < 2.5:
-					clear = false
-					break
-		if clear:
-			row["role"] = &"idle"
-			row["wait"] = 99.0
-			_tour_face = PI
-			return p
+		# A tile off them on whichever side is clear of a door and of anything
+		# standing (a bush at his feet takes the key from the person he faces,
+		# and the proof asked a bush instead of the villager: holdfast.tour 444).
+		for off: Vector2 in [Vector2(1.0, 0.0), Vector2(-1.0, 0.0), Vector2(0.0, 1.0), Vector2(0.0, -1.0)]:
+			var p: Vector2 = (row.pos as Vector2) + off
+			var clear := game.query.clear_of_props(p, Tuning.PLAYER_RADIUS)
+			if clear and doors != null:
+				for t: Threshold in doors.get("doors"):
+					if t.door.distance_to(p) < 2.5:
+						clear = false
+						break
+			if clear:
+				row["role"] = &"idle"
+				row["wait"] = 99.0
+				_tour_face = (-off).angle()
+				return p
 	return Vector2.INF
 
 
