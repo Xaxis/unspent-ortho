@@ -24,10 +24,12 @@ var sim: FightSim = null
 var intent_move := Vector2.ZERO
 var intent_run := false
 ## Height above the ground held by an ability (a glide, a grapple's arc) or by
-## the deck of a craft under the body. Two writers, and they cannot disagree:
+## the deck of a craft under the body. Three writers, and they cannot disagree:
 ## the gear package (54_gear) writes it every frame a motion runs and puts it
 ## back to 0 when the body lands, the crafts package (44_crafts) writes it every
-## frame a craft carries the body, and 54 runs after 44.
+## frame a craft carries the body, and 54 runs after 44; the first morning
+## (48_wake) holds it while he lies across the waterline, before any of those
+## can run, and puts it back to 0 as he gets up.
 var lift := 0.0
 ## The craft carrying this body (src/core/craft/), or null on foot. In a running
 ## game the hero's own `ride` is what the simulation moves by; this is the same

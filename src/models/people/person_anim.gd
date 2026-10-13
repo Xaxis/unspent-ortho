@@ -486,11 +486,11 @@ static func _carry(p: Pose, klass: StringName, move: float, run: float, c: float
 
 # ---------------------------------------------------------------- actions
 
-const ACTIONS: Array[StringName] = [&"swing", &"heavy", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"rise", &"swim", &"jump", &"climb"]
+const ACTIONS: Array[StringName] = [&"swing", &"heavy", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"washed", &"rise", &"swim", &"jump", &"climb"]
 ## Actions with no natural end: they hold their last pose until replaced. `swim`
 ## is here so a shot can stage a stroke on dry land and the gallery can show it;
 ## in a game the water chooses it, frame by frame, and nobody plays it by hand.
-const HELD: Array[StringName] = [&"carried", &"downed", &"swim"]
+const HELD: Array[StringName] = [&"carried", &"downed", &"washed", &"swim"]
 ## Actions whose legs follow the gait when the body is moving (a swing creeps).
 const UPPER_ONLY: Array[StringName] = [&"swing", &"heavy", &"eat"]
 const LOWER: Array[StringName] = [&"hips", &"thigh_l", &"thigh_r", &"shin_l", &"shin_r", &"foot_l", &"foot_r", &"hem"]
@@ -506,7 +506,7 @@ static func default_seconds(action: StringName, tool_id: StringName) -> float:
 		&"jump": return 0.62
 		&"hurt": return 0.45
 		&"eat": return 2.4
-		&"carried", &"downed": return 0.0
+		&"carried", &"downed", &"washed": return 0.0
 		&"rise": return RISE_SECONDS
 	return 2.0
 
@@ -552,6 +552,8 @@ static func action(name: StringName, t: float, seconds: float, d: Dictionary, to
 			return carried(t, d)
 		&"downed":
 			return downed(t, d)
+		&"washed":
+			return washed(t, d)
 		&"rise":
 			return rise(t, d)
 		&"work":
@@ -963,12 +965,42 @@ static func _lying(d: Dictionary, breath: float) -> Pose:
 	})
 
 
+## How far a washed-up body is bent up at the hips, so the chest lies over the
+## lip of the beach while the legs float in the shallows (radians).
+const WASHED_BEND := 0.75
+
+
+## Washed up against the beach: face down with the legs out flat behind in the
+## sea and the hips over the figure's own origin, the body bent up there so the
+## chest and the flung arms lie over the lip of the sand and the cheek on it
+## (48_wake lays the hips in the water at the foot of the beach's step, and the
+## sea cuts the rest). From the first frame, with no fall into it, breathing
+## slow, until something replaces it.
+static func washed(t: float, d: Dictionary) -> Pose:
+	return _washed(d, sin(t * TAU / 3.4) * 0.01)
+
+
+static func _washed(d: Dictionary, breath: float) -> Pose:
+	var hip_y: float = d.get("hip_y", 0.6)
+	var depth: float = d.get("depth", 0.22)
+	return _lying(d, breath).with({
+		"@root": Vector3(-hip_y, depth * 0.52 + 0.01 + breath, 0),
+		"spine": Vector3(0.12, 0, 0.05 + WASHED_BEND),
+		"head": Vector3(0.1, 0.95, 0.12 - WASHED_BEND * 0.7),
+		# Straight out and a little down into the water, so no boot stands up
+		# out of it.
+		"thigh_l": Vector3(0.15, 0, 0.3), "shin_l": Vector3(0, 0, -0.1),
+		"thigh_r": Vector3(-0.08, 0, 0.22), "shin_r": Vector3(0, 0, -0.05),
+		"foot_l": Vector3(0, 0, 0.9), "foot_r": Vector3(0, 0, 1.0),
+	})
+
+
 ## Seconds getting up off the ground takes.
 const RISE_SECONDS := 2.6
 
 
-## Rise: up off the ground from lying face down, the way somebody half-drowned
-## does it (48_wake). A cough lifts the back; the hands come under the
+## Rise: up off the ground from lying washed up (`washed`), the way somebody
+## half-drowned does it (48_wake). A cough lifts the back; the hands come under the
 ## shoulders and push him onto hands and knees, where he hangs his head and
 ## breathes; one foot comes forward under him; he stands. Every key is solved
 ## from the build's own lengths, so hands and knees meet the ground on any body.
@@ -984,7 +1016,7 @@ static func rise(t: float, d: Dictionary) -> Pose:
 	var lift := asin(clampf((reach - low) / maxf(torso - 0.025, 0.1), 0.0, 0.9))
 	var tip := PI * 0.5 - lift
 	var hips_x := 0.12
-	var lying := _lying(d, 0.0)
+	var lying := _washed(d, 0.0)
 	var stir := lying.with({
 		"spine": Vector3(0.12, 0, -0.18), "head": Vector3(0.1, 0.6, 0.35),
 		"arm_r": Vector3(-0.3, 0, 1.2), "fore_r": Vector3(0, 0, 1.2),

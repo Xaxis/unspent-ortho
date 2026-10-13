@@ -2,18 +2,19 @@ class_name WakeSpot
 extends RefCounted
 ## WHERE THE SEA LEFT HIM (docs/STORY.md: "Waking in the surf: released from the
 ## black site offshore; Maren pulls him out"). A new game's first morning opens
-## on him face down on the tideline of the spawn beach, where the line from the
-## beach out to the black site comes ashore, so the site stands in the sea
-## behind him and the land is ahead.
+## on him face down in the tideline of the spawn beach, half out of the sea,
+## where the line from the beach out to the black site comes ashore, so the site
+## stands in the sea behind him and the land is ahead.
 ##
 ##   WakeSpot.find(world) -> {at, maren, face}, or {} where there is no such place
 ##
-## `at` is where he lies: a dry tile touching the water near where the line
-## comes ashore, on a beach with wading water off it (not a lip over deep water),
-## open to the sky the length of him, so the view sees a body and not a ridge
-## (`_lie_cost`); `maren` a dry tile at the water's edge a few paces from him and
-## on his level, where she waits; `face` the bearing inland, away from the water
-## round him, the way he lies and stands. PURE: a function of the world, never saved.
+## `at` is where he lies: on a dry tile touching the water near where the line
+## comes ashore, his boots at the sea's lip and his legs in the tide, on a beach with
+## wading water off it (not a lip over deep water), open to the sky the length
+## of him so the view sees a body and not a ridge (`_lie_cost`); `maren` a dry
+## tile at the water's edge a few paces from him and on his level, where she
+## waits; `face` the bearing inland, away from the water round him, the way he
+## lies and stands. PURE: a function of the world, never saved.
 
 ## How far past the tideline the beach must still be wading water, in tiles: a
 ## shore he could have washed up on, not a drop into deep water.
@@ -36,10 +37,11 @@ const NOT_BEACH := 0.6
 const MAREN_NEAR := 0.5
 const MAREN_APART := 1.2
 const MAREN_PACES := 2.2
-## How far toward the water from his tile's centre he lies, his boots at its
-## edge, and how far up the beach from there his head reaches (PersonAnim's
-## lying body, a little over).
-const SEAWARD := 0.15
+## How far toward the water from his tile's centre he lies: his boots at the
+## sea's lip, where the tide runs up over his legs (TideWash). And how far up the
+## beach from the tile's centre the open ground he needs reaches (his head, and
+## over).
+const SEAWARD := 0.12
 const HEAD := 1.2
 const STEP := 0.5
 

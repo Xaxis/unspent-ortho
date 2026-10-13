@@ -441,6 +441,11 @@ func _feed_hud() -> void:
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")
 		return
+	# A staged moment holding the glass (the first morning, 48_wake) teaches no
+	# key: "e talk" under the record while he lay out cold in the tide.
+	if hud.glass_holder.is_valid() and hud.glass_holder.call() != null:
+		hud.set_hint("")
+		return
 	# **THE CAP IS ASKED FOR, NOT SPELLED.** These two are the most-seen key caps
 	# in the game, and both were the letter typed here. `PlayerSettings` reads the
 	# LIVE `InputMap`, so a player who moves `use` off E is told the key that now

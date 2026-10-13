@@ -23,7 +23,9 @@
 # The site (site/: the landing page, its face and frames) is served at /, and the
 # build goes under /b/<sha>/ with /play redirecting to it, so every file of a
 # build can be cached forever and a player who comes back after a deploy can
-# never end up running a new pack against an old engine. The threaded build needs
+# never end up running a new pack against an old engine. /play, and a build that
+# is gone, are temporary redirects no browser keeps (307, no-store): a permanent
+# one may be remembered across deploys and land a player on an old build. The threaded build needs
 # its page to be cross-origin isolated, so the headers below are not optional:
 # without them the engine refuses to start, which is why the proof at the end
 # loads the real URL in a real browser rather than trusting that we sent them.
@@ -88,7 +90,7 @@ cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
   "routes": [
-    { "src": "/play/?", "status": 308, "headers": { "Location": "/b/$sha/" } },
+    { "src": "/play/?", "status": 307, "headers": { "Location": "/b/$sha/", "Cache-Control": "no-store" } },
     { "src": "/(.*)",
       "headers": { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin" },
       "continue": true },
@@ -106,7 +108,7 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/releases/(.*)", "headers": { "Cache-Control": "no-cache" }, "continue": true },
     { "src": "/b/([^/]+)/?$", "dest": "/b/\$1/index.html" },
     { "handle": "filesystem" },
-    { "src": "/b/(.*)", "status": 308, "headers": { "Location": "/b/$sha/" } },
+    { "src": "/b/(.*)", "status": 307, "headers": { "Location": "/b/$sha/", "Cache-Control": "no-store" } },
     { "src": "/(.*)", "status": 308, "headers": { "Location": "/" } }
   ]
 }

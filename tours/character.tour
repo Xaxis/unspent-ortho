@@ -51,6 +51,13 @@ key use
 # raise's, which runs past a minute on a loaded box.
 await game 300
 coast calm
+# A new game wakes (48_wake): out in the tide, up, and Maren speaks first; this
+# tour is about the body, so it leaves her talk the way a player can.
+await talking 30
+tap pause
+# Then the view turns once to the Tether and holds, keys and all.
+await staging:tether 8
+wait 5.0
 zoom 4
 wait 1.5
 shot 04-that-body-on-its-feet with avatar:build=heavy,avatar:skin=tan,avatar:hair_style=long,avatar:hair=red,avatar:beard=chin

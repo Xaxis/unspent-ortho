@@ -15,12 +15,15 @@ key move_up
 key use
 await game 120
 hud hidden
-await waking 5
-wait 0.4
+# His eyes open on him down in the tide, a breath before he stirs.
+await eyes:open 20
+wait 0.3
 hud hidden
-shot 01-surf with waking
-await woken 10
-await staging:tether 6
+shot 01-surf with waking,eyes:open
+# She speaks first; the sight of the Tether comes once her talk is left.
+await talking 12
+tap pause
+await staging:tether 8
 wait 1.2
 hud hidden
 shot 02-tether with staging:tether

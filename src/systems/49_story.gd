@@ -139,6 +139,23 @@ func _stage() -> void:
 		view.refresh()
 
 
+## SOMEBODY SPEAKS FIRST: their talk opened as if he had pressed at them, for a
+## staged moment where they do the talking (48_wake: Maren, as he gets up out of
+## the tide). False when nothing opened: a talk or a page is already up, or the
+## character is not cast or has nothing to say.
+func talk_with(character: StringName) -> bool:
+	if game.talking or talk != null or reading != &"":
+		return false
+	var cast := game.get_node_or_null(^"49_cast")
+	if cast == null:
+		return false
+	for row: Dictionary in cast.get("people"):
+		if StringName(str(row.get("character", &""))) == character:
+			_start_talk(row)
+			return game.talking
+	return false
+
+
 ## A fragment's words on the glass, as if read off the thing that holds them: for
 ## a writer (`--read`, dev mode's words page). `found` marks it read, which a
 ## writer looking at a page usually does not want.

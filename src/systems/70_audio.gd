@@ -67,6 +67,10 @@ var machine_target := 0.0
 ## World muffle 0..1, smoothed toward what the open pages ask for.
 var muffle := 0.0
 var muffle_target := 0.0
+## The systems that may muffle the world for a staged moment (`muffles()`, 0..1:
+## 48_wake while he is still coming to), found once.
+var _mufflers: Array[Node] = []
+var _mufflers_found := false
 ## The last one-shots started, newest last: {key, bus, db}. For tests and debugging.
 var history: Array[Dictionary] = []
 
@@ -192,9 +196,10 @@ func advance(delta: float) -> void:
 		_machine_t = MACHINE_EVERY
 		_pick_machine()
 	_mix_machine(delta)
-	if absf(muffle_target - muffle) > 1e-4:
-		muffle += (muffle_target - muffle) * (1.0 - exp(-delta / MUFFLE_FADE))
-		SoundBuses.set_muffle(muffle if absf(muffle_target - muffle) > 1e-4 else muffle_target)
+	var want := maxf(muffle_target, _staged_muffle())
+	if absf(want - muffle) > 1e-4:
+		muffle += (want - muffle) * (1.0 - exp(-delta / MUFFLE_FADE))
+		SoundBuses.set_muffle(muffle if absf(want - muffle) > 1e-4 else want)
 
 
 # ------------------------------------------------------------------ one-shots
@@ -378,6 +383,21 @@ func mob_kind_at(at: Vector3) -> StringName:
 			best = d
 			kind = StringName(str(k))
 	return kind
+
+
+## How far a staged moment wants the world muffled: asked as a capability, so
+## this file does not know the wake by name.
+func _staged_muffle() -> float:
+	if not _mufflers_found:
+		_mufflers_found = true
+		for s: Node in game.systems:
+			if s.has_method(&"muffles"):
+				_mufflers.append(s)
+	var most := 0.0
+	for s: Node in _mufflers:
+		if is_instance_valid(s):
+			most = maxf(most, float(s.call(&"muffles")))
+	return most
 
 
 ## A page open muffles the world; the pause page most of all.

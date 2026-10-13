@@ -348,7 +348,7 @@ func _resolved(a: StringName, t: float, length: float) -> PersonAnim.Pose:
 	var tq := t
 	if period > 0.0:
 		tq = fposmod(t, period)
-	elif a == &"downed":
+	elif a == &"downed" or a == &"washed":
 		# Cheap (no IK) and it breathes for ever: never cached.
 		return PersonAnim.resolve(rig, PersonAnim.action(a, t, length, _dims, held), held)
 	var frame := roundi(tq * 60.0)

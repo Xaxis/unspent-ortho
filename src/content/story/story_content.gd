@@ -5920,22 +5920,21 @@ const TALKS := {
 # remembers having heard it. It says what happened to him and nothing about what
 # it means, because he does not know yet either.
 #
-# THE WAKE (48_wake): the record's first lines, only what could be seen, one
-# staged moment each. `comes_to` as he stirs, face down on the tideline where
-# the sea left him; `stands` when he is up off the sand with the black site
-# behind him and Maren along the water's edge, which is also where the staging
-# hands him his legs. A line for walking onto a tile is the one thing the record
-# never says (docs/STORY.md). "Came up out of the
-# water" is Maren's to say, in her talk, and the black site stays "something"
-# until somebody names it. `tether` when the view turns once to the far
-# horizon and tips up (48_wake, 42_stage); the line and its light stay unnamed.
+# THE WAKE (48_wake): the record's first lines, only what is seen and heard, one
+# staged moment each, said from the black before his eyes have opened at all.
+# `dark` the moment the game begins, the tide pulling at his legs; `voice` as
+# his eyes first open, hers, before he can see whose; `comes_to` as he stirs on
+# the sand; `stands` when he is up, the black site behind him. Then she speaks
+# for herself (her talk opens by itself, 48_wake). A line for walking onto a
+# tile is the one thing the record never says (docs/STORY.md). "Came up out of
+# the water" is Maren's to say, and the black site stays "something" until
+# somebody names it. `tether` when the view turns once to the far horizon and
+# tips up (48_wake, 42_stage); the line and its light stay unnamed.
 const WAKE := {
+	&"dark": ["Cold.", "The sea drags at your legs, and lets them go."],
+	&"voice": ["A voice, close: \"Easy. You're out of it.\""],
 	&"comes_to": ["Salt in your mouth. Sand under your cheek.", "You cough up the sea."],
-	&"stands": [
-		"Behind you, something stands in the sea.",
-		"Someone at the water's edge is watching you.",
-		"You do not remember the water.",
-	],
+	&"stands": ["Behind you, something stands in the sea.", "You do not remember the water."],
 	&"tether": [
 		"Far off, a thread climbs from the horizon into the sky.",
 		"Where it ends, one light hangs and does not move.",

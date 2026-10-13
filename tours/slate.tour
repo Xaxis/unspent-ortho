@@ -32,7 +32,13 @@ key use
 # The island is raised behind the title (UiTitle._raise_island): a new game
 # pressed at once waits on the loading page for the rest of that raise.
 await game 120
-wait 2.5
+# A new game wakes (48_wake): out in the tide, up, and Maren speaks first; this
+# tour is about the slate, so it leaves her talk the way a player can.
+await talking 30
+tap pause
+# Then the view turns once to the Tether and holds, keys and all.
+await staging:tether 8
+wait 6.0
 shot 05-hud-in-the-world
 walk 1,0 1.2
 shot 06-hud-walked
