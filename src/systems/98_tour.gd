@@ -368,6 +368,9 @@ func _start() -> void:
 	_out = ProjectSettings.globalize_path("res://").path_join("shots/tour").path_join(_name)
 	DirAccess.make_dir_recursive_absolute(_out)
 	_runner = self
+	# Anything that must know a script is pressing the keys asks the group: a
+	# game a tour starts from the title has no `--tour` among its own options.
+	add_to_group(&"tour_runner")
 	_run.call_deferred()
 
 

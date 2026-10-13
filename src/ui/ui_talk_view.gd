@@ -99,13 +99,20 @@ func _process(delta: float) -> void:
 		typed = 0.0
 		# A scripted tour presses through talks as they were before they typed:
 		# every line out at once, so each press means the reply it always meant.
-		if game != null and game.options != null and game.options.tour != "" and not says.is_empty():
+		if _toured() and not says.is_empty():
 			line = says.size() - 1
 			typed = float(says[line].length())
 		refresh()
 	if line < says.size() and typed < says[line].length():
 		typed = minf(typed + CPS * delta, float(says[line].length()))
 		refresh()
+
+
+## A scripted tour is pressing the keys (98_tour joins `tour_runner` when it has
+## one to run): from the title its game has no `--tour` among its own options,
+## and the talk typed under home-coast's presses, a line a press.
+func _toured() -> bool:
+	return is_inside_tree() and not get_tree().get_nodes_in_group(&"tour_runner").is_empty()
 
 
 ## Every line of the node is out: the replies are up.
