@@ -195,7 +195,10 @@ func test_no_goal_or_key_hint_is_on_the_glass_until_the_wake_is_over() -> void:
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.LEAD_BEAT)
 	await _wall(1.0)
-	check(g.hud.goal != "", "the goal once the wake is over and she has given her lead")
+	# Her errand stands as the first steps' card (FirstSteps), its step under way
+	# the first thing she asked for.
+	check(g.hud.steps.any(func(r: Dictionary) -> bool: return r.get("state", &"") == &"now" and String(r.text) == "Take driftwood off the strand"),
+		"the card once the wake is over and she has given her lead: %s" % [g.hud.steps])
 	Events.hint.disconnect(on_hint)
 	Sx.end(g)
 	Story.forget()

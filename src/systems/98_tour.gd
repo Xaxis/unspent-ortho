@@ -989,6 +989,10 @@ func _now_true(what: String) -> bool:
 		return (top == null and want == "none") or (top != null and String(top.screen_name) == want and top.wake >= 1.0)
 	if what.begins_with("station:"):
 		return Survival.stations_near(game).has(StringName(what.trim_prefix("station:")))
+	# `step:KEY`: the first steps' card has KEY under way (90_ui, FirstSteps).
+	if what.begins_with("step:"):
+		var ui := _system("90_ui")
+		return ui != null and bool(ui.call(&"tour_seen", StringName(what)))
 	# The fire's FIRST press: `use` has asked where it would go and is waiting for
 	# a second. Read live off `Survival.build_asked` rather than latched, because
 	# the ask expires on its own and a latch would go on saying yes after it had.

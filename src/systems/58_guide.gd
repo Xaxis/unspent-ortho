@@ -59,6 +59,14 @@ var _killed_one := false
 var _hints_after := 0.0
 ## A lesson waiting for a glass that will take it (see the header).
 var _lesson := ""
+## THE FIRST STEPS (FirstSteps): Maren's errand as a card of one-mechanic steps
+## while it runs. What has been done is kept here, with the steps only an act
+## shows (a page opened); the rows and the one under way are asked on the guide's
+## own cadence and read by 90_ui for the card and its mark.
+var steps_done: Dictionary = {}
+var steps: Array[Dictionary] = []
+var step_at := -1
+var _steps_in := 0.0
 
 
 func setup(g: Game) -> void:
@@ -86,6 +94,10 @@ func _process(delta: float) -> void:
 		return
 	_t += delta
 	_watch()
+	_steps_in -= delta
+	if _steps_in <= 0.0:
+		_steps_in = ASK_EVERY
+		_ask_steps()
 	if not speaking():
 		return
 	if _t < _next or game.input_blocked():
@@ -103,6 +115,10 @@ func _process(delta: float) -> void:
 	# Asked again after ASK_EVERY whatever the answer; `_say` puts it further off.
 	_next = _t + ASK_EVERY
 	var goal := Guide.goal(game)
+	# The card says the errand; only a need it does not cover (hunger, the dark)
+	# is said in words while it runs.
+	if steps_on() and FirstSteps.COVERS.has(Guide.last_goal_key):
+		goal = ""
 	if goal != _goal and (_goal == "" or _t - _goal_at >= SPACING):
 		_goal = goal
 		_goal_at = _t
@@ -112,12 +128,33 @@ func _process(delta: float) -> void:
 			return
 	if _t < _hints_after:
 		return
-	var h := Guide.hint_for(game, retired)
+	var h := Guide.hint_for(game, retired, false, lesson_filter())
 	if h.is_empty():
 		return
 	retired[h.id] = true
 	var keys: Array = h.get("keys", [])
 	_say(_spell(String(h.line), keys), _first_label(keys))
+
+
+## The first steps, asked again: the rows, the step under way, and the lessons
+## the done ones have taught retired for good.
+func _ask_steps() -> void:
+	steps = FirstSteps.list(game, steps_done)
+	step_at = FirstSteps.current(steps)
+	for r: Dictionary in steps:
+		if r.done and FirstSteps.LESSON.has(r.key):
+			retired[FirstSteps.LESSON[r.key]] = true
+
+
+## While the steps are under way the card is the curriculum.
+func steps_on() -> bool:
+	return step_at >= 0
+
+
+## The lessons that may be taught now (Guide.hint_for's `only`): the urgent few
+## while the card runs, else any.
+func lesson_filter() -> Array:
+	return Guide.STEPS_ALLOW if steps_on() else []
 
 
 ## The live key for one action, or for a cluster of them joined. `PlayerSettings`
@@ -169,7 +206,7 @@ func _say(line: String, key: String = "") -> void:
 func teach_now() -> bool:
 	if game == null or _off:
 		return false
-	var h := Guide.hint_for(game, retired)
+	var h := Guide.hint_for(game, retired, false, lesson_filter())
 	if h.is_empty():
 		return false
 	retired[h.id] = true
@@ -244,8 +281,12 @@ func _on_made(item: StringName, _n: int) -> void:
 func _on_screen(n: StringName, open: bool) -> void:
 	if open and n == &"inventory":
 		retired[&"carry"] = true
+		steps_done[&"carry"] = true
 	if open and n == &"map":
 		retired[&"map"] = true
+		# The survey's step is seeing the camp marked, which it is from her lead.
+		if Story.landed(Guide.LEAD_BEAT):
+			steps_done[&"survey"] = true
 	if open and n == &"holding":
 		retired[&"holding"] = true
 	if open and n == &"journal":

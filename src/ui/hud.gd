@@ -83,6 +83,12 @@ var messages := UiMessages.new()
 ## steps aside for the location ping, for a fight, and for its own words while
 ## they are still on the message line.
 var goal := ""
+## THE FIRST STEPS' CARD (FirstSteps, fed by 90_ui): where the goal line stands
+## (under it, when a need it does not cover is said there), the step just done,
+## the one under way with its count and its key, and the one after. Rows are
+## {text, count, cap, twice, state} with state &"done", &"now" or &"next".
+var steps: Array = []
+var steps_head := ""
 ## Who holds the glass (90_ui hands this over: 58_guide.holder), and the lines
 ## kept back while it did.
 var glass_holder := Callable()
@@ -177,6 +183,12 @@ func set_needs(list: Array[Dictionary]) -> void:
 ## The one-line goal, or "" for none.
 func set_goal(text: String) -> void:
 	goal = text
+
+
+## The first steps' card, or [] for none (see `steps`).
+func set_steps(rows: Array, head: String) -> void:
+	steps = rows
+	steps_head = head
 
 
 ## text "" hides the hint (it fades out rather than blinking off).
@@ -494,6 +506,7 @@ func _draw_hud() -> void:
 	_draw_held(ci)
 	_draw_bottom(ci)
 	_draw_goal(ci)
+	_draw_steps(ci)
 	_draw_place(ci)
 
 
@@ -712,6 +725,69 @@ func _draw_goal(ci: Control) -> void:
 	var x := MARGIN + 12
 	UiSlate.chevron(ci, Vector2i(x, GOAL_Y + 6), UiTheme.PHOSPHOR[2])
 	UiDraw.text(ci, Vector2i(x + 14, GOAL_Y), goal, UiTheme.TEXT)
+
+
+## Air between the card's columns, and how far a row's words sit in from its mark.
+const STEP_INDENT := 20
+const STEP_GAP := 12
+
+
+## The first steps' card: a window like the goal line's, read top down.
+func _draw_steps(ci: Control) -> void:
+	if steps.is_empty() or talking or messages.quiet:
+		return
+	var r := steps_clip()
+	Hud.clip(ci, r, false)
+	var x := MARGIN + 12
+	var y := r.position.y + 4
+	UiDraw.text(ci, Vector2i(x, y), steps_head, UiTheme.TEXT_DIM)
+	y += UiTheme.LINE + 4
+	for row: Dictionary in steps:
+		var state: StringName = row.get("state", &"next")
+		var tx := x + STEP_INDENT
+		match state:
+			&"done":
+				_tick(ci, Vector2i(x + 2, y + 2), UiTheme.FAINT)
+				UiDraw.text(ci, Vector2i(tx, y), String(row.text), UiTheme.FAINT)
+			&"now":
+				UiSlate.chevron(ci, Vector2i(x + 2, y + 6), UiTheme.BRIGHT)
+				UiDraw.text(ci, Vector2i(tx, y), String(row.text), UiTheme.BRIGHT)
+				var cx := tx + UiFont.width(String(row.text)) + STEP_GAP
+				var count := String(row.get("count", ""))
+				if count != "":
+					UiDraw.text(ci, Vector2i(cx, y), count, UiTheme.TEXT)
+					cx += UiFont.width(count) + STEP_GAP
+				var cap := String(row.get("cap", ""))
+				if cap != "":
+					cx += UiSlate.key_cap(ci, Vector2i(cx, y - 1), cap)
+					if bool(row.get("twice", false)):
+						UiDraw.text(ci, Vector2i(cx + 4, y), "twice", UiTheme.TEXT_DIM)
+			_:
+				UiDraw.text(ci, Vector2i(tx, y), String(row.text), UiTheme.TEXT_DIM)
+		y += UiTheme.LINE + 2
+
+
+## Where the card stands: under the goal line when one is on the glass.
+func steps_clip() -> Rect2i:
+	var y := GOAL_Y - 4 + (UiTheme.LINE + 12 if goal_shown() else 0)
+	var w := UiFont.width(steps_head)
+	for row: Dictionary in steps:
+		var rw := STEP_INDENT + UiFont.width(String(row.text))
+		if row.get("state", &"") == &"now":
+			rw += STEP_GAP + UiFont.width(String(row.get("count", ""))) + STEP_GAP + UiFont.width(String(row.get("cap", ""))) + 12
+			if bool(row.get("twice", false)):
+				rw += 4 + UiFont.width("twice")
+		w = maxi(w, rw)
+	return Rect2i(MARGIN + 4, y, w + 30, 12 + (UiTheme.LINE + 4) + (UiTheme.LINE + 2) * steps.size())
+
+
+## A tick for a step done, in the slate's pixels.
+func _tick(ci: CanvasItem, at: Vector2i, col: Color) -> void:
+	var p := UiBase.PITCH
+	for k in 2:
+		UiDraw.px(ci, at.x + k * p, at.y + (3 + k) * p, col)
+	for k in 4:
+		UiDraw.px(ci, at.x + (2 + k) * p, at.y + (4 - k) * p, col)
 
 
 ## The window the goal line is read off, for a goal of this length.

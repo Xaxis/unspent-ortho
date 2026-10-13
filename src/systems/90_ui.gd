@@ -31,6 +31,14 @@ var _goal := ""
 ## The key of the pinned goal (Guide.last_goal_key), for `goal:KEY`.
 var _goal_key := &""
 var _teach: Dictionary = {}
+## The first steps: the card's rows as the HUD draws them, the step under way's
+## key, the goal line as shown (the card stands for the errand's own), and the
+## mark over what the step is about.
+var _steps_rows: Array = []
+var _step_key: StringName = &""
+var _shown_goal := ""
+var _steps_head := ""
+var _step_mark: UiStepMark
 var _guide_in := 0.0
 ## Real seconds between two readings of the guide.
 const GUIDE_EVERY := 0.25
@@ -72,6 +80,10 @@ func setup(g: Game) -> void:
 	_add(UiPauseScreen.new())
 	_add(UiSettingsScreen.new())
 	_add(UiSheetScreen.new())
+	_step_mark = UiStepMark.new()
+	_step_mark.name = "step_mark"
+	_step_mark.game = g
+	add_child(_step_mark)
 	# Survival gives these first when it is loaded; this never adds twice.
 	UiRules.apply_give(g.inventory, g.options.give)
 	SaveGame.register(&"ui", _save, _load)
@@ -429,7 +441,8 @@ func _feed_hud() -> void:
 	hud.set_held(inv.held)
 	hud.set_charge(UiRules.charge_shown(inv.held), inv.count(&"wick"))
 	hud.set_pressures(UiRules.pressures(b, game.clock.minutes, inv.bulk(), UiLink.creel(inv, b)))
-	hud.set_goal(_goal)
+	hud.set_goal(_shown_goal)
+	hud.set_steps(_steps_rows, _steps_head)
 	# A conversation is drawn over the world, not on the slate, so nothing else
 	# here knows one is up. The glass is cleared as it OPENS rather than only
 	# hushed, because a line already standing would go on being drawn under the
@@ -476,6 +489,52 @@ func _step_guide(delta: float) -> void:
 	_goal = Guide.goal(game) if _guided() else ""
 	_goal_key = Guide.last_goal_key if _goal != "" else &""
 	_teach = _guide_hint()
+	_step_steps()
+
+
+## THE FIRST STEPS' CARD AND ITS MARK (FirstSteps, kept by 58_guide): the step
+## just done, the one under way with its count and its key in the player's own
+## keys, and the next; the goal line keeps only what the card does not say (a
+## need: hunger, the dark); the mark stands over what the step is about.
+const STEPS_HEAD := "FIRST STEPS"
+
+
+func _step_steps() -> void:
+	_steps_rows = []
+	_step_key = &""
+	_shown_goal = _goal
+	var on := _guided() and bool(_guide.call(&"steps_on")) and not game.talking
+	if not on:
+		_step_mark.at = Vector3.INF
+		return
+	var rows: Array[Dictionary] = _guide.get("steps")
+	var at: int = _guide.get("step_at")
+	if FirstSteps.COVERS.has(_goal_key):
+		_shown_goal = ""
+	var now: Dictionary = rows[at]
+	_step_key = now.key
+	_steps_head = "%s   %d of %d" % [STEPS_HEAD, at + 1, rows.size()]
+	for i in range(maxi(0, at - 1), mini(rows.size(), at + 2)):
+		var r: Dictionary = rows[i]
+		var state := &"done" if i < at else (&"now" if i == at else &"next")
+		var row := {"text": String(r.text), "state": state}
+		if state == &"now":
+			if int(r.need) > 0:
+				row.count = "%d/%d" % [int(r.have), int(r.need)]
+			if r.act != &"":
+				row.cap = PlayerSettings.cap_of(r.act)
+				row.twice = bool(r.twice)
+		_steps_rows.append(row)
+	var cast := game.get_node_or_null(^"49_cast")
+	var placed: Dictionary = cast.get("placed") if cast != null else {}
+	var maren := Vector2.INF
+	if cast != null:
+		for p: Dictionary in cast.get("people"):
+			if p.get("character", &"") == &"maren":
+				maren = p.pos
+	var to := FirstSteps.target_at(game, now, placed, maren)
+	_step_mark.at = Vector3(to.x, game.world.height_at(to), to.y) if to.is_finite() else Vector3.INF
+	_step_mark.word = String(FirstSteps.WORD.get(now.get("target", &""), ""))
 
 
 ## Who holds the glass now (58_guide.holder), for the Hud to ask as each line
@@ -520,7 +579,7 @@ func _guide_hint() -> Dictionary:
 	# A line with no key of its own is said, not shown on a key row -- so the row
 	# asks for the first lesson that NAMES one rather than taking the first and
 	# giving up when it is keyless.
-	var h := Guide.hint_for(game, retired, true)
+	var h := Guide.hint_for(game, retired, true, _guide.call(&"lesson_filter"))
 	if h.is_empty():
 		return {}
 	var keys: Array = h.get("keys", [])
@@ -542,6 +601,9 @@ func tour_seen(what: StringName) -> bool:
 	# fire_gather, haft, ore, kiln_stones, steel_in_hand, ...), in whoever's words.
 	if String(what).begins_with("goal:"):
 		return _goal != "" and String(_goal_key) == String(what).substr(5)
+	# `step:KEY`: the first steps' card has KEY under way (FirstSteps.STEPS).
+	if String(what).begins_with("step:"):
+		return String(_step_key) == String(what).substr(5)
 	match what:
 		# The goal drawn under the health bar: not waiting on a place's ping or on
 		# its own line still standing on the record (Hud.goal_shown).

@@ -94,6 +94,15 @@ func test_hints_fit_the_moment_and_stay_retired() -> void:
 	Fx.done(g)
 
 
+## Past the first steps' card: these are about the guide's schedule (when a
+## goal and a lesson are said), which is the card's while it runs
+## (test_first_steps says what is said over it).
+func _past_the_card(guide: Node) -> void:
+	var done: Dictionary = guide.get("steps_done")
+	for s: Dictionary in FirstSteps.STEPS:
+		done[s.key] = true
+
+
 func test_a_running_game_says_the_goal_at_wake_then_the_keys() -> void:
 	var g := Game.new()
 	tree.root.add_child(g)
@@ -106,6 +115,7 @@ func test_a_running_game_says_the_goal_at_wake_then_the_keys() -> void:
 	if guide == null:
 		g.free()
 		return
+	_past_the_card(guide)
 	var said: Array[String] = []
 	# Guide lines go out on the teaching channel, never on the queued message line.
 	var listen := func(t: String, _key: String) -> void: said.append(t)
@@ -179,6 +189,7 @@ func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.LEAD_BEAT)
 	var guide: Node = g.get_node("58_guide")
+	_past_the_card(guide)
 	var said: Array[String] = []
 	var listen := func(t: String, _key: String) -> void: said.append(t)
 	Events.hint.connect(listen)

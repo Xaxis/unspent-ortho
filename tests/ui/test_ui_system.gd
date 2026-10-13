@@ -433,6 +433,10 @@ func test_a_caption_that_waited_is_dropped_when_the_ground_changed_under_it() ->
 
 
 ## Move the player as a walk does: the fight body owns where they are (CLAUDE.md).
+func _guide(g: Game) -> Node:
+	return g.get_node("58_guide")
+
+
 func _stand(g: Game, at: Vector2) -> void:
 	g.player.pos = at
 	if g.player.sim != null:
@@ -452,10 +456,18 @@ func test_the_goal_and_the_key_the_guide_teaches_reach_the_hud() -> void:
 	eq(g.hud.goal, "", "no lead given and no need: nothing stands there, rather than a recipe out of nowhere")
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.LEAD_BEAT)
+	_guide(g).call("_ask_steps")
 	ui.call("_step_guide", 1.0)
 	ui.call("_feed_hud")
-	eq(g.hud.goal, Guide.goal(g), "her lead given, its step stands on the glass")
-	check(g.hud.goal != "", "and it is there")
+	# Her errand stands on the glass as the first steps' card: the step under way
+	# lit, with the key that does it in the player's own keys; the goal line is
+	# left to what the card does not say.
+	var now: Array = g.hud.steps.filter(func(r: Dictionary) -> bool: return r.get("state", &"") == &"now")
+	eq(now.size(), 1, "her lead given, the card stands with one step under way: %s" % [g.hud.steps])
+	if now.size() == 1:
+		eq(String(now[0].text), "Take driftwood off the strand", "the first thing her errand asks")
+		eq(String(now[0].get("cap", "")), PlayerSettings.cap_of(&"use"), "with the use key on it")
+	eq(g.hud.goal, "", "and the goal line does not say it twice")
 	var teach: Dictionary = ui.call("_guide_hint")
 	check(not teach.is_empty() and String(teach.get("key", "")) != "", "the guide has a key to teach: %s" % str(teach))
 	if UiLink.use_hint(g) == "" and UiLink.stations_here(g).is_empty():

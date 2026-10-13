@@ -124,6 +124,11 @@ const HINTS := {
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
 }
 
+## What may be taught over the first steps' card: how to walk to what it points
+## at, and the lessons a machine or the dark makes urgent. Everything else waits
+## for the card to be done with.
+const STEPS_ALLOW: Array[StringName] = [&"walk", &"fight", &"dodge", &"target", &"crouch", &"runner", &"worker", &"lamp", &"side"]
+
 ## Load over this share of the creel asks for the carrying page.
 const CARRY_SHARE := 0.6
 ## Nightfall past which the lamp is asked for.
@@ -719,9 +724,14 @@ static func _land_said(id: StringName) -> String:
 ## things to know, not things to press), and the row is drawn from whatever this
 ## answers, so a keyless lesson standing at the front of the list blanked the row
 ## until the guide got round to saying it. Two different questions, one door.
-static func hint_for(game: Game, retired: Dictionary, keyed_only := false) -> Dictionary:
+## `only`, when not empty, is the lessons that may be taught now: while the
+## first steps run (FirstSteps, 58_guide) the card teaches their keys, and only
+## what a machine in view makes urgent is said over it.
+static func hint_for(game: Game, retired: Dictionary, keyed_only := false, only: Array = []) -> Dictionary:
 	for id: StringName in _applicable(game):
 		if keyed_only and (HINTS[id][1] as Array).is_empty():
+			continue
+		if not only.is_empty() and not only.has(id):
 			continue
 		if not retired.has(id):
 			# The line is a TEMPLATE and the actions are names: whoever says it
