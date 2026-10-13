@@ -61,6 +61,9 @@ const MOVES := {
 	# A leap, a climb, a pull: moved each frame by its own motion, and put
 	# down through Player.place when it lands.
 	"src/systems/54_gear.gd": true,
+	# The first morning's crawl up out of the tide onto the sand: the same, put
+	# down through Player.place once he is up.
+	"src/systems/48_wake.gd": true,
 }
 
 
