@@ -7,9 +7,13 @@ extends CanvasLayer
 ## 90_ui feeds it on the guide's cadence. Close by it steps aside: the harvest
 ## mark's brackets have the thing then.
 
-## Base pixels in from the glass's edge for a mark that is off it; tiles inside
-## which the harvest mark has it; how far the arrow bobs.
+## Base pixels in from the glass's sides for a mark that is off it, and from its
+## top and foot, clear of the readouts there (the place's name, the clock, the
+## record's lines, the key row); tiles inside which the harvest mark has it; how
+## far the arrow bobs.
 const EDGE := 70
+const EDGE_TOP := 150
+const EDGE_FOOT := 160
 const NEAR := 2.2
 const BOB := 5.0
 ## How far over the ground the arrow hangs above a thing, in world units.
@@ -49,7 +53,7 @@ func _draw_mark() -> void:
 	var tiles := Vector2(at.x - me.x, at.z - me.z).length()
 	if tiles < NEAR:
 		return
-	var inner := Rect2(UiBase.screen()).grow(-EDGE)
+	var inner := Rect2(UiBase.screen()).grow_individual(-EDGE, -EDGE_TOP, -EDGE, -EDGE_FOOT)
 	var head := at + Vector3(0.0, OVER, 0.0)
 	var p := cam.unproject_position(head)
 	var bob := sin(_t * TAU / 1.2) * BOB
