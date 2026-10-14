@@ -163,7 +163,6 @@ src/systems/19_colossi.gd::setup::builder Treads.hand_over
 src/systems/19_colossi.gd::setup::whole
 src/systems/19_colossi.gd::tour_place::list
 src/systems/19_colossi.gd::tour_place::raw
-src/systems/20_realms.gd::_draw_gates::builder StoryGates.all
 src/systems/20_realms.gd::_read_portals::builder Portals.in_world
 src/systems/20_realms.gd::_save::whole
 src/systems/20_realms.gd::enter::builder SkyGround.texture
