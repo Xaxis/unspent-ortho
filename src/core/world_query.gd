@@ -392,8 +392,18 @@ func stand_off(q: WorldProp, dir: Vector2, gap: float) -> float:
 ## Every prop `props_near(p, r)` gives, and every walled one whose walls could
 ## stand within r of p though its middle stands further: what a reach measured
 ## from an edge (edge_to) searches.
-func reach_near(p: Vector2, r: float) -> Array[WorldProp]:
-	var out := props_near(p, r)
+## `kinds` (a set, kind -> anything) keeps only those kinds, and reads the
+## table's kind column before making a prop object: a caller after a few kinds
+## (49_story's readables, every frame) made one for every stone and tussock round him.
+func reach_near(p: Vector2, r: float, kinds: Dictionary = {}) -> Array[WorldProp]:
+	var out: Array[WorldProp] = []
+	var kind := world.table.kind
+	for row in rows_near(p, r):
+		if kinds.is_empty() or kinds.has(kind[row]):
+			out.append(world.prop_at(row))
+	for q in ghosts_near(p, r):
+		if kinds.is_empty() or kinds.has(q.kind):
+			out.append(q)
 	var lo := Vector2i(maxi(0, floori(p.x - r)), maxi(0, floori(p.y - r)))
 	var hi := Vector2i(mini(world.size - 1, floori(p.x + r)), mini(world.size - 1, floori(p.y + r)))
 	var pos := world.table.pos
@@ -401,7 +411,7 @@ func reach_near(p: Vector2, r: float) -> Array[WorldProp]:
 		var at: Vector2 = pos[row]
 		var tx := floori(at.x)
 		var ty := floori(at.y)
-		if tx < lo.x or tx > hi.x or ty < lo.y or ty > hi.y:
+		if (tx < lo.x or tx > hi.x or ty < lo.y or ty > hi.y) and (kinds.is_empty() or kinds.has(kind[row])):
 			out.append(world.prop_at(row))
 	return out
 

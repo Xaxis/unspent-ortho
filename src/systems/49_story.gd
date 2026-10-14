@@ -328,8 +328,23 @@ func faced_words_d() -> float:
 
 
 ## What the key would open: {slot: ID}, {person: ROW} or {prop: PROP}, or {}
-## when it is the ground's or nobody's.
+## when it is the ground's or nobody's. Worked out once a frame: the key's line
+## asks it, and so does every system asking whether the words outrank its own
+## press (Survival.words_in_front), and each asking was a walk over every person
+## and readable thing near him.
+var _front_frame := -1
+var _front := {}
+
+
 func _what_is_in_front() -> Dictionary:
+	var frame := Engine.get_process_frames()
+	if frame != _front_frame:
+		_front_frame = frame
+		_front = _work_out_in_front()
+	return _front
+
+
+func _work_out_in_front() -> Dictionary:
 	var person := _person_in_front()
 	var prop := _readable_in_front()
 	var person_d: float = person.get("_d", INF) if not person.is_empty() else INF
@@ -463,7 +478,7 @@ func _readable_in_front() -> WorldProp:
 	var ahead := Vector2.from_angle(game.player.facing)
 	var best: WorldProp = null
 	var best_d := REACH + 1.0
-	for q: WorldProp in game.query.reach_near(from, REACH + 2.0):
+	for q: WorldProp in game.query.reach_near(from, REACH + 2.0, StoryProps.READABLE):
 		# Gone from the world (crushed in a crater, burned) is nothing to read.
 		if StoryProps.kind_of(q.kind) == &"" or game.world.depleted.has(q.id):
 			continue
