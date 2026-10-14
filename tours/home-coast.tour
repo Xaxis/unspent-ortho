@@ -332,19 +332,13 @@ wait 0.4
 hour 20
 village 36
 wait 1.0
-# A hungry body eats what it carries before it lies down (Survival._fallback):
-# fed first, a press a mouthful. On seed 7 the presses meant for sleep ate
-# berries ("berries - eat" under the hand) and he never lay down. Each press
-# waits for the row to name it: seed 7's village 36 is a shift town whose
-# street puts somebody in front of him most seconds, and the press is theirs.
+# One press sleeps once the row names it. A hungry body eats what it carries
+# before it lies down (Survival._fallback): while the row says eat, a press is a
+# mouthful and the block goes round again (on seed 7 the presses meant for sleep
+# ate berries). Each press waits for the row: seed 7's village 36 is a shift
+# town whose street puts somebody in front of him most seconds, and the press is
+# theirs.
 try 8
-  until hint:eat 4
-  press use 0.1
-  wait 0.4
-  await fed 1
-end
-# One press sleeps once the row names it.
-try 3
   until hint:sleep 4
   press use 0.1
   await slept 6
