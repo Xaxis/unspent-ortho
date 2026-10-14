@@ -24,11 +24,6 @@ func test_health_is_cells_of_three() -> void:
 	eq(UiRules.health_cells(13, 13), PackedInt32Array([3, 3, 3, 3, 1]), "a part cell")
 
 
-func test_wind_only_shows_when_spent() -> void:
-	check(not UiRules.wind_shown(2400.0, 2400.0), "full wind hidden")
-	check(UiRules.wind_shown(1700.0, 2400.0), "spent wind shown")
-
-
 func test_needs_appear_only_when_they_matter() -> void:
 	var b := Body.new()
 	b.fed_until = 1000.0

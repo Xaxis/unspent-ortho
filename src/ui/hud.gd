@@ -62,8 +62,15 @@ const GAUGE_ORDER: Array[StringName] = [&"hunger", &"wet", &"load", &"tired"]
 const GAUGE_FLARE := 1.2
 ## Longest a line about a pressure waits for the readouts to be fed.
 const PEND_WAIT := 0.25
-## Where the standing goal line sits: under the wrist unit and its wind line.
-const GOAL_Y := 58
+## Where the standing goal line sits: under the wrist unit's two rows, health
+## and stamina, and clear of both (owner, 2026-10-14: the suggestions under the
+## energy readout covered the stamina bar).
+const GOAL_Y := 76
+## The stamina row under the health row: its height and the gap above it.
+const WIND_ROW_H := 8
+const WIND_ROW_GAP := 6
+## Seconds a row stays lit after a bracket is earned on it.
+const EARNED_LIT := 2.4
 
 var clock_text := ""
 var health := 12
@@ -101,6 +108,11 @@ var _canvas: Control
 var _place_age := 99.0
 var _time := 0.0
 var _wind_alpha := 0.0
+## Stamina brackets he has (FightRules.WIND's three and what he has earned),
+## fed by 90_ui; each is drawn as one segment of the stamina row.
+var wind_brackets := 3
+## Row -> seconds left lit, after a bracket was earned on it (`earned`).
+var _earned_lit: Dictionary = {}
 var _charge_alpha := 0.0
 var _hint_alpha := 0.0
 var _hint_target := 0.0
@@ -154,6 +166,11 @@ func set_body(p_health: int, p_max_health: int, p_wind: float, p_max_wind: float
 	max_health = p_max_health
 	wind = p_wind
 	max_wind = p_max_wind
+
+
+## A bracket was earned on `which` (&"health" or &"wind"): its row is lit a while.
+func earned(which: StringName) -> void:
+	_earned_lit[which] = EARNED_LIT
 
 
 func set_held(id: StringName) -> void:
@@ -390,7 +407,7 @@ func settle() -> void:
 	# system's next feed, and forcing it here would answer with the readouts of
 	# the frame before — which is the whole thing the wait exists to avoid.
 	settle_pending(0.0)
-	_wind_alpha = 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
+	_wind_alpha = 1.0
 	_charge_alpha = 1.0 if charge_shown else 0.0
 	_hint_alpha = _hint_target
 	_hurt_flash = 0.0
@@ -419,8 +436,13 @@ func _process(delta: float) -> void:
 		_unseen[i].left = float(_unseen[i].left) - delta
 		if float(_unseen[i].left) <= 0.0:
 			_unseen.remove_at(i)
-	var wind_target := 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
-	_wind_alpha = move_toward(_wind_alpha, wind_target, delta * (4.0 if wind_target > 0.0 else 1.2))
+	# STAMINA IS A READOUT LIKE HEALTH (owner, 2026-10-14: brackets he earns),
+	# on the glass all the time rather than only while spent.
+	_wind_alpha = 1.0
+	for k: StringName in _earned_lit.keys():
+		_earned_lit[k] = float(_earned_lit[k]) - delta
+		if float(_earned_lit[k]) <= 0.0:
+			_earned_lit.erase(k)
 	_charge_alpha = move_toward(_charge_alpha, 1.0 if charge_shown else 0.0, delta * 4.0)
 	_hint_alpha = move_toward(_hint_alpha, _hint_target, delta * 6.0)
 	var present := {}
@@ -554,13 +576,9 @@ func _draw_wrist(ci: Control) -> void:
 				if _hurt_flash > 0.0 and t < lost_cells[i]:
 					col = UiTheme.WARN
 			UiDraw.rect(ci, Rect2i(cx + t * 6, win.position.y + 4, 4, 14), col)
-	if _wind_alpha > 0.0:
-		# Wind: one thin line under the window, only while some is spent.
-		var k := UiDraw.stepped(_wind_alpha)
-		var fill := roundi((w - 4) * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
-		var wy := win.end.y + 6
-		UiDraw.rect(ci, Rect2i(win.position.x - 2, wy - 2, w + 4, 6), Color(UiTheme.RIM, k * 0.85))
-		UiDraw.rect(ci, Rect2i(win.position.x, wy, fill, 2), Color(UiTheme.PHOSPHOR[2], k))
+	if _earned_lit.has(&"health"):
+		UiDraw.frame(ci, win.grow(2), Color(UiTheme.BRIGHT, _lit_k(&"health")))
+	_draw_wind(ci, win)
 	if _charge_alpha > 0.0:
 		var k := UiDraw.stepped(_charge_alpha)
 		var text := "%d" % charges
@@ -571,6 +589,30 @@ func _draw_wrist(ci: Control) -> void:
 			UiDraw.text(ci, Vector2i(cw.position.x + 26, cw.position.y), text, UiTheme.WARN if charges <= 0 else UiTheme.MACHINE[3])
 		else:
 			UiDraw.text_rimmed_faded(ci, Vector2i(cw.position.x + 26, cw.position.y), text, UiTheme.MACHINE[3], UiTheme.RIM, k)
+
+
+## STAMINA, IN BRACKETS: one segment per bracket he has, under the health row,
+## filled left to right with what is left of it, so a bracket earned is a
+## segment more and a run spends them one by one.
+func _draw_wind(ci: Control, health_win: Rect2i) -> void:
+	var n := maxi(1, wind_brackets)
+	var r := Rect2i(health_win.position.x, health_win.end.y + WIND_ROW_GAP, n * CELL_W + 6, WIND_ROW_H + 4)
+	clip(ci, r, true)
+	var left := clampf(wind / maxf(1.0, max_wind), 0.0, 1.0) * n
+	for i in n:
+		var x := r.position.x + 4 + i * CELL_W
+		var seg := Rect2i(x, r.position.y + 2, CELL_W - 4, WIND_ROW_H)
+		UiDraw.rect(ci, seg, UiTheme.GHOST)
+		var part := clampf(left - i, 0.0, 1.0)
+		if part > 0.0:
+			UiDraw.rect(ci, Rect2i(x, seg.position.y, roundi(seg.size.x * part), seg.size.y), UiTheme.PHOSPHOR[2] if part >= 1.0 else UiTheme.PHOSPHOR[1])
+	if _earned_lit.has(&"wind"):
+		UiDraw.frame(ci, r.grow(2), Color(UiTheme.BRIGHT, _lit_k(&"wind")))
+
+
+func _lit_k(which: StringName) -> float:
+	var left: float = _earned_lit.get(which, 0.0)
+	return clampf(left / EARNED_LIT, 0.0, 1.0) * (0.6 + 0.4 * sin(_time * 9.0))
 
 
 ## A found charge: a small violet cell with its slot lit.

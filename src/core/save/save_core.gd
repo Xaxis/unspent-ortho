@@ -33,8 +33,8 @@ const META_BASE := &"save_props_base"
 ## booted a world the size of a cottage and lost everything built outside.
 const META_OUTSIDE := &"save_outside_world"
 const BODY_FLOATS: Array[String] = ["max_wind", "wind", "hurt_until", "fed_until", "wet", "load", "tired",
-	"spoof_until", "move_factor"]
-const BODY_INTS: Array[String] = ["max_health", "health", "arrests", "filed"]
+	"spoof_until", "move_factor", "run_tiles"]
+const BODY_INTS: Array[String] = ["max_health", "health", "arrests", "filed", "machines_down", "keepers_down"]
 const BODY_BOOLS: Array[String] = ["lamp_lit", "crouched"]
 
 

@@ -465,7 +465,7 @@ func test_the_goal_and_the_key_the_guide_teaches_reach_the_hud() -> void:
 	var now: Array = g.hud.steps.filter(func(r: Dictionary) -> bool: return r.get("state", &"") == &"now")
 	eq(now.size(), 1, "her lead given, the card stands with one step under way: %s" % [g.hud.steps])
 	if now.size() == 1:
-		eq(String(now[0].text), "Take driftwood off the strand", "the first thing her errand asks")
+		eq(String(now[0].text), "Gather driftwood on the beach", "the first thing her errand asks")
 		eq(String(now[0].get("cap", "")), PlayerSettings.cap_of(&"use"), "with the use key on it")
 	eq(g.hud.goal, "", "and the goal line does not say it twice")
 	var teach: Dictionary = ui.call("_guide_hint")

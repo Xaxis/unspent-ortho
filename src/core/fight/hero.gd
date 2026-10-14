@@ -47,6 +47,9 @@ var run_speed := 5.4
 ## Down in the heather (Body.crouched, read every step): slower, and no running.
 ## What crouching does to being seen and heard is StealthQuery's and Noise's.
 var crouched := false
+## OUT OF BREATH: his wind ran down to FightRules.RUN_WIND_FLOOR running, and he
+## walks until it is back to FightRules.WIND_BACK (a whole stamina bracket).
+var winded := false
 ## What is left of a walk while crouched.
 const CROUCH_SPEED := 0.45
 ## What a blow takes off, as a share of its damage (a configuration's
@@ -106,8 +109,8 @@ func read_body() -> void:
 	health = body.health
 	crouched = body.crouched
 	plated = FightRules.wears(inventory, &"plate")
-	max_health = FightRules.max_health(plated)
-	max_wind = FightRules.max_wind(FightRules.wears(inventory, &"brace"), body.move_factor)
+	max_health = FightRules.max_health(plated, Brackets.health_earned(body.machines_down, body.keepers_down))
+	max_wind = FightRules.max_wind(FightRules.wears(inventory, &"brace"), body.move_factor, Brackets.wind_earned(body.run_tiles))
 	wind = minf(wind, max_wind)
 
 

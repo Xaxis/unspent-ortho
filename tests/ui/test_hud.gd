@@ -28,14 +28,12 @@ func test_the_always_readouts_and_the_quiet_ones() -> void:
 	eq(s[&"health"], 1.0)
 	eq(s[&"clock"], 1.0)
 	eq(s[&"held"], 1.0)
-	eq(s[&"wind"], 0.0, "full wind is not shown")
+	# Stamina is a readout like health, in brackets he earns (Brackets): always up.
+	eq(s[&"wind"], 1.0, "stamina is on the glass, full")
 	eq(s[&"charge"], 0.0, "a knife spends no charges: none shown")
 	hud.set_body(12, 12, 1200.0, 2400.0)
 	_run(hud, 0.5)
-	eq(hud.shown()[&"wind"], 1.0, "spent wind comes up")
-	hud.set_body(12, 12, 2400.0, 2400.0)
-	_run(hud, 1.0)
-	eq(hud.shown()[&"wind"], 0.0, "and goes once it is back")
+	eq(hud.shown()[&"wind"], 1.0, "and spent")
 	hud.set_held(&"las_hand")
 	hud.set_charge(UiRules.charge_shown(&"las_hand"), 2)
 	_run(hud, 0.4)
@@ -353,4 +351,20 @@ func test_a_lesson_on_the_key_row_is_not_also_said_above_it() -> void:
 	hud.set_hint("")
 	_run(hud, 1.0)
 	eq(_ink_lines(hud, line), 1, "with the row gone, the message is still said")
+	hud.free()
+
+
+## THE GUIDANCE NEVER COVERS THE STAMINA ROW (owner, 2026-10-14: "the
+## suggestions underneath the energy menu cover the stamina bar"): the goal
+## line's window and the first steps' card both start below it, however many
+## brackets he has earned.
+func test_the_goal_and_the_card_stand_clear_of_the_stamina_row() -> void:
+	var hud := _hud()
+	hud.set_body(30, 30, 6400.0, 6400.0)
+	hud.wind_brackets = 8
+	var health_bottom := Hud.MARGIN + UiTheme.LINE
+	var wind_bottom := health_bottom + Hud.WIND_ROW_GAP + Hud.WIND_ROW_H + 4
+	gt(float(Hud.goal_clip("Eat something: mussels off the rocks, or berries.").position.y), float(wind_bottom), "the goal line's window is under the stamina row")
+	hud.set_steps([{"text": "Gather driftwood on the beach", "state": &"now", "count": "0/3", "cap": "e"}], "FIRST STEPS")
+	gt(float(hud.steps_clip().position.y), float(wind_bottom), "and so is the card's")
 	hud.free()

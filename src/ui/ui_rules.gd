@@ -36,11 +36,6 @@ static func health_cells(health: int, max_health: int) -> PackedInt32Array:
 	return out
 
 
-## Wind is only worth a line on screen once some of it is spent.
-static func wind_shown(wind: float, max_wind: float) -> bool:
-	return wind < max_wind - 0.5
-
-
 # --- the felt pressures ----------------------------------------------------------
 
 ## A felt pressure (a hazard the body is under) is only a gauge once it is this

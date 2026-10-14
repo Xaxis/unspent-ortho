@@ -9,6 +9,11 @@ var max_health := 12
 var health := 12
 var max_wind := 2400.0
 var wind := 2400.0
+## What has earned him brackets (Brackets): machines he has brought down,
+## keepers he has felled, and tiles he has run. Saved.
+var machines_down := 0
+var keepers_down := 0
+var run_tiles := 0.0
 ## Game-clock-independent, in seconds of real time (fight runs on real time).
 var invuln_until := 0.0
 var stun_until := 0.0

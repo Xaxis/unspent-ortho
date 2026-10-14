@@ -93,9 +93,12 @@ const BUFFER_MS := 90
 ## A blow that rings off plate throws the swinger back a little.
 const RING_RECOIL := 3.0
 const RING_RECOIL_MS := 90
-## Running in a fight spends wind; below the floor you walk.
+## RUNNING SPENDS WIND, in a fight or out of one (owner, 2026-10-14: stamina is
+## a thing he earns, so it has to be a thing he spends). Down to the floor he is
+## out of breath and walks until a whole bracket is back (Hero.winded).
 const RUN_WIND_COST := 220.0
 const RUN_WIND_FLOOR := 350.0
+const WIND_BACK := 800.0
 ## The heavy blow: the swing key held this long throws it (a tap, let go
 ## sooner, is the light swing), and it is the held tool's blow wound up this much
 ## longer, for this much wind, hitting this many times as hard. What it buys
@@ -185,14 +188,16 @@ static func mend_minutes(by_fire: bool) -> float:
 	return MEND_AT_FIRE_MINUTES if by_fire else MEND_MINUTES
 
 
-static func max_health(plated: bool) -> int:
-	return HEALTH + (PLATE_HEALTH if plated else 0)
+## `earned`: health brackets he has earned (Brackets.health_earned).
+static func max_health(plated: bool, earned: int = 0) -> int:
+	return HEALTH + earned * Brackets.HEALTH_BRACKET + (PLATE_HEALTH if plated else 0)
 
 
-## (2400 + 700 brace) x clamp(body condition, 0.35, 1). move_factor stands in
-## for the source's step cost: a worn body is slower and shorter of wind alike.
-static func max_wind(braced: bool, move_factor: float) -> float:
-	return (WIND + (BRACE_WIND if braced else 0.0)) * clampf(move_factor, 0.35, 1.0)
+## (2400 + earned brackets + 700 brace) x clamp(body condition, 0.35, 1).
+## move_factor stands in for the source's step cost: a worn body is slower and
+## shorter of wind alike. `earned`: wind brackets earned (Brackets.wind_earned).
+static func max_wind(braced: bool, move_factor: float, earned: int = 0) -> float:
+	return (WIND + earned * Brackets.WIND_BRACKET + (BRACE_WIND if braced else 0.0)) * clampf(move_factor, 0.35, 1.0)
 
 
 ## max(1, 1 + (dmg - 1) x edge / 10000), whole points; a tool of 2 or more

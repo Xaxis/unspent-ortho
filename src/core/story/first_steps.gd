@@ -18,19 +18,23 @@ extends RefCounted
 ## still laid one, and a player who went their own way is never sent back for a
 ## lesson they did not need.
 
+## Each step in plain words: what to do, where, and with what (owner, 2026-10-14:
+## the suggestions were "completely incoherent"). The world's own names stay
+## where a prompt on the glass uses them (the tip, a rebar slab), so the card
+## and the key row never disagree.
 const STEPS: Array[Dictionary] = [
-	{"key": &"talk", "text": "Hear Maren out", "act": &"use", "target": &"maren"},
-	{"key": &"driftwood", "text": "Take driftwood off the strand", "need": 3, "act": &"use", "target": &"driftwood"},
-	{"key": &"stones", "text": "Take stones from a boulder", "need": 2, "act": &"use", "target": &"stone"},
-	{"key": &"fire", "text": "Lay a fire on open ground", "act": &"use", "twice": true, "target": &""},
-	{"key": &"wood", "text": "Take more driftwood, for charcoal", "need": 4, "act": &"use", "target": &"driftwood"},
-	{"key": &"charcoal", "text": "Burn charcoal at your fire", "act": &"craft", "target": &"fire"},
-	{"key": &"haft", "text": "Whittle a haft at your fire", "act": &"craft", "target": &"fire"},
-	{"key": &"plate", "text": "Turn plate out of the tip", "act": &"use", "target": &"tip"},
-	{"key": &"pick", "text": "Make a pick at your fire", "act": &"craft", "target": &"fire"},
-	{"key": &"carry", "text": "Find it in what you carry", "act": &"inventory", "target": &""},
-	{"key": &"iron", "text": "Break iron out of a rebar slab", "act": &"use", "target": &"slab"},
-	{"key": &"survey", "text": "Open the survey: the crew's camp is marked", "act": &"map", "target": &""},
+	{"key": &"talk", "text": "Talk to Maren", "act": &"use", "target": &"maren"},
+	{"key": &"driftwood", "text": "Gather driftwood on the beach", "need": 3, "act": &"use", "target": &"driftwood"},
+	{"key": &"stones", "text": "Gather stones from a boulder", "need": 2, "act": &"use", "target": &"stone"},
+	{"key": &"fire", "text": "Build a campfire on open ground", "act": &"use", "twice": true, "target": &""},
+	{"key": &"wood", "text": "Gather more wood to burn into charcoal", "need": 4, "act": &"use", "target": &"driftwood"},
+	{"key": &"charcoal", "text": "Burn the wood into charcoal at your fire", "act": &"craft", "target": &"fire"},
+	{"key": &"haft", "text": "Carve a handle at your fire", "act": &"craft", "target": &"fire"},
+	{"key": &"plate", "text": "Pull scrap metal out of the junk tip", "act": &"use", "target": &"tip"},
+	{"key": &"pick", "text": "Make a pickaxe at your fire", "act": &"craft", "target": &"fire"},
+	{"key": &"carry", "text": "Check your pack: the pickaxe is in it", "act": &"inventory", "target": &""},
+	{"key": &"iron", "text": "Break iron out of a rebar slab with the pickaxe", "act": &"use", "target": &"slab"},
+	{"key": &"survey", "text": "Open the map: the crew's camp is marked", "act": &"map", "target": &""},
 	{"key": &"camp", "text": "Take the iron to the crew's camp", "act": &"", "target": &"camp"},
 ]
 
@@ -52,7 +56,7 @@ const COVERS: Array[StringName] = [&"", &"fire_gather", &"fire_lay", &"charcoal_
 
 ## The word a target is called by where the mark stands over it.
 const WORD := {
-	&"maren": "Maren", &"driftwood": "driftwood", &"stone": "boulder", &"tip": "tip",
+	&"maren": "Maren", &"driftwood": "driftwood", &"stone": "boulder", &"tip": "junk tip",
 	&"slab": "rebar slab", &"fire": "your fire", &"camp": "the crew's camp",
 }
 
