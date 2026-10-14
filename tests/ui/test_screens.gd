@@ -718,6 +718,27 @@ func test_e_in_the_pack_puts_on_what_is_worn_and_lights_the_lamp() -> void:
 	Sx.end(g)
 
 
+## Home says what earns the next bracket: they were only said once earned.
+func test_home_says_what_earns_the_next_bracket() -> void:
+	var Sx := preload("res://tests/save/save_fixture.gd")
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=11", "--weather=clear:0"])
+	await tree.process_frame
+	var s := UiPauseScreen.new()
+	s.game = g
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	var said := await _said(s)
+	check(_has_word(said, "+1: bring down 2 more machines"), "the first health bracket is two machines off: %s" % str(said))
+	check(_has_word(said, "+1: run 250 more paces"), "and the first stamina bracket 250 paces: %s" % str(said))
+	g.body.machines_down = 2
+	g.body.run_tiles = 300.0
+	said = await _said(s)
+	check(_has_word(said, "3 more machines") and _has_word(said, "400 more paces"), "and they count down as he earns: %s" % str(said))
+	s.free()
+	Sx.end(g)
+
+
 ## The machine reads app names the WORK, not the mark it left. Four rows of
 ## "cut in rows" with four different arrows is what a placeholder looks like,
 ## and on the coast the four nearest works really are all turf rows.

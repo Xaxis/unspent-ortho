@@ -195,6 +195,26 @@ func _draw() -> void:
 	draw_keys([["e", "choose"], ["esc", "resume"]])
 
 
+## Where the next bracket's line stands, past the widest meter.
+const NEXT_X := 380
+
+
+## What earns the next health bracket (Brackets): a bracket was only ever said
+## once it was earned, so nothing showed it coming.
+static func next_health(b: Body) -> String:
+	var more := Brackets.machines_to_next(b.machines_down)
+	if more > 0:
+		return "+1: bring down %d more machine%s" % [more, "" if more == 1 else "s"]
+	if b.keepers_down < Brackets.KEEPERS_MOST:
+		return "+1: bring down a keeper"
+	return ""
+
+
+## What earns the next stamina bracket: paces run, a pace a tile.
+static func next_wind(b: Body) -> String:
+	var more := Brackets.run_to_next(b.run_tiles)
+	return "+1: run %d more paces" % ceili(more) if more > 0.0 else ""
+
 ## The body as the slate last read it: health, wind, hunger, wet and load.
 func _draw_body(at: Vector2i, right: int) -> void:
 	const HUNGER := ["fed", "peckish", "hungry", "starving"]
@@ -209,9 +229,11 @@ func _draw_body(at: Vector2i, right: int) -> void:
 			var lit := t < cells[i]
 			var col := (UiTheme.WARN if b.health <= UiRules.PER_CELL else UiTheme.TEXT) if lit else UiTheme.GHOST
 			UiDraw.rect(self, Rect2i(x + 112 + i * 24 + t * 6, y + 2, 4, 14), col)
+	UiDraw.text(self, Vector2i(x + NEXT_X, y), next_health(b), UiTheme.TEXT_DIM)
 	y += 24
 	UiDraw.text(self, Vector2i(x, y), "stamina", UiTheme.TEXT_DIM)
 	UiSlate.meter(self, Rect2i(x + 112, y + 2, 240, 14), b.wind / maxf(1.0, b.max_wind))
+	UiDraw.text(self, Vector2i(x + NEXT_X, y), next_wind(b), UiTheme.TEXT_DIM)
 	y += 24
 	var h := clampi(b.hunger_level(game.clock.minutes), 0, 3)
 	UiDraw.text(self, Vector2i(x, y), "hunger", UiTheme.TEXT_DIM)
