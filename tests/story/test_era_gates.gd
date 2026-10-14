@@ -147,6 +147,28 @@ func test_hale_waits_on_the_platform_and_is_spoken_to_from_the_water() -> void:
 ## holdfast.tour stood at Oyster Row beside its gate, warped to the driftwood and
 ## pressed to gather, and was in 2029. The look is held off here, as it is for up
 ## to LOOK_EVERY after any step.
+## A SHUT GATE IS NOT DRAWN: a dark frame on the green before anything has
+## said what it is reads as junk. It stands, lit, once its beat lands.
+func test_a_gate_is_drawn_only_once_it_is_open() -> void:
+	Story.forget()
+	Sx.use_root("era-gate-drawn")
+	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11", "--weather=clear:0"])
+	await process_frames(3)
+	var realms := Sx.system(g, "20_realms")
+	realms.set("_look", 0.0)
+	await process_frames(3)
+	var drawn: Dictionary = realms.get("_gate_nodes")
+	check(not StoryGates.all(g.world).is_empty(), "this world holds gates")
+	eq(drawn.size(), 0, "none drawn while every one is shut: %s" % str(drawn.keys()))
+	Story.beat(&"body_new", -INF)
+	realms.set("_look", 0.0)
+	await process_frames(3)
+	drawn = realms.get("_gate_nodes")
+	check(drawn.has(&"gate_home"), "his house's gate stands once its beat lands: %s" % str(drawn.keys()))
+	Sx.end(g)
+	Story.forget()
+
+
 func test_a_press_out_of_a_gates_reach_stays_in_2098() -> void:
 	Story.forget()
 	Sx.use_root("era-gate-left")

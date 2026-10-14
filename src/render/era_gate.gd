@@ -2,7 +2,7 @@ class_name EraGate
 ## The drawn gate into 2029 (docs/STORY.md, `StoryGates`): a way through TIME
 ## rather than through rock, standing in the open where the Seeker put it.
 ##
-##   EraGate.node(open) -> Node3D
+##   EraGate.node() -> Node3D
 ##
 ## **A SHAFT IS A HOLE AND THIS IS A DOOR, AND THE CAMERA MAKES THAT HARD.**
 ## `RealmGate`'s header says why it is drawn as a hole: at this pitch a frame
@@ -33,20 +33,18 @@ const WIDE := 2.3
 const TALL := 3.1
 ## A hair above the ground, so the light and the terrain never fight for a pixel.
 const LIFT := 0.035
-## The daylight of 2029, and what it is when the beat has not landed yet: the
-## frame is there and the way through is not.
+## The daylight of 2029. Only an open gate is drawn (20_realms).
 const THROUGH := Color(0.99, 0.88, 0.62, 0.92)
-const SHUT := Color(0.24, 0.23, 0.30, 1.0)
 
 
-static func node(is_open: bool) -> Node3D:
+static func node() -> Node3D:
 	var root := Node3D.new()
 	root.name = "era_gate"
 	var k := MeshKit.new()
 	k.style = Ink.NONE
 	k.style2 = Ink.NONE
-	_ground(k, is_open)
-	_arch(k, is_open)
+	_ground(k)
+	_arch(k)
 	var mi := MeshInstance3D.new()
 	mi.name = "found"
 	mi.mesh = k.build()
@@ -67,8 +65,8 @@ static func glow_points() -> Array:
 ## The way through: an oval of another day's light lying on the ground, broken
 ## into a ring of facets so it is never a clean ellipse — a hole in time with a
 ## ruled edge would read as a machine's hatch.
-static func _ground(k: MeshKit, is_open: bool) -> void:
-	var col := THROUGH if is_open else SHUT
+static func _ground(k: MeshKit) -> void:
+	var col := THROUGH
 	var n := 13
 	var mid := Vector3(0.0, LIFT, 0.0)
 	for i in n:
@@ -85,8 +83,6 @@ static func _ground(k: MeshKit, is_open: bool) -> void:
 		# the black site's deck, and it looks identical from outside -- a model
 		# that builds, reports its vertices and draws nothing.
 		k.tri(mid, p1, p0, col)
-	if not is_open:
-		return
 	# A brighter core, so the middle of the way through is the brightest thing in
 	# the frame and the eye goes to it rather than to the arch.
 	for i in n:
@@ -102,11 +98,11 @@ static func _ground(k: MeshKit, is_open: bool) -> void:
 ## The arch the Seeker stood round it: two legs and a lintel of the machines'
 ## plate, leaning back off the vertical so the camera sees the INSIDE face of the
 ## lintel rather than its edge, and a cable run down one leg.
-static func _arch(k: MeshKit, is_open: bool) -> void:
+static func _arch(k: MeshKit) -> void:
 	var half := WIDE * 0.52
 	var lean := 0.34
 	var foot := P.PLATE[1]
-	var face := P.PLATE[3] if is_open else P.PLATE[2]
+	var face := P.PLATE[3]
 	for sz: float in [-1.0, 1.0]:
 		var a := Vector3(0.0, 0.0, sz * half)
 		var b := Vector3(-lean, TALL, sz * half)
@@ -115,13 +111,12 @@ static func _arch(k: MeshKit, is_open: bool) -> void:
 		k.box(Vector3(-0.26, 0.0, sz * half - 0.26), Vector3(0.26, 0.09, sz * half + 0.26), foot)
 	# The lintel, leaning with the legs.
 	_leg(k, Vector3(-lean, TALL, -half), Vector3(-lean, TALL, half), 0.15, foot, face)
-	# What burns on it when the way is open: a strip along the inside of the
-	# lintel, pointing DOWN at the ground it lights.
-	if is_open:
-		k.quad(Vector3(-lean + 0.11, TALL - 0.13, -half + 0.2),
-			Vector3(-lean + 0.11, TALL - 0.13, half - 0.2),
-			Vector3(-lean - 0.06, TALL - 0.13, half - 0.2),
-			Vector3(-lean - 0.06, TALL - 0.13, -half + 0.2), THROUGH)
+	# What burns on it: a strip along the inside of the lintel, pointing DOWN at
+	# the ground it lights.
+	k.quad(Vector3(-lean + 0.11, TALL - 0.13, -half + 0.2),
+		Vector3(-lean + 0.11, TALL - 0.13, half - 0.2),
+		Vector3(-lean - 0.06, TALL - 0.13, half - 0.2),
+		Vector3(-lean - 0.06, TALL - 0.13, -half + 0.2), THROUGH)
 
 
 static func _leg(k: MeshKit, a: Vector3, b: Vector3, r: float, col: Color, cap: Color) -> void:
