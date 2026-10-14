@@ -23,6 +23,9 @@ var held: StringName = &""
 ## The one salvage kit piece worn (&"" = none). Worn kit still counts toward load.
 var worn: StringName = &""
 var _dull_noticed: Dictionary = {} # StringName -> true once the notice was given
+## Every kind ever carried. The making page lists a recipe only once each thing it
+## wants has been in the pack (Crafting.known), so the page grows with what is found.
+var handled: Dictionary = {} # StringName -> true
 
 
 func count(id: StringName) -> int:
@@ -37,6 +40,7 @@ func add(id: StringName, n: int = 1) -> void:
 	if n <= 0:
 		return
 	items[id] = count(id) + n
+	handled[id] = true
 	if Items.has_edge(id):
 		edges[id] = 10000
 		_dull_noticed.erase(id)
@@ -44,6 +48,10 @@ func add(id: StringName, n: int = 1) -> void:
 	if worn == &"" and Items.def(id).get("kit", &"") != &"":
 		worn = id
 	changed.emit()
+
+
+func has_handled(id: StringName) -> bool:
+	return handled.has(id) or count(id) > 0
 
 
 func remove(id: StringName, n: int = 1) -> bool:

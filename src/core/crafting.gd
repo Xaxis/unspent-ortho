@@ -8,6 +8,7 @@ class_name Crafting
 ##
 ##   recipes_at(station) -> Array[Dictionary]   &"hand" = anywhere
 ##   recipe(id) -> Dictionary                   {} if unknown
+##   known(inv, recipe) -> bool                 every thing it wants has been carried once (the page lists these)
 ##   can_make(inv, recipe) -> bool              carried inputs, tool, kept items, action target
 ##   missing(inv, recipe) -> {item: n short}
 ##   make(inv, recipe) -> bool                  moves the goods and mends; the CALLER charges
@@ -77,6 +78,16 @@ static func missing(inv: Inventory, r: Dictionary) -> Dictionary:
 			if short > 0:
 				out[id] = maxi(out.get(id, 0), short)
 	return out
+
+
+## A recipe is known once everything it wants has been in the pack: the page
+## lists what the player can act on, not the making of every land.
+static func known(inv: Inventory, r: Dictionary) -> bool:
+	for group: String in ["needs", "keeps"]:
+		for id: StringName in (r.get(group, {}) as Dictionary):
+			if not inv.has_handled(id):
+				return false
+	return true
 
 
 static func can_make(inv: Inventory, r: Dictionary) -> bool:

@@ -296,6 +296,7 @@ func _live(g: Game) -> Dictionary:
 		"edges": g.inventory.edges.duplicate(),
 		"held": g.inventory.held,
 		"worn": g.inventory.worn,
+		"handled": g.inventory.handled.duplicate(),
 		"health": g.body.health,
 		"lamp": g.body.lamp_lit,
 		"fed": g.body.fed_until,

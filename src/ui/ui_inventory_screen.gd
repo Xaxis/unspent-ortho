@@ -295,7 +295,7 @@ func _draw_detail(R: Rect2i) -> void:
 		var top := y + UiTheme.LINE * (i + 1)
 		var out := UiRules.recipe_output(r)
 		UiIcons.draw_item(self, out, Vector2i(x0 + 12, top - 2))
-		UiDraw.text(self, Vector2i(x0 + 38, top), UiRules.recipe_title(r), UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(x0 + 38, top), UiRules.recipe_title(r, uses), UiTheme.TEXT)
 		var want := int((r.needs as Dictionary)[id])
 		UiDraw.text_right(self, right, top, "%d, %s" % [want, UiRules.station_words(StringName(r.get("at", &"")))], UiTheme.TEXT_DIM)
 	if uses.size() > shown:
@@ -340,9 +340,15 @@ func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 	UiDraw.text(self, Vector2i(x0, ly + 72), "in hand", UiTheme.TEXT_DIM)
 	UiDraw.text(self, Vector2i(x0 + 96, ly + 72), held_name, UiTheme.TEXT)
 	if UiLink.can_wear(inventory):
+		# The headlamp is on his head from the start (50_survival), beside any kit.
+		var on := PackedStringArray()
+		if inventory.has(&"lamp"):
+			on.append(UiRules.item_name(&"lamp"))
 		var w := UiLink.worn(inventory)
+		if w != &"":
+			on.append(UiRules.item_name(w))
 		UiDraw.text(self, Vector2i(x0 + 300, ly + 72), "worn", UiTheme.TEXT_DIM)
-		UiDraw.text(self, Vector2i(x0 + 360, ly + 72), UiRules.item_name(w) if w != &"" else "nothing", UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(x0 + 360, ly + 72), ", ".join(on) if not on.is_empty() else "nothing", UiTheme.TEXT)
 
 
 func _facts(id: StringName, count: int) -> PackedStringArray:

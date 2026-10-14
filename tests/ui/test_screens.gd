@@ -283,6 +283,35 @@ func test_making_lists_what_can_be_made_first_under_its_station() -> void:
 	s.free()
 
 
+func test_the_making_page_lists_only_what_has_been_in_the_pack() -> void:
+	var s := UiCraftingScreen.new()
+	s.inventory = Inventory.new()
+	s.inventory.add(&"knife")
+	s.inventory.add(&"driftwood", 3)
+	s.inventory.add(&"stone", 2)
+	s.stations = [&"fire", &"hand"]
+	tree.root.add_child(s)
+	s.open()
+	var listed := func() -> Array:
+		return s.menu.rows.filter(func(r: Dictionary) -> bool: return r.has("id")).map(func(r: Dictionary) -> StringName: return r.id)
+	var first: Array = listed.call()
+	for id: StringName in [&"campfire", &"charcoal", &"haft", &"hone"]:
+		check(first.has(id), "%s is listed at the first fire: %s" % [id, first])
+	for id: StringName in [&"tower_cable", &"raft", &"oil", &"stew", &"bench", &"scarf_mask"]:
+		check(not first.has(id), "%s wants what has never been in the pack: %s" % [id, first])
+	lt(float(first.size()), 12.0, "a first fire's page fits on one screen: %s" % first)
+	for id: StringName in first:
+		check(Crafting.known(s.inventory, Crafting.recipe(id)), "%s is known" % id)
+	# Resin carried once: what it makes is on the page, and stays when the resin is gone.
+	s.inventory.add(&"resin")
+	s.refresh()
+	check((listed.call() as Array).has(&"oil"), "resin found: oil is listed")
+	s.inventory.remove(&"resin")
+	s.refresh()
+	check((listed.call() as Array).has(&"oil"), "and stays listed after the resin is used")
+	s.free()
+
+
 func test_an_app_wakes_with_a_scan_at_whole_pixels() -> void:
 	var s := UiPauseScreen.new()
 	tree.root.add_child(s)
@@ -597,6 +626,30 @@ func test_x_puts_a_row_down_and_asks_first_for_a_tool() -> void:
 	s.handle(&"drop")
 	eq(g.inventory.count(&"knife"), 0, "asked again, it goes down")
 	check(not s.asking(&"knife"), "and the asking is over")
+	s.free()
+	Fx.done(g)
+
+
+func test_the_pack_says_the_headlamp_is_worn_and_tells_twin_uses_apart() -> void:
+	var g := Fx.flat()
+	if not g.inventory.has(&"lamp"):
+		g.inventory.add(&"lamp")
+	var s := UiInventoryScreen.new()
+	s.game = g
+	s.inventory = g.inventory
+	s.body = g.body
+	tree.root.add_child(s)
+	s.open()
+	s.select(&"knife")
+	s.settle()
+	var said := await _said(s)
+	var at := said.find("worn")
+	check(at >= 0 and at + 1 < said.size() and said[at + 1].contains("headlamp"), "the headlamp he wears is worn: %s" % str(said))
+	# Two recipes turn the knife into a steel knife: each line says which.
+	var steel := said.filter(func(w: String) -> bool: return w.begins_with("steel knife"))
+	gt(float(steel.size()), 1.0, "both ways to a steel knife are listed: %s" % str(said))
+	for i in steel.size():
+		eq(steel.find(steel[i]), i, "'%s' is said once" % steel[i])
 	s.free()
 	Fx.done(g)
 
