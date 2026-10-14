@@ -302,10 +302,16 @@ func _draw_recipe(R: Rect2i) -> void:
 	var minutes := float(r.get("minutes", 0.0))
 	var takes := "takes %s" % UiRules.duration(minutes)
 	UiDraw.text(self, Vector2i(tx, R.position.y + 46 + UiTheme.LINE), takes, UiTheme.TEXT_DIM)
+	var line := 2
 	if game != null:
 		# Long work at a station is set going and left: say so, and when to come back.
 		var ready := ready_line(game, r)
 		UiDraw.text(self, Vector2i(tx, R.position.y + 46 + UiTheme.LINE * 2), ready, UiTheme.TEXT if Crafting.sets_going(r) else UiTheme.TEXT_DIM)
+		line = 3
+	# What it is for, so a recipe is chosen for a reason (UiRules.purpose).
+	var why := UiRules.purpose(r)
+	if why != "":
+		UiSlate.wrapped(self, Vector2i(tx, R.position.y + 46 + UiTheme.LINE * line), R.end.x - UiSlate.SPARE_INSET - tx, why, UiTheme.TEXT)
 	# The table starts clear of the box and of the SCAN caption under it.
 	var table_top := box.end.y + UiFont.SIZE + 16
 	var table_bottom := _draw_table(Rect2i(x0, table_top, R.size.x - UiSlate.MARGIN_L - 24, 0), r, row)

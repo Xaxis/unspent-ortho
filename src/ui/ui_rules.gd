@@ -334,6 +334,48 @@ static func recipe_output(r: Dictionary) -> StringName:
 	return &""
 
 
+## What a tool with `verb` works on in the world: the prop kinds that answer it.
+static func works_on(verb: String) -> PackedStringArray:
+	var names := PackedStringArray()
+	for k: int in PROP_VERBS:
+		if PROP_VERBS[k] == verb and not names.has(PropKind.NAMES[k]):
+			names.append(PropKind.NAMES[k])
+	return names
+
+
+## What a station built is for, said where it is made.
+const STATION_FOR := {&"fire": "cooks, burns charcoal and works iron; you sleep beside it",
+	&"kiln": "fires steel overnight", &"bench": "mends gear and takes things apart"}
+
+
+## One line on what the thing a recipe makes is FOR, under its name on the make
+## page: a tool by what it works on, food by how long it feeds, worn kit by what
+## it adds, a station by what it does. "" for a material, whose uses are its own list.
+static func purpose(r: Dictionary) -> String:
+	var built := StringName(r.get("builds", &""))
+	if built != &"":
+		return String(STATION_FOR.get(built, ""))
+	var id := recipe_output(r)
+	if id == &"":
+		return ""
+	var d := Items.def(id)
+	var verb := String(d.get("verb", ""))
+	if verb != "":
+		var on := works_on(verb)
+		if not on.is_empty():
+			return "%s: %s" % [verb, ", ".join(on.slice(0, 3)) + (" and more" if on.size() > 3 else "")]
+	if float(d.get("feeds", 0.0)) > 0.0:
+		return "feeds %s" % duration(float(d.feeds) * 60.0)
+	if d.has("health"):
+		return "worn: +%d health" % int(d.health)
+	if d.has("slot"):
+		var against := PackedStringArray()
+		for k: Variant in (d.get("resist", {}) as Dictionary):
+			against.append(String(k).replace("_", " "))
+		return "worn on the %s" % String(d.slot) + (", against %s" % " and ".join(against) if not against.is_empty() else "")
+	return ""
+
+
 ## A recipe's line in a list: what it makes ("charcoal ×2"), what it builds
 ## ("build a fire") or what it does ("sharpen what is in hand"). When another
 ## recipe in `among` makes the same, the first input that tells them apart is
