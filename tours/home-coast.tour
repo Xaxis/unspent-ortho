@@ -343,11 +343,8 @@ try 8
   wait 0.4
   await fed 1
 end
-# Sleep is asked for: the first press asks, the second sleeps.
+# One press sleeps once the row names it.
 try 3
-  until hint:sleep 4
-  press use 0.1
-  wait 0.4
   until hint:sleep 4
   press use 0.1
   await slept 6
