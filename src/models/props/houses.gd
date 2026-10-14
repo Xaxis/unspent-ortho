@@ -294,33 +294,6 @@ static func neon_tube(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3
 const NEON_TUBES: Array[Color] = [Color(0.3, 0.95, 1.0), Color(1.0, 0.25, 0.8), Color(0.55, 1.0, 0.35)]
 
 
-## The same stolen light run along the roof edge, a hand's width up the slope.
-##
-## A tube on the door wall alone could not be seen at all (art review 11, which
-## found zero tube pixels in three canon frames). Two reasons, both the camera's:
-## the door faces the village square, which is only the camera's way for half the
-## houses in a village; and at v=0.85 the tube sat under the eave overhang, which
-## at a 57-degree pitch hides everything within about 0.1 of the wall top. The
-## roof is the one surface this camera always sees, so that is where the light
-## goes — and a line of colour along a dark roofline is the better drawing.
-static func neon_run(k: Kit, eave: PackedVector3Array, ridge: PackedVector3Array, v: float, col: Color) -> void:
-	var lift := Vector3(0, 0.05, 0)
-	var glow := GroundColors.neon(col)
-	for i in eave.size() - 1:
-		# The bracket it is clipped to, and the tube itself proud of it.
-		var a0 := eave[i].lerp(ridge[i], v) + lift
-		var b0 := eave[i + 1].lerp(ridge[i + 1], v) + lift
-		var a1 := eave[i].lerp(ridge[i], v + 0.1) + lift
-		var b1 := eave[i + 1].lerp(ridge[i + 1], v + 0.1) + lift
-		k.made.quad(b0, a0, a1, b1, P.INK[1])
-		var g := Vector3(0, 0.025, 0)
-		var ta := a0.lerp(a1, 0.22) + g
-		var tb := b0.lerp(b1, 0.22) + g
-		var ua := a0.lerp(a1, 0.72) + g
-		var ub := b0.lerp(b1, 0.72) + g
-		k.made.quad(tb, ta, ua, ub, glow)
-
-
 ## The four wall faces of a `walls()` result, each as (bl, br, tr, tl) seen from
 ## outside: front (+x, the door), +z, -x, -z.
 static func faces(t: Array[Vector3]) -> Array:
@@ -762,7 +735,7 @@ static func _apex(at: Vector3, n: int) -> PackedVector3Array:
 ## Returns [e00, e10, e11, e01, r0, rm, r1].
 ## `drop_at` (0-3) sags that eave corner by `drop`, so the roofline has one
 ## break in it and the house is not a prism with a lid.
-static func hipped(k: Kit, t: Array[Vector3], over: float, rise: float, rz: float, sag: float, s: int, mats: Array[Color], plate_share: float, ends: Color, drop_at: int = -1, drop: float = 0.0, neon: Color = Color(0, 0, 0, 0)) -> Array[Vector3]:
+static func hipped(k: Kit, t: Array[Vector3], over: float, rise: float, rz: float, sag: float, s: int, mats: Array[Color], plate_share: float, ends: Color, drop_at: int = -1, drop: float = 0.0) -> Array[Vector3]:
 	# Over the WALL TOPS (t[4..7]), not the footings. This read the bottom four
 	# corners, so the eaves sat at y = -0.1 and the roof was a tent pitched from
 	# the ground that the walls stood up through: a hipped house had no wall/roof
@@ -802,8 +775,6 @@ static func hipped(k: Kit, t: Array[Vector3], over: float, rise: float, rz: floa
 		ridge_back.append(ridge[N - i])
 	patch_slope(k, front, ridge, 3, s + 11, mats, plate_share)
 	patch_slope(k, back, ridge_back, 3, s + 17, mats, plate_share * 0.6)
-	if neon.a > 0.0:
-		neon_run(k, front, ridge, 0.1, neon)
 	# The hip ends are laid in courses too, cut at the hip. Five triangles fanned
 	# from the ridge end in ONE colour is a plain sheet with a fan drawn on it —
 	# the very thing this roof is not, and it was the biggest ruled shape left on
@@ -904,8 +875,7 @@ static func washed(k: Kit, c: int, form: int) -> void:
 	# The roof: a patchwork of what could be got, with plate off a machine where
 	# the slate failed. One eave corner has given way, so the roofline is broken.
 	var r := hipped(k, t, 0.24, [1.05, 0.9, 1.2][form], d * 0.2, [0.22, 0.28, 0.18][form], s + 60,
-		SLATE_ROOF, [0.2, 0.3, 0.14][form], P.SLATE[2].lerp(P.SLATE[1], 0.5), [1, 3, 2][form], [0.18, 0.15, 0.2][form],
-		NEON_TUBES[2] if form == 1 else Color(0, 0, 0, 0))
+		SLATE_ROOF, [0.2, 0.3, 0.14][form], P.SLATE[2].lerp(P.SLATE[1], 0.5), [1, 3, 2][form], [0.18, 0.15, 0.2][form])
 	# One patch hangs past the eave: the plate was cut to the hole, not the roof.
 	_patch(k, r[1], r[2], r[6], r[4], [0.7, 0.58, 0.08][form], -0.14, [0.95, 0.84, 0.32][form], 0.16)
 	# The ridge is laid in three, and the middle length of it is gone.
@@ -1004,8 +974,6 @@ static func slated(k: Kit, c: int, form: int) -> void:
 		back_rev.append(back[N - i])
 		ridge_rev.append(ridge[N - i])
 	patch_slope(k, front, ridge, 4, s + 11, SLATE_ROOF, 0.13 if form == 0 else 0.15)
-	if form == 0:
-		neon_run(k, front, ridge, 0.09, NEON_TUBES[1])
 	patch_slope(k, back_rev, ridge_rev, 4, s + 17, SLATE_ROOF, 0.10)
 	# Wound to face UP: the camera is always above, so this plane read downward
 	# was culled from every bearing and the shadow under the eaves was absent

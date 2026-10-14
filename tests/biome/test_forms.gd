@@ -325,3 +325,20 @@ func _draws_mark(kind: int, v: int, c: int, mark: int) -> bool:
 		if roundi(col.a * 255.0) == mark:
 			return true
 	return false
+
+
+## THE HOME COAST'S STOLEN NEON IS A TUBE OVER A DOOR, NEVER A RUN ALONG A ROOF.
+## A roofline run glowed across the village green by day, the one surface this
+## camera always sees, and read as a stray zigzag of light (docs/LOOK.md: neon
+## only where it belongs).
+func test_a_coast_house_wears_its_neon_low_on_a_wall() -> void:
+	var stock := BiomeForms.of(Country.COAST).stock
+	for v in stock.size():
+		var t := PropModels.template(PropKind.HOUSE, v, Country.COAST)
+		var top := -INF
+		var hi := -INF
+		for i in t.made_v.size():
+			top = maxf(top, t.made_v[i].y)
+			if roundi(t.made_c[i].a * 255.0) == GroundColors.NEON:
+				hi = maxf(hi, t.made_v[i].y)
+		check(hi < top * 0.4, "%s: neon at %.2f of a house %.2f tall" % [stock[v], hi, top])
