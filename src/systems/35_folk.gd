@@ -851,5 +851,5 @@ func place_row(f: Dictionary) -> void:
 func _place(f: Dictionary) -> void:
 	var model: PersonModel = f.model
 	var p: Vector2 = f.pos
-	model.position = game.world.to_3d(p)
+	model.position = game.drawn3(p)
 	model.rotation.y = -float(f.facing)

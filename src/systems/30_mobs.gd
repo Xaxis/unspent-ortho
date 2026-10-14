@@ -241,6 +241,7 @@ func _ensure_nodes(all: bool = false) -> void:
 			var mob := Mob.new()
 			_layer.add_child(mob)
 			mob.setup(m, game.world, game.view.world_material())
+			mob.ground = game.drawn_height
 			# A figure that draws itself as a PERSON (a machine that passes) needs
 			# what every other person is given and no machine ever is: a seed, so
 			# a street is not the same body six times, and the world's sun, since

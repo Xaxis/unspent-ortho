@@ -428,6 +428,10 @@ static func material() -> ShaderMaterial:
 		var behind := ShaderMaterial.new()
 		behind.shader = preload("res://src/render/behind.gdshader")
 		behind.render_priority = 12
+		# Their own kit is not a hider (behind.gdshader `own_radius`), so the margin
+		# comes down to just over the soles and a one-step bank counts.
+		behind.set_shader_parameter("margin", 0.15)
+		behind.set_shader_parameter("own_radius", 0.5)
 		rim.next_pass = behind
 	return _person_mat
 

@@ -507,5 +507,5 @@ func _move(b: Dictionary, dir: Vector2, pace: float, delta: float) -> float:
 
 func _place(b: Dictionary, _delta: float) -> void:
 	var m: Node3D = b.model
-	m.position = game.world.to_3d(b.pos)
+	m.position = game.drawn3(b.pos)
 	m.rotation.y = -float(b.facing)

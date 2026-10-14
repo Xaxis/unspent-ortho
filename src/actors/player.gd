@@ -9,6 +9,9 @@ extends Node3D
 ## sync_view(). Without one (tests, tools) drive() moves the player itself.
 
 var world: WorldData
+## Where he is drawn standing (Game.drawn_height): the land as drawn, not the tile's
+## level. Unset, the tile's level.
+var ground := Callable()
 var query: WorldQuery
 ## Tile-space position.
 var pos := Vector2.ZERO
@@ -100,7 +103,8 @@ func place(at: Vector2, face: float = NAN) -> Vector2:
 		hero.move = Vector2.ZERO
 		if not is_nan(face):
 			hero.facing = face
-	position = world.to_3d(to)
+	_z = ground.call(to) if ground.is_valid() else world.height_at(to)
+	position = Vector3(to.x, _z + lift, to.y)
 	return to
 
 
@@ -233,7 +237,8 @@ func _sync(delta: float) -> void:
 	var was_swimming := swimming
 	swimming = ride == null and Swim.deep(world, pos)
 	_wake(was_swimming)
-	var target := world.height_at(drawn if drawn.is_finite() else pos)
+	var at := drawn if drawn.is_finite() else pos
+	var target: float = ground.call(at) if ground.is_valid() else world.height_at(at)
 	_z = target if delta == 0.0 else lerpf(_z, target, 1.0 - exp(-14.0 * delta))
 	if not hanging:
 		position = on_land()

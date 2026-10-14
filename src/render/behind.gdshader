@@ -27,18 +27,32 @@ uniform vec3 ink : source_color = vec3(0.86, 0.82, 0.72);
 // How much nearer the world must be, in world units, before a surface counts
 // as hidden: a body never finds its own skin, or the ground at its feet.
 uniform float margin = 0.6;
+// A body's own kit, ridden on its back or hung at its belt, is opaque and IN the
+// depth texture: a hider found within this of the body's upright axis, above its
+// feet, is the body itself and never stipples it. Set for people (PersonModel),
+// whose margin can then come down from 0.6 to just over their own soles: at 0.6 a
+// one-step bank (WorldData.STEP, 0.5 high, 0.6 deep at this pitch) never counted
+// as a hider, and legs at the foot of the coast's commonest bank were simply gone.
+// Machines keep 0 and the old margin: their own body is large and opaque.
+uniform float own_radius = 0.0;
 // The sea's sheet (TerrainMesher.WATER_Y; tests/swim/test_swim.gd holds them
 // together), and how far off it a hiding surface still counts as the sea: the
 // open sea past the map is laid 0.02 under it.
 const float SEA_Y = 0.3;
 const float SEA_NEAR = 0.04;
 
+// Where the body stands: the model's origin is at its feet.
+varying vec3 body_root;
+
+void vertex() {
+	body_root = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+}
+
 void fragment() {
-	// Only for the camera looking down, where a wall can stand between it and a
-	// body in a slot. Over the shoulder the eye stands behind the player and a
-	// body's own kit on its back, or a ledge's lip at its knees, would stipple
-	// it (measured: a jacket checkered under its pack).
-	if (PROJECTION_MATRIX[3][3] < 0.5) {
+	// Not from the close eye over the shoulder: it stands behind the player, and
+	// a ledge's lip at his knees would stipple him. By distance, not by lens: the
+	// held-Z lock's lens stands well back and a body behind a bank must still show.
+	if (PROJECTION_MATRIX[3][3] < 0.5 && distance(CAMERA_POSITION_WORLD, body_root) < 9.0) {
 		discard;
 	}
 	float d = texture(depth_tex, SCREEN_UV).r;
@@ -55,6 +69,10 @@ void fragment() {
 	}
 	vec3 hider = (INV_VIEW_MATRIX * vec4(v.xyz / v.w, 1.0)).xyz;
 	vec3 here = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	vec2 off = hider.xz - body_root.xz;
+	if (own_radius > 0.0 && dot(off, off) < own_radius * own_radius && hider.y > body_root.y + 0.08) {
+		discard;
+	}
 	if (abs(hider.y - SEA_Y) < SEA_NEAR && here.y < SEA_Y) {
 		discard;
 	}

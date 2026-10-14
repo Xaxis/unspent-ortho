@@ -79,6 +79,7 @@ func setup(o: BootOptions) -> void:
 	player.name = "player"
 	add_child(player)
 	player.setup(world, query, start, view.world_material())
+	player.ground = drawn_height
 	if start == world.spawn:
 		player.facing = world.spawn_facing
 	t = _took(parts, "player", t)
@@ -244,6 +245,16 @@ static func _walk_apart(action: StringName) -> float:
 		if Input.is_physical_key_pressed(k.physical_keycode):
 			return 1.0
 	return 0.0
+
+
+## Where a body is drawn standing at `p` (WorldView.drawn_height), asked of the
+## view this game draws now, so a realm crossing carries every body with it.
+func drawn_height(p: Vector2) -> float:
+	return view.drawn_height(p) if view != null else world.height_at(p)
+
+
+func drawn3(p: Vector2) -> Vector3:
+	return Vector3(p.x, drawn_height(p), p.y)
 
 
 func _process(_delta: float) -> void:

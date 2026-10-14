@@ -44,6 +44,8 @@ var _flash_until := 0
 ## Where in the world the blow landed, for a flash that is only the struck part.
 var _flash_at := Vector3.ZERO
 var _world: WorldData
+## Where its body is drawn standing (Game.drawn_height), unset for the tile's level.
+var ground := Callable()
 var _was_lit := true
 var _wake_in := 0.0
 var _holding := false
@@ -102,6 +104,11 @@ const POSE_HZ := 30.0
 const DROP_HOP := 0.5
 
 
+## The drawn ground at `p` (Game.drawn_height), or the tile's level with none given.
+func _ground(p: Vector2) -> float:
+	return float(ground.call(p)) if ground.is_valid() else _world.height_at(p)
+
+
 ## Draw the state at simulation time `now_ms`. delta 0 holds the pose (hitstop).
 ## `holding`: this body has hold of the player.
 ## `drawn`: where its body is drawn (40_fight, DrawnPace), INF for its own place.
@@ -124,14 +131,14 @@ func sync_view(delta: float, now_ms: float, holding: bool = false, drawn: Vector
 	# (Swim): the bed under deep water is the zero plane and the sheet is drawn
 	# above it, so a body left on the ground there is a body under the sea.
 	var swimming := Swim.swims(s.row) and Swim.deep(_world, s.pos)
-	var ground := _world.height_at(at) + (Swim.WATER_Y - Swim.sink_of(s.row) if swimming else 0.0)
+	var stand := _ground(at) + (Swim.WATER_Y - Swim.sink_of(s.row) if swimming else 0.0)
 	var fall := s.drop_fall(now_ms)
 	if fall >= 0.0 and fall < 1.0:
 		# Through the air (Brains `drop`): off the ledge's height with a hop, and
 		# down onto where it lands falling faster as it goes.
-		_z = lerpf(_world.height_at(s.drop_from), _world.height_at(s.drop_at), fall * fall) + DROP_HOP * 4.0 * fall * (1.0 - fall)
+		_z = lerpf(_ground(s.drop_from), _ground(s.drop_at), fall * fall) + DROP_HOP * 4.0 * fall * (1.0 - fall)
 	else:
-		_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
+		_z = stand if delta == 0.0 else lerpf(_z, stand, 1.0 - exp(-12.0 * delta))
 	position = Vector3(at.x, _z, at.y)
 	_wake(delta, swimming)
 	model.rotation.y = -s.facing

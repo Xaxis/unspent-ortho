@@ -531,7 +531,7 @@ func _watch(row: Dictionary, from: Vector2) -> void:
 	var to := from - (row.pos as Vector2)
 	if to.length() <= WATCH and to.length() > 0.01:
 		row.facing = to.angle()
-	model.position = game.world.to_3d(row.pos) + Vector3(0.0, float(row.get("lift", 0.0)), 0.0)
+	model.position = game.drawn3(row.pos) + Vector3(0.0, float(row.get("lift", 0.0)), 0.0)
 	model.rotation.y = -float(row.facing)
 
 
