@@ -40,6 +40,7 @@ func setup(g: Game) -> void:
 	_layer.name = "mobs"
 	g.add_child(_layer)
 	coast = Coast.new(sim, spawner)
+	coast.calm = func(at: Vector2) -> bool: return StartArea.calm(g, at)
 	_warm_figures()
 	coast.spawning = g.options.spawn.is_empty()
 	Events.time_skipped.connect(_on_time_skipped)

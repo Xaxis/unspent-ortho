@@ -128,6 +128,7 @@ func started() -> void:
 	_staged = WakeSpot.find(game.world)
 	if _staged.is_empty():
 		return
+	Story.washed_up = true
 	var mobs := game.get_node_or_null(^"30_mobs")
 	_coast = mobs.get(&"coast") if mobs != null else null
 	if _coast != null:

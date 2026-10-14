@@ -16,7 +16,7 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
     `tools/test.sh test_siting`, `tools/test.sh test_model`,
     `tools/tour.sh tours/crags-depot.tour --seed=1 --hour=12 --weather=clear:0 --held=axe_felling` (h).
 - 36_machine_parade `src/systems/36_machine_parade.gd`: `tools/tour.sh tours/machines-day.tour`.
-- 40_fight `src/systems/40_fight.gd`: `tools/tour.sh tours/fight.tour`.
+- 40_fight `src/systems/40_fight.gd`: `tools/tour.sh tours/fight.tour`. Beasts (dogs, the field bull) are indifferent until struck (roster `disposition`): `tools/test.sh test_beasts`. The start is calm: in a game that opened washed up, nothing comes out within `StartArea.REACH` of the spawn while the first steps run (Coast `calm`, 34_works): `tools/test.sh test_start_area`.
   - Height (a 2-level ledge stands bodies out of each other's blows): `tools/test.sh test_height`.
   - Climbing: `tools/test.sh test_climb`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour` (h).
   - Vertical grapple (a face up to 8 levels): `tools/test.sh test_vertical_grapple`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/vertical_grapple.tour` (h).

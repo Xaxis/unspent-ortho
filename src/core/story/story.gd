@@ -43,6 +43,10 @@ static var _ledger: Array[Dictionary] = []
 ## Whether the first morning has been said (StoryContent.WAKE, 48_wake). Saved, so a
 ## game that is loaded does not open by telling him again where he came from.
 static var began := false
+## This game opened washed up in the tide, a player's new game (48_wake), so its
+## start area is kept calm while the first steps are under way (StartArea).
+## Saved: a game carried on is the same game.
+static var washed_up := false
 ## The world clock as the story last saw it, in minutes. What "a while ago" is
 ## measured from: 49_story writes it every frame, a test writes it by hand.
 static var now := 0.0
@@ -57,6 +61,7 @@ static func forget() -> void:
 	_heard.clear()
 	_ledger.clear()
 	began = false
+	washed_up = false
 	now = 0.0
 
 
@@ -272,7 +277,7 @@ static func save_state() -> Dictionary:
 	var seen: Array = []
 	for e: Dictionary in _ledger:
 		seen.append({"act": String(e.act), "land": String(e.land), "at": float(e.at)})
-	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "spoke": spoke, "heard": heard, "ledger": seen, "began": began}
+	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "spoke": spoke, "heard": heard, "ledger": seen, "began": began, "washed_up": washed_up}
 
 
 static func load_state(d: Dictionary) -> void:
@@ -297,6 +302,7 @@ static func load_state(d: Dictionary) -> void:
 	for s: String in d.get("heard", []):
 		_heard.append(StringName(s))
 	began = bool(d.get("began", false))
+	washed_up = bool(d.get("washed_up", false))
 	for e: Variant in d.get("ledger", []):
 		if e is Dictionary:
 			var row: Dictionary = e

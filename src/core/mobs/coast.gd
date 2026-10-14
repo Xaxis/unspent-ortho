@@ -72,6 +72,9 @@ var opening := false
 ## depots (src/core/works) close a whole region's machines once the yard that
 ## sends them is dark, which is what "the region quiets" means past the yard gate.
 var also_shut := Callable()
+## THE START IS CALM (StartArea): asked with where the player stands, true while
+## nothing may come out near him, as in the opening. Set by 30_mobs.
+var calm := Callable()
 var _rolls_done := -1
 ## Dart kind -> world minutes before which no other of it comes out.
 var _kind_ready: Dictionary = {}
@@ -104,16 +107,17 @@ func open() -> void:
 func tick() -> void:
 	var rolls := floori(sim.now / Spawner.ROLL_MS)
 	_rolls_done = maxi(_rolls_done, rolls - MAX_ROLLS_PER_TICK)
+	var quiet := opening or (calm.is_valid() and bool(calm.call(sim.hero.pos)))
 	while _rolls_done < rolls:
 		_rolls_done += 1
-		if not spawning or opening:
+		if not spawning or quiet:
 			continue
 		var s := spawner.roll(_rolls_done, sim.world, sim.query, sim.moment, sim.hero.pos, sim.living(), shut(), _creatures())
 		if not s.is_empty():
 			sim.add_mob(s.kind, s.pos)
 			if Roster.row(s.kind).get("approach", &"") == &"dart":
 				_kind_ready[s.kind] = sim.moment.minutes + DART_KIND_GAP
-	if spawning and rounds and not opening:
+	if spawning and rounds and not quiet:
 		_patrols()
 		_first_meeting()
 	for m in sim.mobs:

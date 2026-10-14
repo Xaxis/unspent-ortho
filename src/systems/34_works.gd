@@ -571,6 +571,9 @@ func _put_out() -> void:
 	# and one that wants the yard defended turns it up. Nothing else about the
 	# depot changes with it — it is lit, it can be broken, and it still quiets.
 	var busy := float(GameConfig.value("rules.works"))
+	# The start is calm (StartArea): a yard puts nobody on the land near him then.
+	if StartArea.calm(game, sim.hero.pos):
+		return
 	for s in sites:
 		var st: WorksState = _states.get(s.region, null)
 		var dead: bool = busy <= 0.0 or (st != null and st.broken())

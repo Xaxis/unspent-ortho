@@ -32,8 +32,11 @@ func test_hunters_are_thin_on_the_first_days_and_workers_are_not() -> void:
 func test_no_hunter_comes_out_before_the_first_meeting() -> void:
 	var c := _coast()
 	var shut := c.shut()
-	check(shut.has(&"runner") and shut.has(&"dog.yard"), "hunters held back: %s" % [shut.keys()])
+	check(shut.has(&"runner"), "hunters held back: %s" % [shut.keys()])
 	check(not shut.has(&"harvester"), "workers are not")
+	# A dog is no hunter (test_beasts): it leaves him be until struck, so there is
+	# nothing in it to hold back.
+	check(not Spawner.is_hunter(Roster.row(&"dog.yard")), "a dog is not a hunter")
 
 
 func test_the_first_meeting_is_one_runner_seen_on_its_round_before_it_sees() -> void:
@@ -115,7 +118,7 @@ func test_no_hunter_comes_out_for_a_while_after_a_bad_end() -> void:
 		if sim.last_outcome == &"downed":
 			break
 	eq(sim.last_outcome, &"downed", "downed")
-	check(c.shut().has(&"runner") and c.shut().has(&"dog.yard"), "hunters kept off a player who just came round")
+	check(c.shut().has(&"runner"), "hunters kept off a player who just came round")
 	check(not c.shut().has(&"harvester"), "workers are not")
 	sim.now += Coast.AFTER_DOWNED_MS
 	check(not c.shut().has(&"runner"), "a few minutes on, they may come again")
