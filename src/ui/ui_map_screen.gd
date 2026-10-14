@@ -741,7 +741,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	draw_frame()
 	var r := MAP_RECT
-	UiDraw.text(self, Vector2i(r.position.x, HEADER_Y), "SURVEY", UiTheme.TEXT)
+	UiDraw.text(self, Vector2i(r.position.x, HEADER_Y), "MAP", UiTheme.TEXT)
 	# The survey's grid of points on the glass, where nothing has been seen yet.
 	var y := r.position.y + 10
 	while y < r.end.y:

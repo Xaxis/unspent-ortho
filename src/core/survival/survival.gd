@@ -957,7 +957,7 @@ static func drop(game: Game, id: StringName, n: int = 1) -> int:
 ## cost is the walk back, which the player can see and plan, never a loss they
 ## cannot. What is on the body stays on it: the tool in the hand, the kit worn,
 ## the gear fitted (a module socketed in it included).
-const BAG_LINE := "Your things are where it took you. The survey marks the place."
+const BAG_LINE := "Your things are where it took you. The map marks the place."
 const BAG_SCALE := 0.8
 
 

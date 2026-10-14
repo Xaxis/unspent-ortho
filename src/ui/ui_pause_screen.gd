@@ -210,7 +210,7 @@ func _draw_body(at: Vector2i, right: int) -> void:
 			var col := (UiTheme.WARN if b.health <= UiRules.PER_CELL else UiTheme.TEXT) if lit else UiTheme.GHOST
 			UiDraw.rect(self, Rect2i(x + 112 + i * 24 + t * 6, y + 2, 4, 14), col)
 	y += 24
-	UiDraw.text(self, Vector2i(x, y), "wind", UiTheme.TEXT_DIM)
+	UiDraw.text(self, Vector2i(x, y), "stamina", UiTheme.TEXT_DIM)
 	UiSlate.meter(self, Rect2i(x + 112, y + 2, 240, 14), b.wind / maxf(1.0, b.max_wind))
 	y += 24
 	var h := clampi(b.hunger_level(game.clock.minutes), 0, 3)
