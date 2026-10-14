@@ -12,8 +12,8 @@ class_name PersonAnim
 ## A key may also carry `aim` (tool direction in root space) and `ik_l` / `ik_r`
 ## (hand targets in root space); resolve() turns those into joint angles.
 
-const GAIT_WALK := 3.4
-const GAIT_RUN := 5.4
+const GAIT_WALK := Tuning.WALK_SPEED
+const GAIT_RUN := Tuning.RUN_SPEED
 
 
 class Pose:
@@ -319,14 +319,18 @@ static func locomotion(phase: float, speed: float, t: float, d: Dictionary, klas
 	var c := cos(TAU * phase)
 	var s := sin(TAU * phase)
 	var sr := sin(TAU * (phase + 0.5))
-	var thigh_a := lerpf(0.52, 0.9, run)
-	var fwd_bias := lerpf(0.0, 0.18, run)
-	var knee_swing := lerpf(0.95, 1.75, run)
-	var knee_stance := lerpf(0.12, 0.35, run)
-	var bob := lerpf(0.035, 0.07, run)
-	var arm_a := lerpf(0.5, 0.85, run)
-	var elbow := lerpf(0.25, 1.45, run)
-	var lean := lerpf(-0.07, -0.3, run) - stoop
+	# A RUN, NOT A LONG WALK (owner, 2026-10-13: "look more like running"): the
+	# body pitched forward over the feet, the knee driven up in front and the heel
+	# kicked up behind, the arms bent square and pumping, and the body riding
+	# higher between strides.
+	var thigh_a := lerpf(0.52, 1.0, run)
+	var fwd_bias := lerpf(0.0, 0.34, run)
+	var knee_swing := lerpf(0.95, 2.25, run)
+	var knee_stance := lerpf(0.12, 0.38, run)
+	var bob := lerpf(0.035, 0.1, run)
+	var arm_a := lerpf(0.5, 1.05, run)
+	var elbow := lerpf(0.25, 1.65, run)
+	var lean := lerpf(-0.07, -0.48, run) - stoop
 	# Down (lowest) just after each contact; head lands a beat later.
 	var drop := -bob * (0.5 + 0.5 * cos(2.0 * TAU * (phase - 0.08)))
 	var head_drag := -bob * 0.4 * (0.5 + 0.5 * cos(2.0 * TAU * (phase - 0.17)))
@@ -344,8 +348,8 @@ static func locomotion(phase: float, speed: float, t: float, d: Dictionary, klas
 		&"shin_r": Vector3(0, 0, knee_r),
 		&"foot_l": Vector3(0, 0, -(th_l + knee_l) * 0.7 + 0.25 * maxf(0.0, c) * (1.0 - run) - 0.35 * maxf(0.0, -c) * maxf(0.0, s)),
 		&"foot_r": Vector3(0, 0, -(th_r + knee_r) * 0.7 + 0.25 * maxf(0.0, -c) * (1.0 - run) - 0.35 * maxf(0.0, c) * maxf(0.0, sr)),
-		&"arm_l": Vector3(0.1, 0, -arm_a * c + run * 0.2),
-		&"arm_r": Vector3(-0.1, 0, arm_a * c + run * 0.2),
+		&"arm_l": Vector3(0.1 + run * 0.12, 0, -arm_a * c + run * 0.35),
+		&"arm_r": Vector3(-0.1 - run * 0.12, 0, arm_a * c + run * 0.35),
 		&"fore_l": Vector3(0, 0, elbow + 0.3 * maxf(0.0, -c)),
 		&"fore_r": Vector3(0, 0, elbow + 0.3 * maxf(0.0, c)),
 		# Coat hems drag behind the body and swing a beat after the hips.
