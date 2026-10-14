@@ -461,6 +461,16 @@ func chunk_at(p: Vector2) -> TerrainMesher.Chunk:
 	return _data.get(_key_of(p))
 
 
+## Where a body is DRAWN standing at `p`: on the land as the mesher drew it,
+## where its chunk is built, else on the tile's own level. The two differ within
+## half a tile of a bank (warped contours, smoothed levels), where a body stood on
+## the tile's level sank to the shins in a lip or hung over a drop. The rules keep
+## reading `WorldData.height_at`; this is only for drawing.
+func drawn_height(p: Vector2) -> float:
+	var ch := chunk_at(p)
+	return ch.surface(p.x, p.y) if ch != null else world.height_at(p)
+
+
 ## Height of the drawn land at a tile-space point.
 func surface_height(p: Vector2) -> float:
 	var ch := chunk_at(p)
