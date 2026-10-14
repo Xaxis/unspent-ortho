@@ -53,9 +53,16 @@ func _on_close() -> void:
 		inventory.changed.disconnect(refresh)
 
 
-## What E does to a row's thing: &"hold" &"eat" &"wear", or &"" (refused,
-## with why_refused saying why in one plain sentence).
+## What E does to a row's thing: &"hold" &"eat" &"wear" &"light", or &""
+## (refused, with why_refused saying why in one plain sentence). A gear piece is
+## worn from here too (54_gear `put_on`); a module goes into one on the gear page.
 func verb_for(id: StringName) -> StringName:
+	if id == &"lamp":
+		return &"light"
+	if Gear.is_module(id):
+		return &""
+	if Gear.is_wearable(id) and Gear.slot_of(id) != Gear.HAND_SLOT:
+		return &"wear"
 	match UiRules.item_group(id):
 		&"tools":
 			return &"hold"
@@ -69,6 +76,8 @@ func verb_for(id: StringName) -> StringName:
 
 
 static func why_refused(id: StringName) -> String:
+	if Gear.is_module(id):
+		return "A module goes into a piece you wear: home, then gear."
 	match UiRules.item_group(id):
 		&"goods":
 			return "That is for making things with."
@@ -160,6 +169,16 @@ func _on_confirm(row: Dictionary) -> void:
 				say("Ate the %s." % name)
 			else:
 				refuse("Not while your hands are full.")
+		&"light":
+			Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
+			say("The headlamp is on." if UiLink.toggle_lamp(game) else "The headlamp is off.")
+		&"wear" when Gear.is_wearable(id):
+			var line := UiLink.put_on(game, id)
+			if line.begins_with("!"):
+				refuse(line.substr(1))
+			else:
+				Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
+				say(line)
 		&"wear":
 			Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
 			if UiLink.worn(inventory) == id:
@@ -205,8 +224,8 @@ func _draw() -> void:
 		if int(row.count) > 1:
 			UiDraw.text(self, Vector2i(nx + 8, top), "×%d" % row.count, UiTheme.TEXT_DIM)
 			nx += 10 + UiFont.width("×%d" % row.count)
-		if inventory.held == id or UiLink.worn(inventory) == id:
-			_tag(Vector2i(nx + 12, top), "HELD" if inventory.held == id else "WORN")
+		if inventory.held == id or UiLink.worn(inventory) == id or UiLink.fitted(game, id) or (id == &"lamp" and game != null and game.body.lamp_lit):
+			_tag(Vector2i(nx + 12, top), "HELD" if inventory.held == id else ("LIT" if id == &"lamp" else "WORN"))
 		UiDraw.text_right(self, right, top, UiRules.num(Items.bulk(id) * int(row.count)), UiTheme.TEXT_DIM)
 	if scroll > 0:
 		UiDraw.text_right(self, right, LIST_TOP - UiTheme.LINE, "↑", UiTheme.TEXT_DIM)
@@ -217,7 +236,7 @@ func _draw() -> void:
 	var verb: StringName = chosen_row.get("verb", &"")
 	var keys: Array = []
 	if verb != &"":
-		keys.append(["e", "put away" if verb == &"hold" and inventory.held == chosen_row.get("id") else String(verb)])
+		keys.append(["e", _verb_words(verb, chosen_row.get("id", &""))])
 	if chosen_row.has("id"):
 		var id: StringName = chosen_row.id
 		# Every key label on the slate names the verb that key does. While the ask
@@ -225,6 +244,18 @@ func _draw() -> void:
 		keys.append(["x", "yes, put it down" if asking(id) else ("put down" if int(chosen_row.get("count", 1)) < 2 else "put down all")])
 	keys.append_array([["tab", "close"], ["esc", "back"]])
 	draw_keys(keys)
+
+
+## The key strip's word for E on `id`: what pressing it will do now.
+func _verb_words(verb: StringName, id: StringName) -> String:
+	match verb:
+		&"hold":
+			return "put away" if inventory.held == id else "hold"
+		&"wear":
+			return "take off" if UiLink.worn(inventory) == id or UiLink.fitted(game, id) else "wear"
+		&"light":
+			return "put out" if game != null and game.body.lamp_lit else "light"
+	return String(verb)
 
 
 ## A small lit tag after a name: what is in hand or on the body.
@@ -279,12 +310,20 @@ func _draw_detail(R: Rect2i) -> void:
 		_draw_choice(Vector2i(x0, y), right, choice)
 		return
 	# What it goes into: the recipes that want it, so goods are never a dead end.
+	# Only those whose every input has been carried, as on the make page
+	# (Crafting.known); the rest are counted, not named, so a thing found early is
+	# not a list of other lands' making.
 	var demo: Array[Dictionary] = []
 	if game != null and game.options.ui_demo:
 		demo.assign(UiDemo.RECIPES)
-	var uses := UiRules.recipes_using(id, UiRules.all_recipes(demo))
+	var every := UiRules.recipes_using(id, UiRules.all_recipes(demo))
+	var uses: Array[Dictionary] = []
+	for r in every:
+		if not demo.is_empty() or Crafting.known(inventory, r):
+			uses.append(r)
+	var unknown := every.size() - uses.size()
 	var room := (R.end.y - 140 - y) / UiTheme.LINE - 1
-	if uses.is_empty() or room < 1:
+	if every.is_empty() or room < 1:
 		return
 	UiSlate.heading(self, Vector2i(x0, y), "goes into", right)
 	var shown := mini(uses.size(), room)
@@ -298,8 +337,12 @@ func _draw_detail(R: Rect2i) -> void:
 		UiDraw.text(self, Vector2i(x0 + 38, top), UiRules.recipe_title(r, uses), UiTheme.TEXT)
 		var want := int((r.needs as Dictionary)[id])
 		UiDraw.text_right(self, right, top, "%d, %s" % [want, UiRules.station_words(StringName(r.get("at", &"")))], UiTheme.TEXT_DIM)
-	if uses.size() > shown:
-		UiDraw.text(self, Vector2i(x0 + 38, y + UiTheme.LINE * (shown + 1)), "and %d more" % (uses.size() - shown), UiTheme.TEXT_DIM)
+	var more := uses.size() - shown + unknown
+	if more > 0:
+		var words := "and %d more" % more
+		if unknown > 0:
+			words = ("%d more things" if shown > 0 else "%d things") % more + ", some wanting what you have not found yet"
+		UiDraw.text(self, Vector2i(x0 + 38, y + UiTheme.LINE * (shown + 1)), words, UiTheme.TEXT_DIM)
 
 
 ## One core, one of these (UiRules.core_uses): a column each, what it becomes,
@@ -347,6 +390,9 @@ func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 		var w := UiLink.worn(inventory)
 		if w != &"":
 			on.append(UiRules.item_name(w))
+		for id: StringName in inventory.items:
+			if UiLink.fitted(game, id):
+				on.append(UiRules.item_name(id))
 		UiDraw.text(self, Vector2i(x0 + 300, ly + 72), "worn", UiTheme.TEXT_DIM)
 		UiDraw.text(self, Vector2i(x0 + 360, ly + 72), ", ".join(on) if not on.is_empty() else "nothing", UiTheme.TEXT)
 

@@ -26,13 +26,33 @@ func test_the_strip_draws_home_before_what_hangs_off_it() -> void:
 	s.open()
 	s.settle()
 	var said := await _words(s)
-	var want := ["slate", "i", "CARRY", "c", "MAKE", "m", "MAP", "esc", "HOME", "GEAR", "READS", "SAVES"]
+	var want := ["slate", UiSlate.cap("i"), "CARRY", UiSlate.cap("c"), "MAKE", UiSlate.cap("m"), "MAP", UiSlate.cap("esc"), "HOME", "GEAR", "READS", "SAVES"]
 	var got: Array[String] = []
 	for w: String in said:
 		if want.has(w) and not got.has(w):
 			got.append(w)
 	eq(got, want as Array[String], "every tab, each behind the key that reaches it")
 	s.free()
+
+
+## The caps are the keys as bound NOW: the tabs and strips were letters typed
+## in, and after a rebind the slate named keys that did nothing.
+func test_a_rebound_key_is_the_one_the_slate_names() -> void:
+	var stolen := PlayerSettings.bind_key(&"craft", KEY_F)
+	eq(UiSlate.cap("c"), "f", "the make tab's cap follows the key")
+	eq(UiSlate.cap("esc"), "esc", "a long key name is shortened for a cap")
+	eq(UiSlate.cap("wasd"), "wasd", "a set of keys reads as one")
+	eq(UiSlate.cap("ctrl"), "ctrl", "a cap that names no action reads as written")
+	var s := UiPauseScreen.new()
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	var said := await _words(s)
+	check(said.has("f") and not said.has("c"), "the strip draws the rebound key: %s" % str(said))
+	s.free()
+	PlayerSettings.reset_key(&"craft")
+	if stolen != &"":
+		PlayerSettings.reset_key(stolen)
 
 
 func test_home_lights_its_own_tab_and_not_the_slate_name() -> void:

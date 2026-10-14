@@ -123,7 +123,9 @@ func refresh() -> void:
 		group.clear()
 	# The long game's next want, said where making is planned (Guide.within_reach):
 	# a heading and a line that is read, not chosen.
-	var reach := Guide.within_reach(game) if game != null and recipes_override.is_empty() else ""
+	# Not while the first steps are under way: the card is the guide then, and a
+	# far land's material at the foot of a first fire's page is a want with no way to it.
+	var reach := Guide.within_reach(game) if game != null and recipes_override.is_empty() and not UiLink.first_steps_on(game) else ""
 	if reach != "":
 		rows.append({"header": REACH_HEAD})
 		rows.append({"header": reach, "note": true})

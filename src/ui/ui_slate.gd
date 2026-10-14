@@ -73,6 +73,15 @@ const TABS := [[&"inventory", "CARRY", "i"], [&"crafting", "MAKE", "c"], [&"map"
 ## The app the keyless tabs are chosen inside.
 const UNDER: StringName = &"pause"
 
+## A cap written as the default key, and the action it stands for: every tab and
+## key strip draws the key that action is bound to NOW, so a rebound key is the
+## one the slate names (the strips were letters typed in, wrong after a rebind).
+const LIVE := {"e": &"use", "esc": &"pause", "c": &"craft", "x": &"drop", "h": &"holding",
+	"tab": &"inventory", "i": &"inventory", "m": &"map", "n": &"journal",
+	"a d": [&"move_left", &"move_right"], "wasd": [&"move_up", &"move_left", &"move_down", &"move_right"]}
+## Long key names a cap is too small for.
+const SHORT := {"escape": "esc", "backspace": "bksp", "enter": "enter"}
+
 ## Main thread only: textures made from finished bakes.
 static var _textures := {}
 ## Under _lock: finished bakes not yet made textures, and bakes in flight.
@@ -160,6 +169,22 @@ static func wake(ci: CanvasItem, t: float, d: Rect2i = DEVICE) -> void:
 			UiDraw.rect(ci, Rect2i(g.position.x, ry, g.size.x, UiBase.PITCH), Color(UiTheme.PHOSPHOR[2], 0.12 + 0.1 * Rng.hash01(frame, k, 1, 0x5a4e)))
 
 
+## What cap `k` reads: the live key of the action it stands for (LIVE), shortened
+## for a cap; any other cap as written. A pair of keys reads with a space between.
+static func cap(k: String) -> String:
+	if not LIVE.has(k):
+		return k
+	var want: Variant = LIVE[k]
+	var keys: Array = want if want is Array else [want]
+	var out := PackedStringArray()
+	for a: StringName in keys:
+		var c := PlayerSettings.cap_of(a)
+		if c == "":
+			return k
+		out.append(SHORT.get(c, c))
+	return ("" if keys.size() == 4 else " ").join(out)
+
+
 ## The key that reaches app `n` on the status bar: its own, or home's for the
 ## apps chosen inside home. "" for anything that is not a tab.
 static func tab_key(n: StringName) -> String:
@@ -169,7 +194,7 @@ static func tab_key(n: StringName) -> String:
 			home = tab[2]
 	for tab: Array in TABS:
 		if tab[0] == n:
-			return tab[2] if tab[2] != "" else home
+			return cap(tab[2] if tab[2] != "" else home)
 	return ""
 
 
@@ -203,7 +228,7 @@ static func status(ci: CanvasItem, app: StringName, clock: String, d: Rect2i = D
 				# Home and what hangs off it stand apart from the keyed apps.
 				UiDraw.vline(ci, x - 4, y + 4, y + 16, UiTheme.FAINT)
 				x += 10
-			x += mini_cap(ci, Vector2i(x, y), k, lit or (app != &"" and tab[0] == UNDER and tab_under_home(app))) + 6
+			x += mini_cap(ci, Vector2i(x, y), cap(k), lit or (app != &"" and tab[0] == UNDER and tab_under_home(app))) + 6
 		elif not under_home:
 			# The chevron: these are reached by going through home, not by a key.
 			under_home = true
@@ -267,7 +292,7 @@ static func keys(ci: CanvasItem, pairs: Array, note: String = "", note_age: floa
 	UiDraw.hline(ci, g.position.x + MARGIN_L - 2 * UNIT, g.end.x - MARGIN_R, y - 4, UiTheme.GHOST)
 	var x := g.position.x + MARGIN_L
 	for p: Array in pairs:
-		var k: String = p[0]
+		var k := cap(p[0] as String)
 		x += key_cap(ci, Vector2i(x, y - 2), k) + CAP_GAP
 		UiDraw.text(ci, Vector2i(x, y), p[1], UiTheme.TEXT_DIM)
 		x += UiFont.width(p[1]) + HINT_GAP
@@ -322,7 +347,7 @@ static func keys_room(pairs: Array, d: Rect2i = DEVICE) -> int:
 	var g := glass_of(d)
 	var x := g.position.x + MARGIN_L
 	for p: Array in pairs:
-		x += maxi(CAP_MIN, UiFont.width(p[0] as String) + CAP_PAD) + CAP_GAP
+		x += maxi(CAP_MIN, UiFont.width(cap(p[0] as String)) + CAP_PAD) + CAP_GAP
 		x += UiFont.width(p[1] as String) + HINT_GAP
 	return g.end.x - MARGIN_R - x - NOTE_GAP
 
