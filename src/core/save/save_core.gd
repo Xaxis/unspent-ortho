@@ -9,7 +9,7 @@ class_name SaveCore
 ##   clock      world minutes
 ##   player     place and facing (the fight body is moved with it)
 ##   body       condition: health, wind, hunger, wet, wounds, lamp lit, arrests...
-##   inventory  items, edges, held, worn kit, dull notices given
+##   inventory  items, edges, held, worn kit, dull notices given, kinds ever carried
 ##   survival   when the body woke, wet until, lamp oil and when it was settled
 ##   weather    a forced sky (--weather), if any
 ##
@@ -355,8 +355,12 @@ static func save_inventory(inv: Inventory) -> Dictionary:
 	for id: StringName in (inv.get("_dull_noticed") as Dictionary):
 		dull.append(String(id))
 	dull.sort()
+	var handled: Array = []
+	for id: StringName in inv.handled:
+		handled.append(String(id))
+	handled.sort()
 	return {"items": SaveCodec.counts(inv.items), "edges": SaveCodec.counts(inv.edges), "held": String(inv.held),
-		"worn": String(inv.worn), "dull": dull}
+		"worn": String(inv.worn), "dull": dull, "handled": handled}
 
 
 static func load_inventory(game: Game, v: Variant) -> void:
@@ -368,6 +372,12 @@ static func load_inventory(game: Game, v: Variant) -> void:
 		if int(items[id]) > 0:
 			inv.items[id] = int(items[id])
 	inv.edges = SaveCodec.to_counts(d.get("edges"))
+	# A save from before `handled` knows at least what it carries.
+	inv.handled = {}
+	for id: Variant in d.get("handled", []):
+		inv.handled[StringName(str(id))] = true
+	for id: StringName in inv.items:
+		inv.handled[id] = true
 	var dull := {}
 	for id: Variant in d.get("dull", []):
 		dull[StringName(str(id))] = true
