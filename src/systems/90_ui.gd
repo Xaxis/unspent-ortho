@@ -269,7 +269,7 @@ func _read_keys() -> bool:
 	# the next press is a fresh one).
 	if game.talking or _talk_prev:
 		return top() != null
-	if _booting():
+	if _page_up():
 		return false
 	var s := top()
 	if s != null:
@@ -330,7 +330,7 @@ func _process(delta: float) -> void:
 			UiSketch.warm(carried, UiInventoryScreen.SKETCH, stations, UiCraftingScreen.SKETCH)
 			var none: Array[StringName] = []
 			UiSketch.warm(none, UiInventoryScreen.SKETCH, stations, UiCraftingScreen.STATION)
-	if _pending_screen != "" and game.scripted_seconds <= 0.0 and not _booting():
+	if _pending_screen != "" and game.scripted_seconds <= 0.0 and not _held_by_boot(_pending_screen.get_slice(":", 0)):
 		# --screen=NAME or NAME:ROW (a row id to choose, for shots). Staging, not
 		# play: it may wait for the bezel's bake so a shot shows it.
 		UiSlate.warm()
@@ -390,12 +390,16 @@ func _watch_place(delta: float, hostile: bool) -> void:
 	_pending_place = &""
 
 
-## The boot is still settling: the loading page is up, or the warm-up it waits on
-## (01_warm_lights) is still running. Home pauses the tree and a paused tree holds
-## that warm-up, so an app opened now held the load until it was closed again.
-func _booting() -> bool:
+## Whether app `n` must wait for the boot. Home pauses the tree, and a paused
+## tree holds the warm-up the loading page waits on (01_warm_lights): Home (and
+## the apps that open over it) opened under the page held the load there until it
+## was shut. So no key opens anything while the page is up, and Home staged
+## (`--screen`) waits for the warm-up too.
+func _held_by_boot(n: String) -> bool:
 	if _page_up():
 		return true
+	if n != "pause" and not StringName(n) in SlateFeeds.APPS:
+		return false
 	var warm := game.get_node_or_null(^"01_warm_lights")
 	return warm != null and not bool(warm.call(&"done"))
 

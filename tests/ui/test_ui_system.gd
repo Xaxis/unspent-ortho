@@ -66,6 +66,28 @@ func test_home_asked_for_at_boot_waits_for_the_warm_up() -> void:
 	g.free()
 
 
+## And esc under the loading page opens nothing: Home there paused the world
+## behind the page, and the load stood still, unseen, until esc came again.
+func test_no_key_opens_an_app_under_the_loading_page() -> void:
+	var g := _make()
+	var ui := _ui(g)
+	_calm(g)
+	_listen_screens()
+	var page := Node.new()
+	page.add_to_group(&"boot_page")
+	tree.root.add_child(page)
+	await tree.process_frame
+	check(not await _tap_until(&"pause", _opened(&"pause"), 0.5), "esc under the page opens nothing")
+	check(not tree.paused, "and the world goes on loading")
+	page.free()
+	await tree.process_frame
+	check(await _tap_until(&"pause", _opened(&"pause")), "once the page is gone, esc opens home")
+	ui.call("top").handle(&"back")
+	_drop_screens()
+	tree.paused = false
+	g.free()
+
+
 func test_crafting_needs_a_station_or_hand_work() -> void:
 	var g := _make()
 	var ui := _ui(g)
