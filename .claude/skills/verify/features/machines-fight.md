@@ -2,7 +2,7 @@
 
 Machines on the land, their disposition, depots, keepers, the fight, targeting, defences and raids.
 
-<!-- covers: system:30_mobs, system:32_disposition, system:34_works, system:36_machine_parade, system:40_fight, system:42_target, system:43_cracked_roof, system:44_sentinels, system:45_taken, system:47_defences, system:48_raids -->
+<!-- covers: system:30_mobs, system:32_disposition, system:34_works, system:36_machine_parade, system:40_fight, system:42_target, system:43_cracked_roof, system:44_sentinels, system:45_taken, system:47_defences, system:48_raids, system:57_brackets -->
 
 "(h)" means the tour's header has its options.
 

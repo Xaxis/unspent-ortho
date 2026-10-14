@@ -1103,11 +1103,17 @@ func _move_hero(dt: float) -> void:
 		v = hero.dodge_dir * FightRules.dodge_speed(since_dodge) * hero.dodge_carry
 		hero.facing = LockOn.face(hero.facing, hero.pos, hero.lock, dt)
 	else:
-		if hero.wind <= FightRules.RUN_WIND_FLOOR:
+		# OUT OF BREATH outside a fight: down to the floor, he walks until a whole
+		# bracket is back. In a fight the rule the bouts are tuned on stands: he
+		# may run whenever he is above the floor (tests/sentinel/test_keeper_bouts:
+		# a person lost the ruined metropolis's keeper 16 times in 24 to a pause).
+		if fight_on:
+			hero.winded = false
+		elif hero.wind <= FightRules.RUN_WIND_FLOOR:
 			hero.winded = true
 		elif hero.winded and hero.wind >= FightRules.WIND_BACK:
 			hero.winded = false
-		var can_run := not hero.winded and not hero.crouched
+		var can_run := (hero.wind > FightRules.RUN_WIND_FLOOR if fight_on else not hero.winded) and not hero.crouched
 		running = hero.run and can_run and hero.move.length() > 0.1
 		var s := hero.run_speed if running else hero.walk_speed
 		if hero.crouched:
@@ -1140,9 +1146,9 @@ func _move_hero(dt: float) -> void:
 			hero.pos = _held_by_curtains(before, hero.pos)
 		_seal_behind(before, hero.pos)
 	hero.speed = before.distance_to(hero.pos) / dt
-	# Wind: spent on dodges, swings and running; back at 500/s otherwise. A run
-	# into a wall covers no ground and costs nothing: he tires by going.
-	if running and hero.speed > hero.walk_speed * 1.05:
+	# Wind: spent on dodges, swings and running; back at 500/s otherwise. Out of a
+	# fight a run into a wall covers no ground and costs nothing: he tires by going.
+	if running and (fight_on or hero.speed > hero.walk_speed * 1.05):
 		hero.wind = maxf(0.0, hero.wind - FightRules.RUN_WIND_COST * dt)
 	elif since_dodge >= FightRules.DODGE_MS:
 		hero.wind = minf(hero.max_wind, hero.wind + FightRules.WIND_REGEN * dt)

@@ -724,6 +724,14 @@
       "tests": []
     },
     {
+      "id": "system:57_brackets",
+      "kind": "system",
+      "entry": "src/systems/57_brackets.gd",
+      "reach": "tools/test.sh test_brackets",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
       "id": "system:58_guide",
       "kind": "system",
       "entry": "src/systems/58_guide.gd",
