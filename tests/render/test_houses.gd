@@ -423,33 +423,31 @@ func test_turf_is_banked_past_the_drip_line() -> void:
 	gt(outside, 60, "the bank reaches past the wall line, where the eave does not hide it")
 
 
-func test_the_stolen_neon_is_where_the_play_camera_can_see_it() -> void:
-	# Art review 11 found zero tube pixels in three canon frames. The tube was on
-	# the door wall — which faces the village square, not the camera — and at
-	# v=0.85, under an eave overhang that at this pitch hides the top of a wall.
-	# So the run of it goes on the ROOF, the one surface this camera always sees.
+## THE HOME COAST'S STOLEN NEON IS A TUBE OVER A DOOR, NEVER A RUN ALONG A ROOF.
+## The roof is the one surface this camera always sees, so a run along it glowed
+## across the village green by day as a stray zigzag of light (docs/LOOK.md: neon
+## only where it belongs). The tube is seen by the light it throws at night.
+func test_a_lit_house_wears_its_neon_low_on_a_wall() -> void:
 	for v: int in _lit():
 		var k := PropModels.build_kit(PropKind.HOUSE, v, Country.COAST)
+		var top := -INF
+		var hi := -INF
 		var on_roof := 0
-		var on_wall := 0
-		var cols := k.made.colors
-		var norms := k.made.normals
 		for i in k.made.verts.size():
-			if roundi(cols[i].a * 255.0) != GroundColors.NEON:
+			top = maxf(top, k.made.verts[i].y)
+			if roundi(k.made.colors[i].a * 255.0) != GroundColors.NEON:
 				continue
-			if norms[i].y > 0.3:
+			hi = maxf(hi, k.made.verts[i].y)
+			if k.made.normals[i].y > 0.3:
 				on_roof += 1
-			else:
-				on_wall += 1
-		gt(on_roof, 20, "house %d runs its stolen tube along the roof, where the camera sees it" % v)
-		gt(on_roof, float(on_wall), "house %d keeps more tube on the roof than on a wall" % v)
+		eq(on_roof, 0, "house %d lays no tube on its roof" % v)
+		lt(hi, top * 0.4, "house %d: its tube at %.2f of a house %.2f tall" % [v, hi, top])
 
 
 func test_the_light_a_tube_throws_comes_from_the_tube() -> void:
-	# The tube moved to the roof edge and the pool it laid stayed pinned to the
-	# door wall, in the other lit house's colour (a2 review): a light written down
-	# in one file and its geometry in another. `PropModels.neon_point` reads the
-	# model, so they cannot part company again.
+	# A light written down in one file and its geometry in another parted company
+	# once (a2 review). `PropModels.neon_point` reads the model, so the pool stands
+	# where the tube is drawn and burns its colour.
 	for v in BiomeForms.PLAIN.size():
 		var point := PropModels.neon_point(PropKind.HOUSE, v, Country.COAST)
 		if not _lit().has(v):
@@ -461,17 +459,13 @@ func test_the_light_a_tube_throws_comes_from_the_tube() -> void:
 		# Where the tube actually is: the middle of what was drawn as neon.
 		var mid := Vector3.ZERO
 		var n := 0
-		var eave := 0.0
 		for i in k.made.verts.size():
 			if roundi(k.made.colors[i].a * 255.0) != GroundColors.NEON:
 				continue
 			mid += k.made.verts[i]
 			n += 1
-		for p: Vector3 in k.made.verts:
-			eave = maxf(eave, p.y)
-		gt(n, 20, "house %d drew a tube to read" % v)
+		gt(n, 0, "house %d drew a tube to read" % v)
 		lt((at - mid / n).length(), 0.02, "house %d: the light stands where the tube is" % v)
-		gt(at.y, 0.9, "house %d: the tube is up on the roof, not at the door" % v)
 		var col: Color = point.color
 		var want: Color = Houses.NEON_TUBES[0]
 		var best := 9.0

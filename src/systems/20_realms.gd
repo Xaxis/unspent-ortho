@@ -381,33 +381,32 @@ func _say_crossing(t0: int) -> void:
 		on_drawn.call()
 
 
-## A drawn gate for every gate this world holds, open or shut, rebuilt when its
-## OPENNESS changes. A shut gate is still a thing standing in the world — the
-## Seeker put the frame there before the beat lands — and seeing one before it
-## works is most of what makes the next beat mean anything.
+## A drawn gate for every gate the story has opened, and none for a shut one: a
+## dark frame standing on the village green before anything has said what it is
+## reads as junk. A gate appears lit, on the beat that opens it.
 func _draw_gates() -> void:
 	if game.view == null or _gates == null:
 		return
-	for g: Dictionary in StoryGates.all(game.world):
+	var open := {}
+	for g: Dictionary in StoryGates.open(game.world):
 		var id: StringName = g.id
-		var was: Variant = _gate_nodes.get(id)
-		var is_open := bool(g.open)
-		if was != null and bool((was as Node3D).get_meta(&"open", false)) == is_open:
+		open[id] = true
+		if _gate_nodes.has(id):
 			continue
-		if was != null:
-			(was as Node3D).queue_free()
-		var n := EraGate.node(is_open)
-		n.set_meta(&"open", is_open)
+		var n := EraGate.node()
 		var p: Vector2 = g.pos
 		# STOOD ONCE THE CHUNK UNDER IT EXISTS, for the same reason a shaft is
 		# (`_stand_gates`): before the mesher has been there `surface_height`
 		# answers 0, and a gate placed on that answer is buried under its own
-		# ground on every terrace above sea level. It was invisible in the first
-		# frame I shot of it and nothing errored.
+		# ground on every terrace above sea level.
 		n.position = Vector3(p.x, game.world.height_at(p), p.y)
 		n.set_meta(&"at", p)
 		_gates.add_child(n)
 		_gate_nodes[id] = n
+	for id: Variant in _gate_nodes.keys():
+		if not open.has(id):
+			(_gate_nodes[id] as Node3D).queue_free()
+			_gate_nodes.erase(id)
 
 
 ## Which open gate the player is standing in, if any. Asked on the same beat as
