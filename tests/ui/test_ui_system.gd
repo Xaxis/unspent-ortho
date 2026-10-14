@@ -43,6 +43,29 @@ func test_system_is_loaded_and_opens_screens() -> void:
 	g.free()
 
 
+## HOME WAITS FOR THE BOOT. Home pauses the tree, and a paused tree holds the
+## boot's warm-up (01_warm_lights), which the loading page waits on: home asked
+## for at once (`--screen=pause`, or esc under the loading page) held the load
+## until it was shut again. It opens once the warm-up is through.
+func test_home_asked_for_at_boot_waits_for_the_warm_up() -> void:
+	var g := _make(["--screen=pause"])
+	var ui := _ui(g)
+	var warm := g.get_node_or_null(^"01_warm_lights")
+	check(warm != null, "the boot warms its lights")
+	var frames := 0
+	while frames < 600 and warm != null and not bool(warm.call(&"done")):
+		await tree.process_frame
+		frames += 1
+	check(warm != null and bool(warm.call(&"done")), "the warm-up gets through (%d frames)" % frames)
+	await tree.process_frame
+	await tree.process_frame
+	var top: UiScreen = ui.call("top")
+	check(top != null and top.screen_name == &"pause", "and home is up after it")
+	check(tree.paused, "pausing the world only then")
+	tree.paused = false
+	g.free()
+
+
 func test_crafting_needs_a_station_or_hand_work() -> void:
 	var g := _make()
 	var ui := _ui(g)

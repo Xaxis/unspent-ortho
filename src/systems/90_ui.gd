@@ -269,6 +269,8 @@ func _read_keys() -> bool:
 	# the next press is a fresh one).
 	if game.talking or _talk_prev:
 		return top() != null
+	if _booting():
+		return false
 	var s := top()
 	if s != null:
 		for pair: Array in PAGE_KEYS:
@@ -328,7 +330,7 @@ func _process(delta: float) -> void:
 			UiSketch.warm(carried, UiInventoryScreen.SKETCH, stations, UiCraftingScreen.SKETCH)
 			var none: Array[StringName] = []
 			UiSketch.warm(none, UiInventoryScreen.SKETCH, stations, UiCraftingScreen.STATION)
-	if _pending_screen != "" and game.scripted_seconds <= 0.0:
+	if _pending_screen != "" and game.scripted_seconds <= 0.0 and not _booting():
 		# --screen=NAME or NAME:ROW (a row id to choose, for shots). Staging, not
 		# play: it may wait for the bezel's bake so a shot shows it.
 		UiSlate.warm()
@@ -386,6 +388,16 @@ func _watch_place(delta: float, hostile: bool) -> void:
 	game.hud.show_place(BiomeRegistry.get_def(_pending_place).display_name)
 	Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
 	_pending_place = &""
+
+
+## The boot is still settling: the loading page is up, or the warm-up it waits on
+## (01_warm_lights) is still running. Home pauses the tree and a paused tree holds
+## that warm-up, so an app opened now held the load until it was closed again.
+func _booting() -> bool:
+	if _page_up():
+		return true
+	var warm := game.get_node_or_null(^"01_warm_lights")
+	return warm != null and not bool(warm.call(&"done"))
 
 
 ## Whether the loading page is still over the HUD (it draws above it while it
