@@ -188,7 +188,7 @@ func test_held_on_a_barrier_the_key_cuts_it_and_answers_nothing_else() -> void:
 	check(bool(h.call(&"closed", one)), "the barrier stands")
 	Input.action_press(&"use")
 	await process_frames(3)
-	check(SurvivalState.of(g).build_ask.is_empty(), "the press that set his hands on it asked to lay no fire")
+	check(not SurvivalState.of(g).built.any(func(q: WorldProp) -> bool: return q.kind == PropKind.FIRE), "the press that set his hands on it laid no fire")
 	await tree.create_timer(TICKS_HELD).timeout
 	Input.action_release(&"use")
 	await process_frames(3)

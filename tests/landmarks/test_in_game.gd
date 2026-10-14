@@ -205,14 +205,12 @@ func test_the_press_that_opens_a_cache_answers_nothing_else() -> void:
 	await frames(1)
 
 
-## AN ASK'S SECOND PRESS IS THE ASK'S (Survival.ask_pending): "Again, and a fire
-## is laid here" promises the next press, and a system that answers `use` before
-## the survival one must not spend it. At seed 7's camp on the drowned city's
-## world the first press asked before the cache in reach was looked at again
-## (22_landmarks, LOOK_EVERY), and the second opened the cache. Staged by name:
-## the nearest unguarded cache moved to his back, in reach, and a fire asked for
-## as that first press did. The hint names whatever the press goes to.
-func test_a_fire_asked_for_is_laid_by_the_next_press_whatever_is_in_reach() -> void:
+## ONE PRESS, ONE OWNER, AND THE ROW SAYS WHOSE: with a cache in reach where a
+## fire could also be laid, the hint names the cache, no fire is offered on the
+## ground, and the press opens the cache and lays nothing. At seed 7's camp on
+## the drowned city's world a press meant for one went to the other. Staged by
+## name: the nearest unguarded cache moved to his back, in reach.
+func test_a_cache_in_reach_takes_the_press_a_fire_could_have() -> void:
 	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0"]))
 	await frames(4)
 	var sys := g.get_node("22_landmarks")
@@ -222,7 +220,7 @@ func test_a_fire_asked_for_is_laid_by_the_next_press_whatever_is_in_reach() -> v
 	var faced := false
 	for k in 16:
 		_turn(g, TAU * k / 16.0)
-		if Survival.describe_target(g) == "campfire - build?":
+		if Survival.describe_target(g) == "campfire - build":
 			faced = true
 			break
 	check(faced, "somewhere in front of him to lay a fire, and what it takes")
@@ -238,16 +236,14 @@ func test_a_fire_asked_for_is_laid_by_the_next_press_whatever_is_in_reach() -> v
 	site.pos += spot - Vector2.from_angle(g.player.facing) * 1.5 - Landmarks.cache_of(site)
 	await frames(30)
 	check(sys.get("reachable") == site, "the cache at his back, in reach")
-	eq(UiLink.use_hint(g), "cache - open", "and the hint names it, the press being its")
-	check(Survival.use(g) and Survival.build_asked(g).is_finite(), "a fire asked for")
-	eq(UiLink.use_hint(g), "campfire - build", "and the hint names the ask's answer")
+	eq(UiLink.use_hint(g), "cache - open", "the hint names the cache, the press being its")
+	# The offer is asked a few times a second (52_survival_fx.OFFER_EVERY).
+	await tree.create_timer(0.6).timeout
+	eq(g.get_node("52_survival_fx").get("_ring_at"), Vector2.INF, "and no fire is ringed on the ground")
 	await _free(g)
 	await _press_use()
-	check(Survival.fire_near(g, 5.0) != null, "the next press lays the fire it promised")
-	check(not sys.state.is_opened(site.id), "and the cache waits")
-	await _free(g)
-	await _press_use()
-	check(sys.state.is_opened(site.id), "the press after opens it")
+	check(sys.state.is_opened(site.id), "the press opens the cache")
+	check(Survival.fire_near(g, 5.0) == null, "and lays no fire")
 	g.queue_free()
 	await frames(1)
 

@@ -27,7 +27,7 @@ shot 04-the-village-dog with dog
 # Gulls over the refuse: stood by the nearest tip or wreck by name (a walk from
 # Oyster Row found no flocked heap in reach on GEN 47's world), then off it far
 # enough not to put the flock up.
-near tip,wreck
+near scrap_heap,wreck
 wait 1.0
 zoom 15
 walkto refuse 20

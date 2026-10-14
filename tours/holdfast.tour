@@ -100,9 +100,7 @@ try 3
 end
 ground grass
 mark fire
-press use 0.1
-await fire_asked 2
-wait 0.6
+await fire_offered 3
 press use 0.1
 await made:fire 4
 wait 0.5
@@ -341,7 +339,7 @@ try 14
 end
 shot 15-beds-before-the-archive with goal:holding
 # A berry buys an hour and a half: a day of gathering and building wants four
-# more, eaten off the carry page (never `use` on open ground, which asks to sleep).
+# more, eaten off the carry page (never `use` on open ground, which sleeps).
 try 3
   near bush
   walk 0,0 0.05

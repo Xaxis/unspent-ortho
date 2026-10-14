@@ -80,15 +80,15 @@ place tip
 wait 0.8
 walk -1,-1 2.6
 wait 0.3
-shot 08-across-from-a-tip with prop:tip
+shot 08-across-from-a-tip with prop:scrap_heap
 try 8
 walk 1,1 0.3
 tap ability_grapple
 await ability:grapple 1.5
 end
-shot 09-the-line-takes-hold with prop:tip
+shot 09-the-line-takes-hold with prop:scrap_heap
 wait 0.45
-shot 10-and-it-shortens with prop:tip
+shot 10-and-it-shortens with prop:scrap_heap
 
 # --- Crouched, still a person ------------------------------------------------
 coast calm

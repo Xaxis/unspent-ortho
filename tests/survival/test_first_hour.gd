@@ -126,25 +126,20 @@ func test_use_on_nothing_out_on_the_land_never_eats_or_sleeps() -> void:
 	check(Survival.eat(g, &"mussels"), "chosen from the carrying page, it eats")
 
 
-## Sleep is asked for, never the fallback of one press: a stray E beside a fire
-## took the whole night. The first idle press asks; a second in time sleeps.
-func test_one_stray_press_by_a_fire_never_sleeps_the_night_away() -> void:
+## ONE PRESS SLEEPS, AND THE ROW SAID SO BEFORE IT (owner, 2026-10-14): the
+## confirming second press is gone; what a press by a fire at night will do is on
+## the key row first ("fire - sleep"), so nothing is a surprise.
+func test_one_press_by_a_fire_at_night_sleeps_and_the_row_said_so() -> void:
 	var g := Fx.flat(40, 22.0)
 	@warning_ignore("return_value_discarded")
 	Fx.put(g, PropKind.FIRE, Vector2(-1.5, 0.0))
 	g.body.fed_until = g.clock.minutes + 6.0 * 60.0
 	SurvivalState.of(g).woke_at = g.clock.minutes - 16.0 * 60.0
 	check(Survival.at_rest(g) and Survival.sleep_refusal(g) == "", "fed, tired, at a fire: he could sleep")
-	var said: Array[String] = []
-	var f := _listen(said)
+	eq(Survival.describe_target(g), "fire - sleep", "the row says what the press will do")
 	@warning_ignore("return_value_discarded")
 	Survival.use(g)
-	near(g.clock.hour(), 22.0, 0.01, "one press: the night is not slept away")
-	check(said.size() > 0, "it asks, in words")
-	@warning_ignore("return_value_discarded")
-	Survival.use(g)
-	check(g.clock.hour() < 12.0, "asked, a second press in time sleeps to morning: %.2f" % g.clock.hour())
-	Events.message.disconnect(f)
+	check(g.clock.hour() < 12.0, "one press sleeps to morning: %.2f" % g.clock.hour())
 
 
 func test_night_without_a_light_hides_what_a_hand_does_not_touch() -> void:

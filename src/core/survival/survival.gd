@@ -15,12 +15,11 @@ class_name Survival
 ##                                           "campfire - build?" (a press asks), "campfire - build"
 ##                                           (a press builds), or ""
 ##   use(game) -> bool                       the `use` action: work the target; else eat (if hungry),
-##                                           sleep, or build a fire, whichever fits first. A fire
-##                                           takes two presses: the first asks (a ring is drawn
-##                                           where it would go), a second within BUILD_ASK_SECONDS
-##                                           on the same spot builds, so a walker tapping `use`
-##                                           never burns their makings by accident
-##   build_asked(game) -> Vector2            where an asked-for fire would go, or Vector2.INF
+##                                           sleep, or build a fire, whichever fits first. ONE PRESS
+##                                           does it (owner, 2026-10-14): the key row says what the
+##                                           press will do before it is pressed, and a fire's spot is
+##                                           ringed on the ground while it is offered (fire_offered)
+##   fire_offered(game) -> Vector2           where a press would lay a fire now, or Vector2.INF
 ##   work(game, prop) -> bool                start working a prop (refusals go to Events.message)
 ##   can_work(game, prop) -> bool            work would start, with the held or a carried tool
 ##   finish_work(game) -> bool               complete the work in hand now (the system does this
@@ -59,7 +58,7 @@ class_name Survival
 ##
 ## Events emitted: took(item, n), made(item, n), time_skipped(minutes, reason:
 ## work eat sleep make build collapse), message(line), sfx(name, at) with names
-## work_<verb> took refuse eat sleep ask_fire build_<station> make hone collapse
+## work_<verb> took refuse eat sleep build_<station> make hone collapse
 ## regrow work_broken lamp_out.
 
 ## Real seconds a take plays for (the clock is charged its minutes after).
@@ -78,10 +77,6 @@ const FIRE_WARMTH := 3.0
 ## village that never placed a building.
 const VILLAGE_RADIUS := WorldData.VILLAGE_LEAST_REACH
 const BUILD_DISTANCE := 1.25
-## Real seconds a first press on open ground waits for the second that builds.
-const BUILD_ASK_SECONDS := 2.0
-## Said on the first idle press where the second would sleep.
-const SLEEP_ASK := "Again, and you sleep till morning."
 ## No instant jump of the clock from taking or making is longer than this: the
 ## day is lived in the world, not on a page. Longer station work is set going.
 const MAX_JUMP_MINUTES := 30.0
@@ -368,10 +363,9 @@ static func describe_target(game: Game) -> String:
 		&"eat":
 			return "%s - eat" % Items.display_name(best_food(game))
 		&"sleep":
-			var place := "fire" if fire_near(game) != null else "village"
-			return "%s - sleep" % place if now_real() < SurvivalState.of(game).sleep_ask_until else "%s - sleep?" % place
+			return "%s - sleep" % ("fire" if fire_near(game) != null else "village")
 		&"build":
-			return "campfire - build" if build_asked(game).is_finite() else "campfire - build?"
+			return "campfire - build"
 	return ""
 
 
@@ -448,9 +442,9 @@ static func use(game: Game) -> bool:
 		&"eat":
 			return eat(game, best_food(game))
 		&"sleep":
-			return _ask_or_sleep(game)
+			return sleep(game)
 		&"build":
-			return _ask_or_build(game)
+			return build_fire(game) != null
 	# Nothing to do here: say so, so a press is never swallowed without a word.
 	Events.sfx.emit(&"refuse", game.player.position)
 	if in_the_dark(game):
@@ -466,45 +460,6 @@ static func _nudge(game: Game, line: String) -> void:
 		return
 	state.nudged[line] = now_real()
 	Events.message.emit(line)
-
-
-## SLEEP IS ASKED FOR, NEVER ONE PRESS: a stray `use` beside a fire slept the
-## whole night away. The first idle press asks; a second within BUILD_ASK_SECONDS
-## sleeps, as a fire is laid.
-static func _ask_or_sleep(game: Game) -> bool:
-	var state := SurvivalState.of(game)
-	if now_real() < state.sleep_ask_until:
-		state.sleep_ask_until = -1.0
-		return sleep(game)
-	state.sleep_ask_until = now_real() + BUILD_ASK_SECONDS
-	Events.message.emit(SLEEP_ASK)
-	return true
-
-
-## The first press asks and marks the spot; a second press in time on the same spot builds.
-static func _ask_or_build(game: Game) -> bool:
-	var state := SurvivalState.of(game)
-	var spot := _build_spot(game, PropKind.FIRE)
-	var asked := build_asked(game)
-	if asked.is_finite() and asked.distance_to(spot) < 0.6:
-		state.build_ask = {}
-		return build_fire(game) != null
-	state.build_ask = {"at": spot, "until": now_real() + BUILD_ASK_SECONDS}
-	Events.message.emit("Again, and a fire is laid here.")
-	Events.sfx.emit(&"ask_fire", game.world.to_3d(spot))
-	return true
-
-
-## An ask is out (a fire asked for, or sleep), and the next press is its own
-## whoever else is under the hand: ONE PRESS, ONE OWNER. The line that asked
-## promised it ("Again, and a fire is laid here."), so the systems that answer
-## `use` before this one leave that press be. Seed 7's camp on the drowned
-## city's world: a cache came into reach between the two presses and opened
-## instead of the fire.
-static func ask_pending(game: Game) -> bool:
-	if game == null:
-		return false
-	return build_asked(game).is_finite() or now_real() < SurvivalState.of(game).sleep_ask_until
 
 
 ## A person, a place or a thing with words is in front of him (49_story
@@ -537,11 +492,13 @@ static func words_nearer_than(game: Game, d: float) -> bool:
 	return false
 
 
-static func build_asked(game: Game) -> Vector2:
-	var ask := SurvivalState.of(game).build_ask
-	if ask.is_empty() or now_real() >= float(ask.until):
+## Where a press of `use` would lay a fire now (the fallback is `build`: nothing
+## in front to work, no fire near, the makings carried and room to lay it), or
+## Vector2.INF. 52_survival_fx rings it on the ground while it is offered.
+static func fire_offered(game: Game) -> Vector2:
+	if game == null or game.player == null or busy(game) or use_target(game) != null or _fallback(game) != &"build":
 		return Vector2.INF
-	return ask.at
+	return _build_spot(game, PropKind.FIRE)
 
 
 ## Eating comes before sleep: a body that lies down hungry wakes starving. Both
@@ -713,6 +670,9 @@ static func sleep(game: Game) -> bool:
 	var wake := Condition.wake_minute(now, roof)
 	# Nobody sleeps with the headlamp on.
 	game.body.lamp_lit = false
+	# A sleeping body burns a third of what a waking one does: a night's sleep
+	# after a day's work wakes him peckish, not weak (owner, 2026-10-14).
+	game.body.fed_until += (wake - now) * (1.0 - Condition.SLEEP_HUNGER_SHARE)
 	_skip(game, wake - now, &"sleep")
 	state.woke_at = wake
 	game.body.tired = 0.0
@@ -957,7 +917,7 @@ static func drop(game: Game, id: StringName, n: int = 1) -> int:
 ## cost is the walk back, which the player can see and plan, never a loss they
 ## cannot. What is on the body stays on it: the tool in the hand, the kit worn,
 ## the gear fitted (a module socketed in it included).
-const BAG_LINE := "Your things are where it took you. The survey marks the place."
+const BAG_LINE := "Your things are where it took you. The map marks the place."
 const BAG_SCALE := 0.8
 
 

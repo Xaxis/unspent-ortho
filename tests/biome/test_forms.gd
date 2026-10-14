@@ -325,3 +325,4 @@ func _draws_mark(kind: int, v: int, c: int, mark: int) -> bool:
 		if roundi(col.a * 255.0) == mark:
 			return true
 	return false
+

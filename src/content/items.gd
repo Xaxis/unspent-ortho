@@ -127,7 +127,7 @@ const DEFS := {
 	# found there (6-10) and made nowhere. What a cellar's lid, a tower and
 	# shutters need, and what makes a gate last (SETTLE.md, teammate3's hall).
 	&"seasoned_timber": {"name": "seasoned timber", "bulk": 1.5, "group": &"material"},
-	&"haft": {"name": "haft", "bulk": 1.0, "group": &"material"},
+	&"haft": {"name": "handle", "bulk": 1.0, "group": &"material"},
 	&"resin": {"name": "resin", "bulk": 1.0, "group": &"material"},
 	&"pitch": {"name": "pitch", "bulk": 2.0, "group": &"material"},
 	&"peat": {"name": "peat", "bulk": 3.0, "group": &"material"},

@@ -104,7 +104,7 @@ func test_a_carried_tool_is_taken_in_hand_when_the_held_one_cannot_do_it() -> vo
 	g.inventory.add(&"pick")
 	Survival.hold(g, &"knife")
 	Fx.put(g, PropKind.COAL_TIP, Vector2(0.9, 0))
-	eq(Survival.describe_target(g), "coal tip - break", "the prompt names what the carried pick would do")
+	eq(Survival.describe_target(g), "coal heap - break", "the prompt names what the carried pick would do")
 	check(Fx.take(g), "worked with the pick")
 	eq(g.inventory.held, &"pick", "pick in hand")
 	eq(g.inventory.count(&"coal"), 1)
@@ -296,27 +296,22 @@ func test_use_on_nothing_builds_a_fire_then_eats_before_it_sleeps_by_it() -> voi
 	g.inventory.add(&"driftwood", 3)
 	g.inventory.add(&"stone", 2)
 	g.inventory.add(&"mussels", 2)
-	eq(Survival.describe_target(g), "campfire - build?", "fed, it is evening, no fire: build, if pressed twice")
-	var props := g.world.prop_count()
-	check(Survival.use(g), "the first press asks")
-	eq(g.world.prop_count(), props, "and lays nothing")
-	eq(g.inventory.count(&"driftwood"), 3, "nor spends anything")
-	check(Survival.build_asked(g).is_finite(), "the spot is marked")
-	eq(Survival.describe_target(g), "campfire - build", "a second press will build")
-	check(Survival.use(g), "built")
-	check(not Survival.build_asked(g).is_finite(), "the ask is spent")
+	# ONE PRESS DOES IT (owner, 2026-10-14): the key row says what the press will
+	# do, and the fire's spot is ringed before it (Survival.fire_offered).
+	eq(Survival.describe_target(g), "campfire - build", "fed, it is evening, no fire: build")
+	check(Survival.fire_offered(g).is_finite(), "the spot is offered before the press")
+	check(Survival.use(g), "one press builds")
+	check(not Survival.fire_offered(g).is_finite(), "and the offer is gone with the fire up")
 	eq(g.inventory.count(&"mussels"), 2, "fed: nothing eaten")
 	check(g.world.prop_count() > 0 and g.world.prop_at(g.world.prop_count() - 1).kind == PropKind.FIRE, "a fire stands")
 	g.clock.skip(3.0 * 60.0)
 	SurvivalState.of(g).woke_at = g.clock.minutes - 20.0 * 60.0
-	eq(Survival.describe_target(g), "fire - sleep?", "fed, at night by a fire: sleep, if pressed twice")
+	eq(Survival.describe_target(g), "fire - sleep", "fed, at night by a fire: sleep")
 	g.body.fed_until = g.clock.minutes - 60.0
 	eq(Survival.describe_target(g), "mussels - eat", "hungry at night: eat first, or wake starving")
 	check(Survival.use(g), "ate")
 	g.body.busy_until = 0.0
-	eq(Survival.describe_target(g), "fire - sleep?", "then sleep, if pressed twice")
-	check(Survival.use(g), "the first press asks")
-	eq(Survival.describe_target(g), "fire - sleep", "a second press will sleep")
+	eq(Survival.describe_target(g), "fire - sleep", "then sleep")
 	check(Survival.use(g), "slept")
 	eq(g.clock.hour(), 8.0, "woke at eight by a fire")
 	g.body.fed_until = g.clock.minutes - 60.0
@@ -335,25 +330,31 @@ func test_the_tide_rule_is_the_source_curve() -> void:
 	check(Takes.tide_is_low(1490.0), "low again after 24 h 50 m")
 
 
-func test_a_press_on_open_ground_asks_and_a_late_or_moved_second_press_asks_again() -> void:
+func test_one_press_on_open_ground_lays_the_fire() -> void:
 	var g := Fx.flat(40, 12.0)
 	g.inventory.add(&"deadwood", 3)
 	g.inventory.add(&"stone", 2)
-	Survival.fixed_now = 100.0
-	check(Survival.use(g), "asked")
-	eq(g.inventory.count(&"deadwood"), 3, "nothing spent")
-	Survival.fixed_now += Survival.BUILD_ASK_SECONDS + 0.1
-	eq(Survival.describe_target(g), "campfire - build?", "the ask has lapsed")
-	check(Survival.use(g), "asked again")
-	eq(g.world.prop_count(), 0, "a lapsed ask builds nothing")
-	g.player.facing = PI
-	check(Survival.use(g), "turned round: that is a new spot, so it asks again")
-	eq(g.world.prop_count(), 0)
-	Survival.fixed_now += 0.5
-	check(Survival.use(g), "built from dead wood")
-	eq(g.world.prop_count(), 1)
-	eq(g.inventory.count(&"deadwood"), 0)
-	Survival.fixed_now = -1.0
+	var at := Survival.fire_offered(g)
+	check(at.is_finite(), "where it would go is offered")
+	check(Survival.use(g), "one press")
+	eq(g.inventory.count(&"deadwood"), 0, "the makings are spent")
+	var fire := g.world.prop_at(g.world.prop_count() - 1)
+	eq(fire.kind, PropKind.FIRE, "and the fire is laid")
+	lt(fire.pos.distance_to(at), 0.6, "where it was offered")
+
+
+## SLEEP COSTS A THIRD OF THE HUNGER A WAKING NIGHT WOULD (Condition.SLEEP_HUNGER_SHARE;
+## owner, 2026-10-14): a first night's sleep woke him weak with hunger.
+func test_a_night_asleep_burns_a_third_of_the_hunger() -> void:
+	var g := Fx.flat(40, 22.0)
+	Survival.build(g, &"fire", true)
+	SurvivalState.of(g).woke_at = g.clock.minutes - 16.0 * 60.0
+	g.body.fed_until = g.clock.minutes
+	var slept_from := g.clock.minutes
+	check(Survival.sleep(g), "slept")
+	var night := g.clock.minutes - slept_from
+	near(g.clock.minutes - g.body.fed_until, night * Condition.SLEEP_HUNGER_SHARE, 1.0, "a third of the night's hunger")
+	eq(g.body.hunger_level(g.clock.minutes), 1, "fed at bedtime, he wakes peckish, not hungry")
 	Fx.done(g)
 
 

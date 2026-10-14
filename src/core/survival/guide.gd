@@ -40,7 +40,7 @@ const MOVE: Array[StringName] = [&"move_up", &"move_left", &"move_down", &"move_
 const HINTS := {
 	&"walk": ["%s walks, %s runs.", [MOVE, &"run"]],
 	&"take": ["%s takes what is in front of you.", [&"use"]],
-	&"fire": ["%s twice on open ground lays a fire.", [&"use"]],
+	&"fire": ["%s on open ground lays a fire.", [&"use"]],
 	&"make": ["%s makes things at the fire. Long work cooks while you go.", [&"craft"]],
 	&"carry": ["%s shows what you carry. Leave what you do not need.", [&"inventory"]],
 	&"lamp": ["Night. %s switches the headlamp on.", [&"lamp"]],
@@ -73,7 +73,7 @@ const HINTS := {
 	# 1300-tile island is not a place you hold in your head. Said once the wake
 	# is out of sight behind you, because a survey of ground you can see is a
 	# picture of nothing.
-	&"map": ["%s opens the survey: where you have walked, and what the machines have been doing to it.", [&"map"]],
+	&"map": ["%s opens the map: where you have walked, and what the machines have been doing to it.", [&"map"]],
 	# The fourth, and the pair to `target`: you have learned to look at a machine,
 	# now learn not to be looked at. Said with one in view that has NOT noticed
 	# you, because that is the only moment crouching is a choice rather than a
@@ -84,7 +84,7 @@ const HINTS := {
 	# it. Said the first time the creel actually holds enough for a piece --
 	# before that it is an advertisement, and after the first piece goes up it
 	# has taught itself.
-	&"holding": ["%s puts a piece up out of the creel. What you build, the plan eventually hears.", [&"holding"]],
+	&"holding": ["%s puts a piece up out of your pack. What you build, the plan eventually hears.", [&"holding"]],
 	# **THE SIXTH, AND THE WHOLE GEAR PILLAR WAS BEHIND AN UNMENTIONED KEY.**
 	# Fitting a wing or a line or a stolen lens grants an ACTION, and nothing in
 	# the game ever named it -- the same gap `target` was, and worse, because a
@@ -151,7 +151,7 @@ const ROAD_NEAR := 60.0
 ## The want after a bad end, while the bag lies where it was taken
 ## (Survival.leave_bag): standing on the HUD until it is taken back, so where
 ## the player's things are is never a line that scrolled past.
-const BAG_GOAL := "Your things lie where it took you. The survey marks them."
+const BAG_GOAL := "Your things lie where it took you. The map marks them."
 
 
 ## WHICH GOAL IT WAS: the key of the line `goal` last returned (StoryContent.LEAD
@@ -246,9 +246,9 @@ static func _first_hour(game: Game) -> String:
 		# lesson says which key, in the player's own keys, at this moment.
 		return _led(&"charcoal_set", "Charcoal for a pick: set it going at {at}.", at)
 	if not inv.has(&"haft"):
-		return _led(&"haft", "A haft, whittled from wood.")
+		return _led(&"haft", "A handle, whittled from wood.")
 	if inv.count(&"scrap") == 0:
-		return _led(&"plate", "Plate for a pick: turn over the tip.")
+		return _led(&"plate", "Plate for a pick: turn over the scrap heap.")
 	return _led(&"pick", "A pick, made at {at}.", at)
 
 

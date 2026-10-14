@@ -320,14 +320,12 @@ func _build_fire_near(p: Vector2) -> WorldProp:
 			g.player.facing = a / 8.0 * TAU
 			if not g.query.standable(floori(g.player.pos.x), floori(g.player.pos.y)):
 				continue
-			if Survival.describe_target(g) != "campfire - build?":
+			if Survival.describe_target(g) != "campfire - build":
 				continue
 			var before := g.world.prop_count()
-			check(Survival.use(g), "the first press asks")
-			eq(g.world.prop_count(), before, "and builds nothing")
-			check(Survival.use(g), "the second builds")
+			check(Survival.use(g), "one press builds")
 			_spend(1.0)
-			actions += 2
+			actions += 1
 			if g.world.prop_count() > before:
 				return g.world.prop_at(g.world.prop_count() - 1)
 	return null

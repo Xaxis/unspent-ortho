@@ -281,7 +281,7 @@ func _process(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_settle = maxf(0.0, _settle - delta)
 	var use_down := Keys.down(&"use")
-	var use_edge := use_down and not _use_was and not Survival.ask_pending(game)
+	var use_edge := use_down and not _use_was
 	_use_was = use_down
 	var c := _colossi()
 	if climb == null:
@@ -433,7 +433,7 @@ func _cable_takes() -> bool:
 
 ## The hint for the press the cable would take (UiLink.use_hint), or "".
 func use_line() -> String:
-	return "cable - climb" if game != null and not Survival.ask_pending(game) and _cable_takes() else ""
+	return "cable - climb" if game != null and _cable_takes() else ""
 
 
 ## THE CABLE HANGS WHETHER OR NOT ANYBODY CLIMBS IT: at its foot, with the

@@ -337,7 +337,7 @@ static func recipe_output(r: Dictionary) -> StringName:
 ## A recipe's line in a list: what it makes ("charcoal ×2"), what it builds
 ## ("build a fire") or what it does ("sharpen what is in hand"). When another
 ## recipe in `among` makes the same, the first input that tells them apart is
-## added: "pick, of iron".
+## added: "pick, with iron".
 static func recipe_title(r: Dictionary, among: Array[Dictionary] = []) -> String:
 	var title := ""
 	var builds := StringName(r.get("builds", &""))
@@ -362,7 +362,7 @@ static func recipe_title(r: Dictionary, among: Array[Dictionary] = []) -> String
 		return title
 	for id: StringName in r.get("needs", {}):
 		if twins.all(func(o: Dictionary) -> bool: return not (o.get("needs", {}) as Dictionary).has(id)):
-			return "%s, of %s" % [title, item_name(id)]
+			return "%s, with %s" % [title, item_name(id)]
 	return title
 
 

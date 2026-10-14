@@ -1,7 +1,8 @@
 class_name UiCraftingScreen
 extends UiScreen
 ## The making app (C). The list: what can be made where the player stands,
-## under a heading per station in reach ("at the fire") and "by hand"; rows
+## under a heading per station in reach ("at the fire") and "by hand", and only
+## recipes whose every input has been carried once (Crafting.known); rows
 ## that cannot be made now are dim but choosable, and say why; under it, every
 ## job the player has set going anywhere and when it comes off. The
 ## replacement sub-panel: the chosen recipe scanned, a table of what it wants
@@ -67,9 +68,13 @@ func _on_open() -> void:
 func recipes() -> Array[Dictionary]:
 	if not recipes_override.is_empty():
 		return recipes_override
+	var inv := inventory if inventory != null or game == null else game.inventory
 	var list: Array[Dictionary] = []
 	for st in _ordered_stations():
-		var here := Crafting.recipes_at(st)
+		var here: Array[Dictionary] = []
+		for r in Crafting.recipes_at(st):
+			if inv == null or Crafting.known(inv, r):
+				here.append(r)
 		if here.is_empty() and game != null and game.options.ui_demo:
 			here = UiDemo.recipes_at(st)
 		list.append_array(here)

@@ -173,8 +173,8 @@ const COUNT := 106
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
 	"rebar slab", "cable duct", "pylon", "ruin", "house", "lamp", "bones",
-	"gorse", "driftwood", "wrack", "mussel rock", "standing stone", "clints", "vent", "tip",
-	"wreck", "peat bank", "snow pine", "coal tip", "board drift", "fire", "bench", "kiln", "cairn", "pole",
+	"gorse", "driftwood", "wrack", "mussel rock", "standing stone", "clints", "vent", "scrap heap",
+	"wreck", "peat bank", "snow pine", "coal heap", "board drift", "fire", "bench", "kiln", "cairn", "pole",
 	"fence", "barricade", "sign", "grave", "debris", "shack", "vehicle", "hull", "sea wall", "tide gauge",
 	"intake", "pump house", "pipe", "stump", "fire tower", "relay", "checkpoint", "stack", "drill rig",
 	"conveyor", "survey", "water tank", "slag heap", "vent cap", "archive",

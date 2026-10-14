@@ -39,7 +39,7 @@ const MODS := {
 		"gives": []},
 	&"mod_shade": {"decision": "you can look at the ground you are crossing", "short": "you can look ahead",
 		"gives": []},
-	&"mod_grip": {"decision": "the ring does not come back up the haft", "short": "no ring up the haft",
+	&"mod_grip": {"decision": "the ring does not come back up the haft", "short": "no ring up the handle",
 		"gives": [&"quiet"]},
 	&"mod_wick": {"decision": "the ground in front of your feet is lit, and nothing further",
 		"short": "your feet are lit",

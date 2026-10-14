@@ -1,13 +1,11 @@
 extends TestCase
-## ONE PRESS, ONE OWNER (Survival.ask_pending). `use` is one key that several
-## systems answer, each reading it in its own `_process`, and the seam has
-## broken three ways: a cache opened over a faced talk, a press swallowed, and a
-## cache opened on the press a fire was asked for. An ask's next press is the
-## ask's, so every system that reads the key leaves that press be while one is
-## out, and names in the hint row what its press would do. Found by what each
-## script reads, never by a list: a new system that answers `use` is red here
-## until it defers and names its press. The press itself is played in
-## tests/landmarks/test_in_game.gd (a fire asked for beside a cache).
+## ONE PRESS, ONE OWNER. `use` is one key that several systems answer, each
+## reading it in its own `_process`, and the seam has broken: a cache opened over
+## a faced talk, and a press swallowed. Every system that reads the key names in
+## the hint row what its press would do, so the row is always the press's owner.
+## Found by what each script reads, never by a list: a new system that answers
+## `use` is red here until it names its press. The press itself is played in
+## tests/landmarks/test_in_game.gd (a cache in reach where a fire could go).
 
 const DIR := "res://src/systems"
 ## The system that answers the ask.
@@ -16,7 +14,7 @@ const OWNER := "50_survival.gd"
 const WORDS_AT := 49
 
 
-func test_every_system_that_answers_use_leaves_an_asks_press_alone() -> void:
+func test_every_system_that_answers_use_names_its_press() -> void:
 	var reads := RegEx.create_from_string("(is_action_(just_)?pressed|Keys\\.down)\\(&?\"use\"\\)")
 	var found := 0
 	for f: String in DirAccess.get_files_at(DIR):
@@ -26,7 +24,6 @@ func test_every_system_that_answers_use_leaves_an_asks_press_alone() -> void:
 		if reads.search(src) == null:
 			continue
 		found += 1
-		check(src.contains("Survival.ask_pending(game)"), "%s answers `use`, so it leaves an ask's press alone (Survival.ask_pending)" % f)
 		# And the hint row names what the press does (UiLink.use_hint asks every
 		# system's `use_line` before Survival's own words): the row said
 		# "campfire - build?" over a cache the press opened.

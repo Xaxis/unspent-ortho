@@ -114,7 +114,7 @@ try 3
   await took:stone 14
 end
 try 3
-  near tip
+  near scrap_heap
   walk 0,0 0.05
   press use 0.1
   await took:scrap 20
@@ -123,10 +123,8 @@ wait 0.2
 shot 09-a-plate-turned-out-of-the-tip
 ground grass
 mark fire
-press use 0.1
-await fire_asked 2
-# The ask is a prompt on the glass; the second press answers it once it is up.
-wait 0.6
+# Where a press would lay it is ringed before the press; one press lays it.
+await fire_offered 3
 press use 0.1
 await made:fire 4
 wait 0.5
@@ -334,22 +332,13 @@ wait 0.4
 hour 20
 village 36
 wait 1.0
-# A hungry body eats what it carries before it lies down (Survival._fallback):
-# fed first, a press a mouthful. On seed 7 the presses meant for sleep ate
-# berries ("berries - eat" under the hand) and he never lay down. Each press
-# waits for the row to name it: seed 7's village 36 is a shift town whose
-# street puts somebody in front of him most seconds, and the press is theirs.
+# One press sleeps once the row names it. A hungry body eats what it carries
+# before it lies down (Survival._fallback): while the row says eat, a press is a
+# mouthful and the block goes round again (on seed 7 the presses meant for sleep
+# ate berries). Each press waits for the row: seed 7's village 36 is a shift
+# town whose street puts somebody in front of him most seconds, and the press is
+# theirs.
 try 8
-  until hint:eat 4
-  press use 0.1
-  wait 0.4
-  await fed 1
-end
-# Sleep is asked for: the first press asks, the second sleeps.
-try 3
-  until hint:sleep 4
-  press use 0.1
-  wait 0.4
   until hint:sleep 4
   press use 0.1
   await slept 6

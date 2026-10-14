@@ -5953,16 +5953,16 @@ const LEAD := {
 	&"fire_lay": "A fire before dark, for charcoal: lay it on open ground.",
 	&"charcoal_gather": "Charcoal for the pick: four driftwood or dead wood, at {at}.",
 	&"charcoal_set": "Charcoal for the pick, for the iron: set it going at {at}.",
-	&"haft": "A haft for the pick, whittled from wood.",
-	&"plate": "Plate for the pick's head: turn over the tip.",
+	&"haft": "A handle for the pick, whittled from wood.",
+	&"plate": "Plate for the pick's head: turn over the scrap heap.",
 	&"pick": "A pick for the iron, made at {at}.",
 	&"ore": "The crew past the old works pay for iron. Take the pick to a slab.",
-	&"camp": "Iron for the crew, so they stay away from her fire: the survey marks the camp.",
+	&"camp": "Iron for the crew, so they stay away from her fire: the map marks the camp.",
 	# Hob's errand, from `reaper_named` until the keeper falls (Guide.reaper_goal).
 	&"reaper": "The Tide Reaper, for the tide-pickers' shore: end it at its yard past the point.",
 	# The crew's errand once the yard is dark and until they have paid, in place
 	# of `ore` and `camp`: what he just did, then what he owes.
-	&"crew": "Iron for the crew, now the yard is dark: the survey marks their camp.",
+	&"crew": "Iron for the crew, now the yard is dark: the map marks their camp.",
 	# Paid and armoured before anyone has named what keeps the yard, until Hob has
 	# (Guide.hob_goal): the tide-pickers, as Rook points him.
 	&"hob": "The tide-pickers, for what keeps the yard past the point: ask them along the shore.",
@@ -5974,7 +5974,7 @@ const LEAD := {
 	# The crossing (slice 3): a raft, then the narrows, then the archive.
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
-	&"archive": "The war's archive, for how it started: the survey marks where it is kept.",
+	&"archive": "The war's archive, for how it started: the map marks where it is kept.",
 	# The archive (slice 3 step 4) and back at the camp (step 8).
 	&"orders": "The war's orders, for who sent them: ask the archivist to show you one.",
 	&"camp_back": "The old soldier, with what the archive showed you: at the crew's camp.",
@@ -6000,7 +6000,7 @@ const LEAD := {
 	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
 	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
 	# The slice's last hop, held into slice 4: said only while no keeper has a lead.
-	&"relay": "The relay below, for what is down there: the survey marks its shaft.",
+	&"relay": "The relay below, for what is down there: the map marks its shaft.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
 	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,

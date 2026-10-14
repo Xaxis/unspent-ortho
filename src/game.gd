@@ -55,7 +55,9 @@ func setup(o: BootOptions) -> void:
 	query = WorldQuery.new(world)
 	clock = WorldClock.new(o.hour)
 	body = Body.new()
-	body.fed_until = clock.minutes + 6.0 * 60.0
+	# He comes to fed (owner, 2026-10-14): six hours of it had a first night's
+	# sleep wake him weak with hunger before the game had taught food at all.
+	body.fed_until = clock.minutes + Condition.FED_HOURS * 60.0
 	inventory = Inventory.new()
 	inventory.add(&"knife")
 	inventory.set_held(&"knife")

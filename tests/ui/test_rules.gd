@@ -253,9 +253,9 @@ func test_recipes_are_named_by_what_they_make_and_told_apart() -> void:
 	var hone := {"id": &"sharpen", "at": &"hand", "needs": {}, "makes": {}, "action": &"hone"}
 	var all: Array[Dictionary] = [fire_a, fire_b, coal, haft_a, haft_b, hone]
 	eq(UiRules.recipe_title(coal, all), "charcoal ×2", "alone, just what it makes")
-	eq(UiRules.recipe_title(fire_a, all), "build a fire, of driftwood", "two ways to a fire, told apart")
-	eq(UiRules.recipe_title(fire_b, all), "build a fire, of timber")
-	eq(UiRules.recipe_title(haft_b, all), "haft ×2, of timber", "the same thing in other numbers is still a twin")
+	eq(UiRules.recipe_title(fire_a, all), "build a fire, with driftwood", "two ways to a fire, told apart")
+	eq(UiRules.recipe_title(fire_b, all), "build a fire, with timber")
+	eq(UiRules.recipe_title(haft_b, all), "handle ×2, with timber", "the same thing in other numbers is still a twin")
 	eq(UiRules.recipe_title(hone, all), "sharpen what is in hand")
 	eq(UiRules.recipe_output(coal), &"charcoal")
 	eq(UiRules.station_words(&"hand"), "by hand")
