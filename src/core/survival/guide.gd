@@ -248,7 +248,7 @@ static func _first_hour(game: Game) -> String:
 	if not inv.has(&"haft"):
 		return _led(&"haft", "A handle, whittled from wood.")
 	if inv.count(&"scrap") == 0:
-		return _led(&"plate", "Plate for a pick: turn over the scrap heap.")
+		return _led(&"plate", "Scrap metal for a pick: turn over the scrap heap.")
 	return _led(&"pick", "A pick, made at {at}.", at)
 
 
