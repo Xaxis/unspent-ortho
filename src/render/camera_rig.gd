@@ -531,6 +531,21 @@ static func sees_point(cam: Camera3D, at: Vector3, margin: float) -> bool:
 
 
 ## The rig's own, for the viewport it is drawing into.
+## One pixel of the 3D RENDER, in world units, for a view `tall` units high. The
+## 3D renders at the tier's share of the 1080-row frame (Quality `render_scale`,
+## the viewport's `scaling_3d_scale`: 0.75 on the web), and a snap to the frame's
+## own rows moved the picture by a fraction of a rendered pixel at every step
+## below the top tier, so the stipple, the grain and every thin stroke crawled as
+## the camera moved.
+func render_texel(tall: float) -> float:
+	var rows := float(UiBase.SIZE.y)
+	var scale := 1.0
+	if is_inside_tree():
+		rows = float(get_viewport().get_visible_rect().size.y)
+		scale = get_viewport().scaling_3d_scale
+	return tall / maxf(1.0, rows * scale)
+
+
 func units_per_pixel() -> float:
 	var rows := float(get_viewport().get_visible_rect().size.y) if is_inside_tree() else float(UiBase.SIZE.y)
 	return units_per_pixel_of(self, rows)
@@ -640,7 +655,7 @@ func shake(strength: float, seconds: float = 0.12) -> void:
 		return
 	if not is_inside_tree():
 		return
-	var texel := view_height / float(get_viewport().get_visible_rect().size.y)
+	var texel := render_texel(view_height)
 	var seed_ms := Time.get_ticks_msec()
 	var tw := create_tween()
 	tw.tween_method(func(t: float) -> void:
@@ -984,7 +999,7 @@ func _apply() -> void:
 	rotation = Vector3(deg_to_rad(-(pitch_deg + _pitch)), deg_to_rad(yaw_deg + _yaw), 0.0)
 	var b := Basis.from_euler(rotation)
 	# Express the focus in camera space, snap its screen-plane axes to texels, go back.
-	var texel := size / float(get_viewport().get_visible_rect().size.y)
+	var texel := render_texel(size)
 	var local := b.inverse() * (_smoothed + _bias + _frame)
 	local.x = roundf(local.x / texel) * texel
 	local.y = roundf(local.y / texel) * texel

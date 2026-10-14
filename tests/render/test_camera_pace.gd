@@ -106,3 +106,19 @@ func test_a_room_frames_each_step_without_swinging_past() -> void:
 		most = maxf(most, at.x + (c.get("_frame") as Vector3).x)
 	lt(most, 0.31, "the frame comes to rest at 0.3 without passing it (%.3f)" % most)
 	c.free()
+
+
+## The camera snaps to a pixel of the 3D RENDER, not of the 1080-row frame: on
+## the web the 3D is drawn at 0.75 of it, and a frame-row snap moved the picture
+## three quarters of a rendered pixel a step, so fine patterns crawled.
+func test_the_snap_is_a_pixel_of_the_render() -> void:
+	var c := CameraRig.new()
+	tree.root.add_child(c)
+	var vp := c.get_viewport()
+	var was := vp.scaling_3d_scale
+	vp.scaling_3d_scale = 1.0
+	var full := c.render_texel(15.0)
+	vp.scaling_3d_scale = 0.75
+	near(c.render_texel(15.0), full / 0.75, 1e-6, "at three quarters scale a render pixel is a third bigger")
+	vp.scaling_3d_scale = was
+	c.queue_free()
