@@ -190,6 +190,10 @@ extends GameSystem
 ##   walkto holding SECS    walk the real keys to the edge of his nearest holding
 ##   perf stats begin|end LABEL [raw]  the --stats block over just the lines between
 ##                          (tour/stats_perf.gd); needs --stats
+##   perf pace begin|end LABEL   how evenly the moving player is drawn between the two
+##                          lines: his speed over the ground as drawn (glide p90/p10, 1.0
+##                          is even), the camera's scroll jerk and his own wobble on the
+##                          screen, in 1080-row pixels (src/systems/tour/pace_perf.gd)
 ##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)
 ##   perf fore SECS DRAWS MS    rendered cost of the foreground layer hanging over
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
@@ -705,6 +709,8 @@ func _run() -> void:
 					ok = (preload("res://src/systems/tour/lit_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "lens":
 					ok = await (preload("res://src/systems/tour/lens_perf.gd")).perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "pace":
+					ok = (preload("res://src/systems/tour/pace_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "front":
 					ok = await FrontProbe.perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "blades":
