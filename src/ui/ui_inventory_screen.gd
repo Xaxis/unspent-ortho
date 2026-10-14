@@ -310,12 +310,20 @@ func _draw_detail(R: Rect2i) -> void:
 		_draw_choice(Vector2i(x0, y), right, choice)
 		return
 	# What it goes into: the recipes that want it, so goods are never a dead end.
+	# Only those whose every input has been carried, as on the make page
+	# (Crafting.known); the rest are counted, not named, so a thing found early is
+	# not a list of other lands' making.
 	var demo: Array[Dictionary] = []
 	if game != null and game.options.ui_demo:
 		demo.assign(UiDemo.RECIPES)
-	var uses := UiRules.recipes_using(id, UiRules.all_recipes(demo))
+	var every := UiRules.recipes_using(id, UiRules.all_recipes(demo))
+	var uses: Array[Dictionary] = []
+	for r in every:
+		if not demo.is_empty() or Crafting.known(inventory, r):
+			uses.append(r)
+	var unknown := every.size() - uses.size()
 	var room := (R.end.y - 140 - y) / UiTheme.LINE - 1
-	if uses.is_empty() or room < 1:
+	if every.is_empty() or room < 1:
 		return
 	UiSlate.heading(self, Vector2i(x0, y), "goes into", right)
 	var shown := mini(uses.size(), room)
@@ -329,8 +337,12 @@ func _draw_detail(R: Rect2i) -> void:
 		UiDraw.text(self, Vector2i(x0 + 38, top), UiRules.recipe_title(r, uses), UiTheme.TEXT)
 		var want := int((r.needs as Dictionary)[id])
 		UiDraw.text_right(self, right, top, "%d, %s" % [want, UiRules.station_words(StringName(r.get("at", &"")))], UiTheme.TEXT_DIM)
-	if uses.size() > shown:
-		UiDraw.text(self, Vector2i(x0 + 38, y + UiTheme.LINE * (shown + 1)), "and %d more" % (uses.size() - shown), UiTheme.TEXT_DIM)
+	var more := uses.size() - shown + unknown
+	if more > 0:
+		var words := "and %d more" % more
+		if unknown > 0:
+			words = ("%d more things" if shown > 0 else "%d things") % more + ", some wanting what you have not found yet"
+		UiDraw.text(self, Vector2i(x0 + 38, y + UiTheme.LINE * (shown + 1)), words, UiTheme.TEXT_DIM)
 
 
 ## One core, one of these (UiRules.core_uses): a column each, what it becomes,

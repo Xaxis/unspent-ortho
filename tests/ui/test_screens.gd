@@ -645,6 +645,14 @@ func test_the_pack_says_the_headlamp_is_worn_and_tells_twin_uses_apart() -> void
 	var said := await _said(s)
 	var at := said.find("worn")
 	check(at >= 0 and at + 1 < said.size() and said[at + 1].contains("headlamp"), "the headlamp he wears is worn: %s" % str(said))
+	# What it goes into is what he could make: nothing wanting things he has never
+	# carried is named, only counted.
+	check(not said.any(func(w: String) -> bool: return w.begins_with("steel knife")), "no steel knife before charcoal or an edge: %s" % str(said))
+	check(_has_word(said, "not found yet"), "the rest are counted: %s" % str(said))
+	g.inventory.add(&"charcoal")
+	g.inventory.add(&"machine_edge")
+	s.refresh()
+	said = await _said(s)
 	# Two recipes turn the knife into a steel knife: each line says which.
 	var steel := said.filter(func(w: String) -> bool: return w.begins_with("steel knife"))
 	gt(float(steel.size()), 1.0, "both ways to a steel knife are listed: %s" % str(said))
@@ -652,6 +660,30 @@ func test_the_pack_says_the_headlamp_is_worn_and_tells_twin_uses_apart() -> void
 		eq(steel.find(steel[i]), i, "'%s' is said once" % steel[i])
 	s.free()
 	Fx.done(g)
+
+
+## The long game's next want sits at the foot of the make page, but not while
+## the first steps run: at a first fire it named a far land's material.
+func test_the_make_page_keeps_the_long_want_until_the_first_steps_are_done() -> void:
+	var Sx := preload("res://tests/save/save_fixture.gd")
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=11", "--weather=clear:0"])
+	await tree.process_frame
+	var guide := g.get_node_or_null(^"58_guide")
+	var want := Guide.within_reach(g)
+	check(want != "", "the long game wants something here: %s" % want)
+	var s := UiCraftingScreen.new()
+	s.game = g
+	s.inventory = g.inventory
+	s.stations = [&"hand"]
+	tree.root.add_child(s)
+	guide.set("step_at", 0)
+	s.open()
+	check(not _has_word(await _said(s), "within reach"), "not while the first steps run")
+	guide.set("step_at", -1)
+	s.refresh()
+	check(_has_word(await _said(s), "within reach"), "once they are done, it is there")
+	s.free()
+	Sx.end(g)
 
 
 ## E on a piece you wear puts it on, from the pack: an oilskin sat under TO WEAR

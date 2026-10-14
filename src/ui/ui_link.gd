@@ -90,6 +90,12 @@ static func put_on(game: Game, id: StringName) -> String:
 	return String(g.call(&"put_on", id)) if g != null else "!Gear is put on in a game."
 
 
+## Whether the first steps are still being walked (58_guide): the card is the guide.
+static func first_steps_on(game: Game) -> bool:
+	var guide := game.get_node_or_null(^"58_guide") if game != null else null
+	return guide != null and bool(guide.call(&"steps_on"))
+
+
 ## The headlamp on or off (15_lights, the lamp key's own way). True if lit after.
 static func toggle_lamp(game: Game) -> bool:
 	var lights := game.get_node_or_null(^"15_lights") if game != null else null
