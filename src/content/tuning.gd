@@ -32,7 +32,10 @@ const PLAYER_HEIGHT := 1.8
 const PLAYER_CROUCH_HEIGHT := 1.1
 ## Tiles per second.
 const WALK_SPEED := 3.4
-const RUN_SPEED := 5.4
+## A run is a run (owner, 2026-10-13: "while running it should be faster"),
+## and still just under the runner's pace (Roster `runner`, 6.5): the first
+## hunter is the one you cannot outrun, only dodge.
+const RUN_SPEED := 6.4
 const WADE_FACTOR := 0.55
 ## What deep water takes off the pace of an animal or a machine that swims (the
 ## roster's `crosses`): about two fifths of its own (owner, 2026-09-17).
