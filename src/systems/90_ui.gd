@@ -524,7 +524,6 @@ func _step_steps() -> void:
 				row.count = "%d/%d" % [int(r.have), int(r.need)]
 			if r.act != &"":
 				row.cap = PlayerSettings.cap_of(r.act)
-				row.twice = bool(r.twice)
 		_steps_rows.append(row)
 	var cast := game.get_node_or_null(^"49_cast")
 	var placed: Dictionary = cast.get("placed") if cast != null else {}

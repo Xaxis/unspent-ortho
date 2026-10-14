@@ -36,7 +36,6 @@ func test_the_steps_walk_the_errand_in_order() -> void:
 	eq(_at(g, done), &"stones", "three in hand: stones")
 	g.inventory.add(&"stone", 2)
 	eq(_at(g, done), &"fire", "two stones: lay a fire")
-	check(bool(_row(g, done, &"fire").twice), "pressed twice")
 	g.inventory.remove(&"driftwood", 3)
 	g.inventory.remove(&"stone", 2)
 	SurvivalState.of(g).built.append(Fx.put(g, PropKind.FIRE, Vector2(1.5, 0.0)))

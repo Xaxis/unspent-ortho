@@ -126,6 +126,14 @@ var _fires: Dictionary = {} # prop id -> FireModel
 var _scan_in := 0.0
 ## The dashes of the ring drawn round an asked-for fire.
 var _ring: Array[Dictionary] = []
+## Where the ring stands (Survival.fire_offered), and seconds until it is asked again.
+var _ring_at := Vector2.INF
+var _offer_in := 0.0
+## A ring outlives nothing: it stands while the fire is offered and is cleared
+## the moment it is not. Its ticks are given a life it never reaches.
+const RING_LIFE := 3600.0
+## How often the offer is asked: it walks the recipes and the ground (Survival._fallback).
+const OFFER_EVERY := 0.25
 var _time := 0.0
 var _acc := 0.0
 
@@ -159,9 +167,6 @@ func setup(g: Game) -> void:
 	# Stations built before this system was listening (a --build shot) still go up in dust.
 	for prop in SurvivalState.of(g).built:
 		_on_sfx(&"build_fire", g.world.to_3d(prop.pos))
-	var asked := Survival.build_asked(g)
-	if asked.is_finite():
-		_on_sfx(&"ask_fire", g.world.to_3d(asked))
 
 
 func _exit_tree() -> void:
@@ -183,8 +188,19 @@ func _process(delta: float) -> void:
 	_time += delta
 	_follow_job(delta)
 	_resolve_pending()
-	if not _ring.is_empty() and not Survival.build_asked(game).is_finite():
-		_clear_ring()
+	# WHERE A PRESS WOULD LAY THE FIRE, ringed on the ground before the press
+	# (owner, 2026-10-14: one press lays it; the ring is the warning, not a second press).
+	_offer_in -= delta
+	if _offer_in <= 0.0:
+		_offer_in = OFFER_EVERY
+		# Only while the press is the fire's: a cache, a door or words in reach
+		# take it first (ONE PRESS, ONE OWNER), and the key row says whose it is.
+		var at := Survival.fire_offered(game) if UiLink.use_hint(game) == "campfire - build" else Vector2.INF
+		if at != _ring_at:
+			_clear_ring()
+			_ring_at = at
+			if at.is_finite():
+				_draw_ring(game.world.to_3d(at))
 	_scan_in -= delta
 	if not _fresh.is_empty():
 		for id: int in _fresh.keys():
@@ -699,6 +715,18 @@ func _along_trunk(prop: WorldProp, away: Vector2, n: int, colors: Array[Color], 
 			colors[i % colors.size()], 0.08, 0.4 + Rng.hash01(prop.id, i, 58) * 0.6)
 
 
+## A dashed pencil ring where the fire would go, while a press would lay it there.
+func _draw_ring(at: Vector3) -> void:
+	var dashes := 12
+	for i in dashes:
+		var a := (float(i) + 0.5) / dashes * TAU
+		var p := at + Vector3(cos(a) * 0.5, 0.06, sin(a) * 0.5)
+		var tangent := Vector3(-sin(a), 0.0, cos(a))
+		_emit_tick(p, tangent, -_px(2.5), _px(2.5), RING_LIFE, SurvivalMarks.CONTRAST, -1.0, true)
+		if not _tick.is_empty():
+			_ring.append(_tick[-1])
+
+
 func _clear_ring() -> void:
 	for d in _ring:
 		d.t = maxf(float(d.t), float(d.life) - 0.001)
@@ -742,16 +770,6 @@ func _on_sfx(name: StringName, at: Vector3) -> void:
 		_dust(at + Vector3(0, 0.04, 0), 18, 0.8, _dust_colors(PropKind.BOULDER), int(_time * 100.0), 0.25, 0.8)
 		_scan_in = 0.0
 		_clear_ring()
-	elif name == &"ask_fire":
-		# A dashed pencil ring where the fire would go, until the second press or the ask lapses.
-		_clear_ring()
-		var dashes := 12
-		for i in dashes:
-			var a := (float(i) + 0.5) / dashes * TAU
-			var p := at + Vector3(cos(a) * 0.5, 0.06, sin(a) * 0.5)
-			var tangent := Vector3(-sin(a), 0.0, cos(a))
-			_emit_tick(p, tangent, -_px(2.5), _px(2.5), Survival.BUILD_ASK_SECONDS + 1.0, SurvivalMarks.CONTRAST, -1.0, true)
-			_ring.append(_tick[-1])
 	elif name == &"regrow":
 		_dust(at + Vector3(0, 0.1, 0), 6, 0.5, [Palette.MOSS[5], Palette.MOSS[4]], int(at.x * 13.0 + at.z * 7.0), 0.4, 0.9)
 	elif name == &"work_broken":

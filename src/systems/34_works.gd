@@ -360,7 +360,7 @@ func _work(delta: float) -> void:
 ## [site, part] a held `use` works now, or []: the one answer `_work` acts on and
 ## `use_line` names.
 func _part_taken() -> Array:
-	if game.input_blocked() or (_job.is_empty() and Survival.ask_pending(game)):
+	if game.input_blocked():
 		return []
 	var s := here()
 	if s == null:

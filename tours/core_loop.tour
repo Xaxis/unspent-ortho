@@ -53,10 +53,10 @@ shot 04-stone
 # plain_ground and prefers a tile clear of props, which is what open ground IS.
 ground grass
 mark fire
-press use 0.1
-await fire_asked 2
+# Where a press would lay it is ringed before the press; one press lays it.
+await fire_offered 3
 wait 0.3
-shot 05-asked-where
+shot 05-where-it-goes with fire_offered
 press use 0.1
 await made 4
 wait 0.5

@@ -93,7 +93,7 @@ var goal := ""
 ## THE FIRST STEPS' CARD (FirstSteps, fed by 90_ui): where the goal line stands
 ## (under it, when a need it does not cover is said there), the step just done,
 ## the one under way with its count and its key, and the one after. Rows are
-## {text, count, cap, twice, state} with state &"done", &"now" or &"next".
+## {text, count, cap, state} with state &"done", &"now" or &"next".
 var steps: Array = []
 var steps_head := ""
 ## Who holds the glass (90_ui hands this over: 58_guide.holder), and the lines
@@ -802,8 +802,6 @@ func _draw_steps(ci: Control) -> void:
 				var cap := String(row.get("cap", ""))
 				if cap != "":
 					cx += UiSlate.key_cap(ci, Vector2i(cx, y - 1), cap)
-					if bool(row.get("twice", false)):
-						UiDraw.text(ci, Vector2i(cx + 4, y), "twice", UiTheme.TEXT_DIM)
 			_:
 				UiDraw.text(ci, Vector2i(tx, y), String(row.text), UiTheme.TEXT_DIM)
 		y += UiTheme.LINE + 2
@@ -817,8 +815,6 @@ func steps_clip() -> Rect2i:
 		var rw := STEP_INDENT + UiFont.width(String(row.text))
 		if row.get("state", &"") == &"now":
 			rw += STEP_GAP + UiFont.width(String(row.get("count", ""))) + STEP_GAP + UiFont.width(String(row.get("cap", ""))) + 12
-			if bool(row.get("twice", false)):
-				rw += 4 + UiFont.width("twice")
 		w = maxi(w, rw)
 	return Rect2i(MARGIN + 4, y, w + 30, 12 + (UiTheme.LINE + 4) + (UiTheme.LINE + 2) * steps.size())
 

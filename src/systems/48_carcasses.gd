@@ -169,7 +169,7 @@ func _strip(m: MobState) -> void:
 
 ## The prompt the press would answer (UiLink.use_hint).
 func use_line() -> String:
-	if reachable == null or _on != null or not _wins() or Survival.ask_pending(game):
+	if reachable == null or _on != null or not _wins():
 		return ""
 	var warn := " (a machine will hear)" if Survival.would_be_heard(game, &"break") else ""
 	return "%s - strip%s" % [String(reachable.kind).replace("_", " "), warn]

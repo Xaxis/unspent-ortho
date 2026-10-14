@@ -9,7 +9,7 @@ extends RefCounted
 ## world it is about. The last steps open the survey and send him to the crew's
 ## camp, out into the island.
 ##
-##   FirstSteps.list(game, done) -> [{key, text, have, need, act, twice, target, done}]
+##   FirstSteps.list(game, done) -> [{key, text, have, need, act, target, done}]
 ##   FirstSteps.current(rows)    -> index of the first not done, or -1 once all are
 ##
 ## `done` is the asker's (58_guide): steps it has seen done, and the ones only an
@@ -26,7 +26,7 @@ const STEPS: Array[Dictionary] = [
 	{"key": &"talk", "text": "Talk to Maren", "act": &"use", "target": &"maren"},
 	{"key": &"driftwood", "text": "Gather driftwood on the beach", "need": 3, "act": &"use", "target": &"driftwood"},
 	{"key": &"stones", "text": "Gather stones from a boulder", "need": 2, "act": &"use", "target": &"stone"},
-	{"key": &"fire", "text": "Build a campfire on open ground", "act": &"use", "twice": true, "target": &""},
+	{"key": &"fire", "text": "Build a campfire on open ground", "act": &"use", "target": &""},
 	{"key": &"wood", "text": "Gather more wood to burn into charcoal", "need": 4, "act": &"use", "target": &"driftwood"},
 	{"key": &"charcoal", "text": "Burn the wood into charcoal at your fire", "act": &"craft", "target": &"fire"},
 	{"key": &"haft", "text": "Carve a handle at your fire", "act": &"craft", "target": &"fire"},
@@ -75,7 +75,6 @@ static func list(game: Game, done: Dictionary) -> Array[Dictionary]:
 		var row := s.duplicate()
 		row.need = int(s.get("need", 0))
 		row.have = mini(_have(game, s.key), row.need) if row.need > 0 else 0
-		row.twice = bool(s.get("twice", false))
 		row.done = done.has(s.key) or _done_now(game, s.key)
 		rows.append(row)
 	# Done once any step after it is, by what he has or has done in the world:

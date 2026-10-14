@@ -240,8 +240,6 @@ func _process(delta: float) -> void:
 			_spent_frame = Engine.get_process_frames()
 		_read_talk_keys(use_pressed)
 		return
-	if Survival.ask_pending(game):
-		use_pressed = false
 	# A KEY ALREADY DOWN AS THE WORDS OPEN IS NOT A PRESS ON THEM. The talk's own
 	# keys are read for their edges, so they are followed while nothing is up
 	# too: the move up key that took him up a walker's last hold opened the
@@ -295,7 +293,7 @@ func _open_what_is_in_front() -> void:
 ## The hint for the press the words would take (UiLink.use_hint), or "": what
 ## `_open_what_is_in_front` would open.
 func use_line() -> String:
-	if game == null or view.showing() or game.input_blocked() or Survival.ask_pending(game):
+	if game == null or view.showing() or game.input_blocked():
 		return ""
 	var it := _what_is_in_front()
 	if it.has("person"):

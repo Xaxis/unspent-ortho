@@ -51,7 +51,7 @@ func test_build_a_campfire_from_driftwood_and_stone() -> void:
 	check(Survival.build_fire(g) == null, "nothing to build with")
 	g.inventory.add(&"driftwood", 3)
 	g.inventory.add(&"stone", 2)
-	eq(Survival.describe_target(g), "campfire - build?")
+	eq(Survival.describe_target(g), "campfire - build")
 	var t0 := g.clock.minutes
 	var props_before := g.world.prop_count()
 	var fire := Survival.build_fire(g)

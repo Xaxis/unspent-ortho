@@ -58,7 +58,6 @@ func _scan(dir_path: String, out: Dictionary) -> void:
 func test_names_that_used_to_resolve_wrongly() -> void:
 	eq(SoundNames.resolve(&"lamp_out"), &"lamp_off", "the lamp guttering out is heard")
 	eq(SoundNames.resolve(&"work_broken"), &"tool_snap", "a tool breaking is not a gather")
-	eq(SoundBank.category_of(SoundNames.resolve(&"build_ask")), &"ui", "asking where to build is a quiet page sound")
 	eq(SoundNames.resolve(&"snatch"), &"grip", "a taking nobody can be found for")
 
 

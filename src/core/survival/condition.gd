@@ -11,6 +11,8 @@ class_name Condition
 
 ## Hours a meal lasts at most: you are full 14 h after you last ate. (source)
 const FED_HOURS := 14.0
+## How much of a waking body's hunger a sleeping one burns.
+const SLEEP_HUNGER_SHARE := 1.0 / 3.0
 const MIN_FACTOR := 0.20 / 0.45
 ## Awake this long and the body is tired. (source)
 const TIRED_AFTER_H := 18.0

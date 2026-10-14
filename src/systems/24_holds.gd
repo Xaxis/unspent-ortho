@@ -369,7 +369,7 @@ func use_spent() -> bool:
 ## The barrier a held `use` works now, or null: the one answer `_work` acts on
 ## and `use_line` names.
 func _hold_taken() -> Hold.HoldSite:
-	if game.input_blocked() or (_job.is_empty() and Survival.ask_pending(game)):
+	if game.input_blocked():
 		return null
 	var h := _near()
 	return h if h != null and closed(h) and _hold_wins(h) else null

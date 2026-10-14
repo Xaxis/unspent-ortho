@@ -152,7 +152,10 @@ func test_the_first_kill_of_a_game_is_said_once() -> void:
 	Events.killed.emit(&"runner", Vector3.ZERO)
 	eq(said, [load("res://src/systems/58_guide.gd").KILL_LINE] as Array[String], "the first kill is said")
 	Events.killed.emit(&"runner", Vector3.ZERO)
-	eq(said.size(), 1, "and only the first")
+	# The second machine down also earns a health bracket (Brackets), said on the
+	# same line: only the kill's own words are counted here.
+	var kill_line: String = load("res://src/systems/58_guide.gd").KILL_LINE
+	eq(said.count(kill_line), 1, "and only the first")
 	Events.message.disconnect(listen)
 	g.queue_free()
 	await frames(1)

@@ -211,7 +211,7 @@ func _press_goes() -> StringName:
 	# A gate stands beside the slot its year's people are cast at (StoryGates), so the
 	# press beside one of them is theirs (Survival.words_in_front): beside June,
 	# six, in 2029, the gate's reach caught the key and took him back to 2098.
-	if _settle > 0.0 or game.input_blocked() or Survival.ask_pending(game) or Survival.words_in_front(game):
+	if _settle > 0.0 or game.input_blocked() or Survival.words_in_front(game):
 		return &""
 	if reachable != null and reachable.pos.distance_to(game.player.pos) <= Portal.REACH and _shaft_wins():
 		return &"shaft"

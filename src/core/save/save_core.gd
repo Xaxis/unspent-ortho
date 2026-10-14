@@ -398,7 +398,6 @@ static func load_survival(game: Game, v: Variant) -> void:
 	for k: Variant in plates:
 		s.plates[StringName(str(k))] = StringName(str(plates[k]))
 	s.job = {}
-	s.build_ask = {}
 
 
 # --- the map and the sky ------------------------------------------------------

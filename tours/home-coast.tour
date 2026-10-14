@@ -123,10 +123,8 @@ wait 0.2
 shot 09-a-plate-turned-out-of-the-tip
 ground grass
 mark fire
-press use 0.1
-await fire_asked 2
-# The ask is a prompt on the glass; the second press answers it once it is up.
-wait 0.6
+# Where a press would lay it is ringed before the press; one press lays it.
+await fire_offered 3
 press use 0.1
 await made:fire 4
 wait 0.5

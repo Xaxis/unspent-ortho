@@ -100,9 +100,7 @@ try 3
 end
 ground grass
 mark fire
-press use 0.1
-await fire_asked 2
-wait 0.6
+await fire_offered 3
 press use 0.1
 await made:fire 4
 wait 0.5

@@ -127,7 +127,7 @@ func _process(delta: float) -> void:
 	# is out of reach: `reachable` is looked at again only every LOOK_EVERY, and
 	# until then the next press went to the open cache, spent and doing nothing.
 	if reachable != null and not state.is_opened(reachable.id) and _settle <= 0.0 and _use_pressed() \
-			and not Survival.ask_pending(game) and _cache_wins():
+			and _cache_wins():
 		_spent_frame = Engine.get_process_frames()
 		_open(reachable)
 		reachable = null
@@ -237,7 +237,7 @@ func _cache_wins() -> bool:
 ## The hint for the press a cache would take (UiLink.use_hint), or "": the
 ## hint row named the ground under the hands while the cache took the key.
 func use_line() -> String:
-	if reachable == null or state.is_opened(reachable.id) or _settle > 0.0 or Survival.ask_pending(game) or not _cache_wins():
+	if reachable == null or state.is_opened(reachable.id) or _settle > 0.0 or not _cache_wins():
 		return ""
 	return "cache - open"
 

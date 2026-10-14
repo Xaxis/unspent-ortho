@@ -232,8 +232,6 @@ func _process(delta: float) -> void:
 	_use_was = down
 	if game == null or game.world == null or game.player == null or _swapping:
 		return
-	if Survival.ask_pending(game):
-		_use_edge = false
 	if game.watch.is_finite():
 		return
 	if pocket == null:
@@ -338,7 +336,7 @@ func use_spent() -> bool:
 ## or "": read off the same nearness `_outside_side` and `_inside_side` act on,
 ## in their order.
 func use_line() -> String:
-	if game == null or game.player == null or _swapping or game.input_blocked() or Survival.ask_pending(game):
+	if game == null or game.player == null or _swapping or game.input_blocked():
 		return ""
 	if pocket == null:
 		return "door - go in" if door_near != null and _door_wins(door_near.door) else ""

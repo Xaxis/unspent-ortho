@@ -40,7 +40,7 @@ const MOVE: Array[StringName] = [&"move_up", &"move_left", &"move_down", &"move_
 const HINTS := {
 	&"walk": ["%s walks, %s runs.", [MOVE, &"run"]],
 	&"take": ["%s takes what is in front of you.", [&"use"]],
-	&"fire": ["%s twice on open ground lays a fire.", [&"use"]],
+	&"fire": ["%s on open ground lays a fire.", [&"use"]],
 	&"make": ["%s makes things at the fire. Long work cooks while you go.", [&"craft"]],
 	&"carry": ["%s shows what you carry. Leave what you do not need.", [&"inventory"]],
 	&"lamp": ["Night. %s switches the headlamp on.", [&"lamp"]],

@@ -295,8 +295,8 @@ extends GameSystem
 ## A tour outlives the game it began in: when that game gives way to the title or
 ## to a loaded game, the runner stays at the tree's root and follows the next game.
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
-## started since the last action), saved (a save was written), fire_asked (`use` has
-## asked where a fire would go and wants a second press), fed (the next press
+## started since the last action), saved (a save was written), fire_offered (`use` would
+## lay a fire here, its spot ringed), fed (the next press
 ## would eat nothing he carries), hunger:N (his hunger is at N or under: 0 fed, 1
 ## peckish, 2 hungry, 3 starving), hint:VERB (the key row names VERB, asked or
 ## not: `hint:sleep` is "village - sleep?" too); and station:NAME
@@ -993,14 +993,10 @@ func _now_true(what: String) -> bool:
 	if what.begins_with("step:"):
 		var ui := _system("90_ui")
 		return ui != null and bool(ui.call(&"tour_seen", StringName(what)))
-	# The fire's FIRST press: `use` has asked where it would go and is waiting for
-	# a second. Read live off `Survival.build_asked` rather than latched, because
-	# the ask expires on its own and a latch would go on saying yes after it had.
-	# It is here because a frame called "asked where" was a picture of the player
-	# picking up a stone -- the press had answered a pebble in reach, which is the
-	# key working correctly, and nothing in the tour could tell.
-	if what == "fire_asked":
-		return Survival.build_asked(game).is_finite()
+	# `fire_offered`: a press of `use` here would lay a fire, and its spot is
+	# ringed on the ground (Survival.fire_offered).
+	if what == "fire_offered":
+		return Survival.fire_offered(game).is_finite()
 	# Nothing the next press would eat: a hungry body eats what it carries before
 	# it lies down (Survival._fallback), so a tour that sleeps feeds him to this.
 	if what == "fed":
