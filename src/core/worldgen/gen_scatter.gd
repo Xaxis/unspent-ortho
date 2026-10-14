@@ -827,6 +827,21 @@ static func _furnish_site(c: GenContext, occ: PackedByteArray, rng: RandomNumber
 ## alone (streamed worldgen S4b). Hashed from its kind and its position to a
 ## 256th of a tile (two of one kind on one tile stand apart, so they turn apart),
 ## and `key`, the laying work's own row where it has one.
+## DRIFTWOOD IS WHAT THE SEA LEFT (owner, 2026-10-13: "driftwood isn't actually
+## driftwood, it seems to just refer to whatever tree"). Over half of it round
+## the start lay in grass and heath, fifteen tiles and more from any water, from
+## landscapes and vignettes that scattered it anywhere: a silvered log in a field
+## is a fallen tree with the wrong name. It lies only within this many steps of
+## the sea (GenContext.sea_steps), wherever it is laid.
+const STRAND_STEPS := 3
+
+
+static func on_strand(c: GenContext, p: Vector2) -> bool:
+	var x := floori(p.x)
+	var y := floori(p.y)
+	return x >= 0 and y >= 0 and x < c.size and y < c.size and c.sea_steps[y * c.size + x] <= STRAND_STEPS
+
+
 static func _add(c: GenContext, kind: int, p: Vector2, rot: float = -1.0, key: int = 0) -> WorldProp:
 	var w := c.w
 	var id := w.props.size()
@@ -1306,7 +1321,7 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 					_occupy(c, occ, p, 1.6)
 				for k in 4:
 					var q := p + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(2.0, 4.5)
-					if _free(c, occ, q, 0.0):
+					if _free(c, occ, q, 0.0) and on_strand(c, q):
 						_add(c, PropKind.DRIFTWOOD, q)
 			&"ruin":
 				var walls := rng.randi_range(2, 4)
@@ -1655,6 +1670,8 @@ static func _scatter_tiles(c: GenContext, f: Dictionary, width: int, ox: int, oy
 					continue
 				kind = BiomeScatter.shared(t, i, g, r)
 			if not holds(allow_mask, own, kind):
+				continue
+			if kind == PropKind.DRIFTWOOD and t.sea_steps[i] > STRAND_STEPS:
 				continue
 			if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - width] != 0 or road[i + width] != 0) and solid[kind] > 0.0:
 				continue

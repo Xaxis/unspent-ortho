@@ -336,7 +336,10 @@ const UNKNOWN := "unknown"
 ## 57. The crags keep a depot: the plan's old store, a winch house on a shelf's
 ##     lip, one to a region big enough, where a yard stands whole by a drop its
 ##     cable comes down, nearest the bench, with its racks (the_crags `_store_on`).
-const GEN := 57
+## 58. Driftwood lies only on the strand, within GenScatter.STRAND_STEPS of the sea,
+##     wherever it is laid: a landscape's sand inland, a wreck's or a broken
+##     boat's spill in a field, and a hull's spill up the dunes kept none.
+const GEN := 58
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

@@ -1324,6 +1324,8 @@ static func _about(L: Lay, kind: int, centre: Vector2, count: int, r0: float, r1
 		if placed >= count:
 			break
 		var q := centre + Vector2.from_angle(L.rng.randf() * TAU) * L.rng.randf_range(r0, r1)
+		if kind == PropKind.DRIFTWOOD and not GenScatter.on_strand(L.c, q):
+			continue
 		var clear := 0.0 if L.tight and PropKind.SOLID[kind] <= 0.0 else 0.3
 		if _put(L, kind, q, L.rng.randf() * TAU, level, clear) != null:
 			placed += 1

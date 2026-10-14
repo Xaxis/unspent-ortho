@@ -587,16 +587,23 @@ extends TestCase
 ## AT GEN 57 (2026-10-04, provisional): the crags keep a depot, the plan's old
 ## store at a shelf's lip. The six hold to the bit, and nothing is re-accepted:
 ## none of them is the crags.
+## RE-ACCEPTED AT GEN 58 (2026-10-13): driftwood lies only on the strand, within
+## GenScatter.STRAND_STEPS of the sea, wherever it is laid. Only `props` moves, on
+## all five; `country`, `country2`, `ground`, `level` and `blend` hold to the bit.
+## By kind on seed 1: driftwood 45 -> 26 (the ones in grass and heath), and the
+## room they held taken by their neighbours: debris 291 -> 292, wreckage 84 -> 89.
+## Seed 7: driftwood 38 -> 31, wrack 45 -> 46, boulder 138 -> 139, debris
+## 258 -> 257, wreckage 74 -> 76. No other kind moved.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 064bae18 100053b8 4fd7a826 cfce90f5",
-	3: "bd96c6d3 1d22db86 5948aded a4316902 7e58a668 64d16217",
-	7: "162a6e7e d00bfbac b0d6da8c 0f02d42c ee3f2b7e ac6e70a6",
-	42: "e0ad0bb3 b7ca1370 8dac8b33 2f4b7f69 1565ed7e bc74411a",
-	90210: "1e3082a2 f20462b0 fad98880 34b30d32 d7176524 013086b0",
+	1: "054710a9 3eac3638 064bae18 100053b8 4fd7a826 86d17ea9",
+	3: "bd96c6d3 1d22db86 5948aded a4316902 7e58a668 4877c0c2",
+	7: "162a6e7e d00bfbac b0d6da8c 0f02d42c ee3f2b7e be57248d",
+	42: "e0ad0bb3 b7ca1370 8dac8b33 2f4b7f69 1565ed7e 13b4f264",
+	90210: "1e3082a2 f20462b0 fad98880 34b30d32 d7176524 a6bc48a0",
 }
 
 
