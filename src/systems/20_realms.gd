@@ -211,11 +211,18 @@ func _press_goes() -> StringName:
 	# A gate stands beside the slot its year's people are cast at (StoryGates), so the
 	# press beside one of them is theirs (Survival.words_in_front): beside June,
 	# six, in 2029, the gate's reach caught the key and took him back to 2098.
-	if _settle > 0.0 or game.input_blocked() or Survival.words_in_front(game):
+	if _settle > 0.0 or game.input_blocked():
 		return &""
-	if reachable != null and reachable.pos.distance_to(game.player.pos) <= Portal.REACH and _shaft_wins():
+	# Asked every frame for the key's line (UiLink.use_hint), and the words in
+	# front are a walk over every person and readable thing: only when a shaft or
+	# a gate is in reach at all is it worth asking whether a person outranks it.
+	var shaft := reachable != null and reachable.pos.distance_to(game.player.pos) <= Portal.REACH
+	var gate := gate_near != &"" and _gate_at.distance_to(game.player.pos) <= GATE_REACH
+	if not (shaft or gate) or Survival.words_in_front(game):
+		return &""
+	if shaft and _shaft_wins():
 		return &"shaft"
-	if gate_near != &"" and _gate_at.distance_to(game.player.pos) <= GATE_REACH and _gate_wins():
+	if gate and _gate_wins():
 		return &"gate"
 	return &""
 
