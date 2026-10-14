@@ -290,10 +290,7 @@ func _draw_detail(R: Rect2i) -> void:
 	# A tool: what it works on in the world, by its verb.
 	var verb := String(d.get("verb", ""))
 	if verb != "":
-		var names := PackedStringArray()
-		for k: int in UiRules.PROP_VERBS:
-			if UiRules.PROP_VERBS[k] == verb and not names.has(PropKind.NAMES[k]):
-				names.append(PropKind.NAMES[k])
+		var names := UiRules.works_on(verb)
 		if not names.is_empty():
 			UiSlate.heading(self, Vector2i(x0, y), "works on", right)
 			y += UiTheme.LINE * (1 + UiSlate.wrapped(self, Vector2i(x0 + 12, y + UiTheme.LINE), right - x0 - 12, ", ".join(names), UiTheme.TEXT)) + 8

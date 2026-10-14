@@ -314,3 +314,13 @@ func test_a_keepers_core_reads_as_a_choice() -> void:
 	# A core whose power is not built yet still reads as a holding's cell.
 	eq(UiRules.core_uses(&"anvil_core").size(), 1, "the anvil's core (its power set aside): a cell only")
 	eq(UiRules.core_uses(&"scrap").size(), 0, "scrap is no keeper's core")
+
+
+## The make page says what a thing is FOR under its name: a recipe was chosen
+## by its name alone, and nothing said a pick breaks what an axe does not.
+func test_a_recipe_says_what_it_makes_is_for() -> void:
+	check(UiRules.purpose(Crafting.recipe(&"pick_made")).begins_with("break: "), "a pick breaks things: %s" % UiRules.purpose(Crafting.recipe(&"pick_made")))
+	check(UiRules.purpose(Crafting.recipe(&"soup")).begins_with("feeds "), "soup feeds: %s" % UiRules.purpose(Crafting.recipe(&"soup")))
+	check(UiRules.purpose(Crafting.recipe(&"campfire")).contains("sleep"), "a fire is slept by: %s" % UiRules.purpose(Crafting.recipe(&"campfire")))
+	check(UiRules.purpose(Crafting.recipe(&"oilskin")).contains("wet"), "an oilskin is against the wet: %s" % UiRules.purpose(Crafting.recipe(&"oilskin")))
+	eq(UiRules.purpose(Crafting.recipe(&"charcoal")), "", "a material's uses are its own list")
