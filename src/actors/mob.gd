@@ -104,8 +104,10 @@ const DROP_HOP := 0.5
 
 ## Draw the state at simulation time `now_ms`. delta 0 holds the pose (hitstop).
 ## `holding`: this body has hold of the player.
-func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
+## `drawn`: where its body is drawn (40_fight, DrawnPace), INF for its own place.
+func sync_view(delta: float, now_ms: float, holding: bool = false, drawn: Vector2 = Vector2.INF) -> void:
 	var s := state
+	var at := drawn if drawn.is_finite() else s.pos
 	_holding = holding
 	pos = s.pos
 	alive = s.alive
@@ -122,7 +124,7 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	# (Swim): the bed under deep water is the zero plane and the sheet is drawn
 	# above it, so a body left on the ground there is a body under the sea.
 	var swimming := Swim.swims(s.row) and Swim.deep(_world, s.pos)
-	var ground := _world.height_at(s.pos) + (Swim.WATER_Y - Swim.sink_of(s.row) if swimming else 0.0)
+	var ground := _world.height_at(at) + (Swim.WATER_Y - Swim.sink_of(s.row) if swimming else 0.0)
 	var fall := s.drop_fall(now_ms)
 	if fall >= 0.0 and fall < 1.0:
 		# Through the air (Brains `drop`): off the ledge's height with a hop, and
@@ -130,7 +132,7 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 		_z = lerpf(_world.height_at(s.drop_from), _world.height_at(s.drop_at), fall * fall) + DROP_HOP * 4.0 * fall * (1.0 - fall)
 	else:
 		_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
-	position = Vector3(s.pos.x, _z, s.pos.y)
+	position = Vector3(at.x, _z, at.y)
 	_wake(delta, swimming)
 	model.rotation.y = -s.facing
 	var p := _pose(now_ms)

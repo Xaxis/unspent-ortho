@@ -214,6 +214,11 @@ func press_dodge() -> void:
 
 # --- stepping ----------------------------------------------------------------
 
+## The real milliseconds stepped past `now` and not yet simulated (under a slice).
+func carry() -> float:
+	return _carry
+
+
 ## Advance by real seconds, in whole slices; the remainder carries.
 func step(delta_s: float) -> void:
 	hero.read_body()

@@ -79,6 +79,11 @@ const GLIDE_BAND := 0.16
 const THIRD_PITCH := 38.0
 
 var _level := 0.0
+## The level the camera is drawn at, gliding to `_level`: a notch of the wheel
+## sets where the zoom is going, not where the camera is this frame.
+var _shown := 0.0
+## Per second, the glide's rate: a notch is most of the way there in a sixth of a second.
+const ZOOM_GLIDE := 12.0
 var _saved := 0.0
 var _save_in := 0.0
 
@@ -129,6 +134,7 @@ func setup(g: Game) -> void:
 	# A game opening at the bottom of the zoom opens in third person, rather than
 	# snapping down to it on the first frame the keys are read.
 	g.camera.pitch_deg = pitch_of(_level)
+	_shown = _level
 	_saved = _level
 
 
@@ -154,12 +160,16 @@ func _process(delta: float) -> void:
 	if way != 0.0:
 		var by := pow(RATE, way * delta)
 		_level = level_of(height_of(_level) * by)
-		game.camera.view_height = height_of(_level)
+	if _shown != _level:
+		_shown = lerpf(_shown, _level, 1.0 - exp(-ZOOM_GLIDE * delta))
+		if absf(_shown - _level) < SETTLE:
+			_shown = _level
+		game.camera.view_height = height_of(_shown)
 	# Written every frame and not only while a key is down, so the angle cannot be
 	# left behind by anything else that moves the level — and so a system that
 	# borrowed the camera and put its own pitch back (95_flyover) is corrected on
 	# the first frame this file owns it again.
-	game.camera.pitch_deg = pitch_of(_level)
+	game.camera.pitch_deg = pitch_of(_shown)
 	# Written once the hand comes off the key, not on every frame of the sweep:
 	# a setting file is not a place to put sixty writes a second.
 	if not _tool and absf(_level - _saved) > SETTLE:
@@ -178,7 +188,6 @@ func take_scroll(steps: Vector2) -> bool:
 	if Shoulder.zoom_crossing(false, _level, 0.0, 0.0, steps.y) > 0 and _over_shoulder():
 		return true
 	_level = level_of(height_of(_level) * pow(RATE, steps.y * SCROLL_SECONDS))
-	game.camera.view_height = height_of(_level)
 	_save_in = 0.6
 	return true
 
@@ -210,6 +219,7 @@ func _over_shoulder() -> bool:
 ## would get, instead of a close camera still looking straight down.
 func set_height(h: float) -> void:
 	_level = level_of(h)
+	_shown = _level
 	if game != null and game.camera != null:
 		game.camera.view_height = height_of(_level)
 		game.camera.pitch_deg = pitch_of(_level)

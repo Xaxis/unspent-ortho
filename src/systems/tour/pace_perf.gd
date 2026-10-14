@@ -50,6 +50,9 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 			printerr("tour perf pace: end with nothing begun")
 			return false
 		probe.call(&"report")
+		# Out of the tree now, not at the frame's end: a `begin` on the next line
+		# must find no probe standing.
+		tour.remove_child(probe)
 		probe.queue_free()
 		return true
 	printerr("tour perf pace: begin|end, not %s" % parts[2])

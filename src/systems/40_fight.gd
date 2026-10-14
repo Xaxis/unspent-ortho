@@ -182,9 +182,44 @@ func _physics_process(delta: float) -> void:
 		sim.real_s = now_s
 		sim.step(delta)
 	player.take_place()
+	_note_paces()
 	_handle(sim.drain())
 	_landing()
 	_mend()
+
+
+## Where the hero and every machine stood at the end of each tick, for drawing
+## them evenly between (DrawnPace). The rules never read these.
+var _hero_pace := DrawnPace.new()
+var _paces := {}
+
+
+func _note_paces() -> void:
+	_hero_pace.note(sim.now, sim.hero.pos)
+	for m in sim.mobs:
+		var p: DrawnPace = _paces.get(m)
+		if p == null:
+			p = DrawnPace.new()
+			_paces[m] = p
+		p.note(sim.now, m.pos)
+	if _paces.size() > sim.mobs.size():
+		for k: Variant in _paces.keys():
+			if not sim.mobs.has(k):
+				_paces.erase(k)
+
+
+## Where `body` (the hero or a MobState) is drawn this frame: the real time the
+## frame stands at (the simulation's clock, the real time it still owes, the
+## way into the next tick), less the lag that keeps it between two noted places.
+## INF for a body never noted.
+func drawn(body: Object) -> Vector2:
+	if sim == null:
+		return Vector2.INF
+	var pace: DrawnPace = _hero_pace if body == sim.hero else _paces.get(body)
+	if pace == null:
+		return Vector2.INF
+	var tick := 1000.0 / float(Engine.physics_ticks_per_second)
+	return pace.at(DrawnPace.real_ms(sim.now, sim.carry(), Engine.get_physics_interpolation_fraction(), tick))
 
 
 func _process(delta: float) -> void:
@@ -194,6 +229,7 @@ func _process(delta: float) -> void:
 	if _held:
 		game.camera.snap_to(_focus)
 	var frozen := sim.hold
+	game.player.drawn = drawn(sim.hero)
 	game.player.sync_view(0.0 if frozen else delta, frozen)
 	if not _curtains.is_empty():
 		_age_curtains()

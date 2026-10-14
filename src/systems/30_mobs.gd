@@ -155,6 +155,7 @@ func _process(delta: float) -> void:
 		return
 	_ensure_nodes()
 	var frozen := sim.hold
+	var fight := game.get_node_or_null(^"40_fight")
 	for c in _layer.get_children():
 		var mob := c as Mob
 		if mob == null:
@@ -166,7 +167,8 @@ func _process(delta: float) -> void:
 				MobFx.puffs(game, mob.global_position, Vector2.ZERO, dust, 3, 0.5 + mob.state.radius * 0.6, mob.state.id)
 			mob.queue_free()
 			continue
-		mob.sync_view(0.0 if frozen else delta, sim.now, sim.hero.holder == mob.state)
+		mob.sync_view(0.0 if frozen else delta, sim.now, sim.hero.holder == mob.state,
+			fight.call(&"drawn", mob.state) if fight != null else Vector2.INF)
 
 
 ## What the spawner asks when a LENS is drawing, and null otherwise, which tells

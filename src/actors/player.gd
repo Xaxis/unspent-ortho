@@ -31,6 +31,10 @@ var intent_run := false
 ## (48_wake) holds it while he lies across the waterline, before any of those
 ## can run, and puts it back to 0 as he gets up.
 var lift := 0.0
+## Where he is DRAWN on the ground (40_fight, DrawnPace): a constant lag behind
+## `pos`, between the places the simulation stepped him to, so he moves evenly
+## on every frame. INF draws him at `pos`. The rules never read it.
+var drawn := Vector2.INF
 ## The craft carrying this body (src/core/craft/), or null on foot. In a running
 ## game the hero's own `ride` is what the simulation moves by; this is the same
 ## craft, for the tests and tools where no simulation owns the body. The crafts
@@ -127,9 +131,12 @@ func take_place() -> void:
 		speed = hero.speed
 
 
-## Take the hero's place and draw it. `frozen` holds the pose (hitstop).
+## Take the hero's place and draw it. `frozen` holds the pose (hitstop). A
+## delta of 0 that is not a hitstop is a snap: he is drawn at `pos`.
 func sync_view(delta: float, frozen: bool = false) -> void:
 	take_place()
+	if delta == 0.0 and not frozen:
+		drawn = Vector2.INF
 	_sync(0.0 if frozen else delta)
 
 
@@ -226,7 +233,7 @@ func _sync(delta: float) -> void:
 	var was_swimming := swimming
 	swimming = ride == null and Swim.deep(world, pos)
 	_wake(was_swimming)
-	var target := world.height_at(pos)
+	var target := world.height_at(drawn if drawn.is_finite() else pos)
 	_z = target if delta == 0.0 else lerpf(_z, target, 1.0 - exp(-14.0 * delta))
 	if not hanging:
 		position = on_land()
@@ -255,7 +262,8 @@ func _sync(delta: float) -> void:
 ## Where he is on the land: the node's own place, except up a walker's leg,
 ## where the node is with the figure and this stays where he left the ground.
 func on_land() -> Vector3:
-	return Vector3(pos.x, _z + lift, pos.y)
+	var at := drawn if drawn.is_finite() else pos
+	return Vector3(at.x, _z + lift, at.y)
 
 
 ## Where he is heard from, in tile space: `pos`, except up a walker's leg, where

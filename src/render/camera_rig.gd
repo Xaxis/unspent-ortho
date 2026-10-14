@@ -601,6 +601,24 @@ func leaning() -> bool:
 
 
 ## Jump straight to the target (no easing): startup, teleports, screenshots.
+## From above, a terrace step is half a unit of height, and the frame followed
+## every one: each tile edge a walk crossed scrolled the whole picture about 20
+## pixels and settled again (the bounce). The height is followed with a step's
+## width of slack, closed slowly inside it and at the follow rate past it; over
+## the shoulder the slack goes with the blend and the eye keeps to the head.
+const HEIGHT_BAND := 0.6
+## Per second, inside the band: the frame comes back to him over a few seconds.
+const HEIGHT_SETTLE := 0.8
+
+
+func _follow(at: Vector3, to: Vector3, delta: float) -> Vector3:
+	var k := 1.0 - exp(-follow_rate * delta)
+	var e := to.y - at.y
+	var past := signf(e) * maxf(0.0, absf(e) - HEIGHT_BAND * (1.0 - _sh_t))
+	var y := at.y + past * k + (e - past) * (1.0 - exp(-HEIGHT_SETTLE * delta))
+	return Vector3(lerpf(at.x, to.x, k), y, lerpf(at.z, to.z, k))
+
+
 func snap_to(p: Vector3) -> void:
 	target = p
 	_smoothed = p
@@ -681,7 +699,7 @@ func _quake_step(delta: float) -> Vector2:
 
 func _process(delta: float) -> void:
 	_quake_at = _quake_step(delta)
-	_smoothed = _smoothed.lerp(target, 1.0 - exp(-follow_rate * delta))
+	_smoothed = _follow(_smoothed, target, delta)
 	_clear_now = lerpf(_clear_now, maxf(DOF_CLEAR_LIFT, clear_lift), 1.0 - exp(-CLEAR_EASE * delta))
 	_ease_lean(delta)
 	_ease_shoulder(delta)
@@ -951,7 +969,10 @@ func _ease_lean(delta: float) -> void:
 	_pitch = lerpf(_pitch, lean_pitch, to_out if is_zero_approx(lean_pitch) else to_in)
 	_zoom = lerpf(_zoom, lean_zoom, to_out if is_equal_approx(lean_zoom, 1.0) else to_in)
 	_bias = _bias.lerp(lean_bias, to_out if lean_bias.length() < LEAN_STILL else to_in)
-	_frame = _frame.lerp(frame_bias, to_out)
+	# At the follow's own rate: a room's framing leans back against each step he
+	# takes (21_doors), and eased slower than the follow the two added up to a
+	# frame that ran half again past where it settles, then swung back.
+	_frame = _frame.lerp(frame_bias, 1.0 - exp(-follow_rate * delta))
 
 
 func _apply() -> void:

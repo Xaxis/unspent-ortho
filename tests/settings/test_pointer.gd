@@ -34,6 +34,9 @@ func test_the_land_zooms_when_nothing_holds_the_camera() -> void:
 	await _make()
 	var h := _game.camera.view_height
 	check(bool(_sys("08_pointer").call("offer", Vector2(0.0, 2.0))), "somebody took it")
+	# The camera glides to a notch rather than jumping a notch a frame (09_view).
+	for i in 30:
+		await tree.process_frame
 	gt(_game.camera.view_height, h + 0.01, "two notches out: the land stands further back")
 	_done()
 
