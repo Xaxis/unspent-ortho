@@ -691,6 +691,28 @@ func _grants(id: StringName) -> String:
 	return " ".join(out)
 
 
+## How many of `id` are on the body (the pack tags them WORN).
+func fitted_count(id: StringName) -> int:
+	return loadout.fitted_count(id)
+
+
+## A carried piece put on from the pack (E on its row in CARRY): into its own
+## slot over whatever was there, or off again if it is the one on. Modules are
+## socketed here, on the gear page, where the piece they go into is chosen. The
+## line says what happened; a leading "!" refuses.
+func put_on(id: StringName) -> String:
+	var slot := Gear.slot_of(id)
+	if slot == &"" or slot == Gear.HAND_SLOT:
+		return "!That is not worn."
+	var name := UiRules.item_name(id).capitalize()
+	if loadout.item(slot) == id:
+		var broke := _pull_modules(slot)
+		loadout.clear_slot(slot)
+		return "%s off." % name if broke == "" else "%s off. %s" % [name, broke]
+	loadout.fit(slot, id)
+	return "%s on." % name
+
+
 ## One key fits the whole slot, in the order a player wants it: put something on,
 ## then fill its sockets, then swap it for the next thing carried, then take it
 ## off. Every step says what happened, so the page teaches itself.

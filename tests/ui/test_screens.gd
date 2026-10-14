@@ -654,6 +654,38 @@ func test_the_pack_says_the_headlamp_is_worn_and_tells_twin_uses_apart() -> void
 	Fx.done(g)
 
 
+## E on a piece you wear puts it on, from the pack: an oilskin sat under TO WEAR
+## with "e wear" on the key strip and the press did nothing at all.
+func test_e_in_the_pack_puts_on_what_is_worn_and_lights_the_lamp() -> void:
+	var Sx := preload("res://tests/save/save_fixture.gd")
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=11", "--weather=clear:0"])
+	await tree.process_frame
+	g.inventory.add(&"oilskin")
+	if not g.inventory.has(&"lamp"):
+		g.inventory.add(&"lamp")
+	var s := UiInventoryScreen.new()
+	s.game = g
+	s.inventory = g.inventory
+	s.body = g.body
+	tree.root.add_child(s)
+	s.open()
+	s.select(&"oilskin")
+	eq(s.verb_for(&"oilskin"), &"wear", "an oilskin is worn")
+	check(_has_word(await _said(s), "wear"), "and the key strip says so")
+	s.handle(&"confirm")
+	check(UiLink.fitted(g, &"oilskin"), "E puts it on: %s" % s.note)
+	check(_has_word(await _said(s), "take off"), "then the key says what it does next")
+	s.handle(&"confirm")
+	check(not UiLink.fitted(g, &"oilskin"), "and E again takes it off: %s" % s.note)
+	eq(s.verb_for(&"knife"), &"hold", "a tool is still held, not worn")
+	s.select(&"lamp")
+	var was := g.body.lamp_lit
+	s.handle(&"confirm")
+	check(g.body.lamp_lit != was, "E on the headlamp lights it or puts it out: %s" % s.note)
+	s.free()
+	Sx.end(g)
+
+
 ## The machine reads app names the WORK, not the mark it left. Four rows of
 ## "cut in rows" with four different arrows is what a placeholder looks like,
 ## and on the coast the four nearest works really are all turf rows.

@@ -77,6 +77,27 @@ static func wear(inv: Inventory, id: StringName) -> bool:
 	return inv.wear_kit(id)
 
 
+## Whether a carried gear piece (Gear.is_wearable) is on the body (54_gear).
+static func fitted(game: Game, id: StringName) -> bool:
+	var g := game.get_node_or_null(^"54_gear") if game != null else null
+	return g != null and int(g.call(&"fitted_count", id)) > 0
+
+
+## Put a gear piece on from the pack, or take it off: the gear system's line,
+## a leading "!" for a refusal.
+static func put_on(game: Game, id: StringName) -> String:
+	var g := game.get_node_or_null(^"54_gear") if game != null else null
+	return String(g.call(&"put_on", id)) if g != null else "!Gear is put on in a game."
+
+
+## The headlamp on or off (15_lights, the lamp key's own way). True if lit after.
+static func toggle_lamp(game: Game) -> bool:
+	var lights := game.get_node_or_null(^"15_lights") if game != null else null
+	if lights != null:
+		lights.call(&"toggle_lantern")
+	return game != null and game.body.lamp_lit
+
+
 ## Hold a carried thing (&"" = bare hands). Survival also puts it in the figure's hand.
 static func hold(game: Game, inv: Inventory, id: StringName) -> void:
 	if game != null and game.inventory == inv:
