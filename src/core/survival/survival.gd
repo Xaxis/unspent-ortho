@@ -218,7 +218,29 @@ static func threat_near(game: Game) -> bool:
 
 # --- Targets --------------------------------------------------------------
 
+## Asked four or five times a frame (the key's line, the harvest mark, the
+## story's words-or-ground, the lamp's aim), and each asking walked every prop
+## in reach: 0.7 to 1.1 ms a frame on the start coast for one answer. It is kept
+## for the frame, and everything that could change it within one is in the key:
+## where he stands and faces, what he holds, the dark, and what the world has
+## taken, left, spent, built or put down.
+static var _target_key: Array = []
+static var _target: WorldProp = null
+
+
 static func use_target(game: Game) -> WorldProp:
+	var state := SurvivalState.of(game)
+	var key := [game.get_instance_id(), Engine.get_process_frames(), game.player.pos, game.player.facing, game.inventory.held,
+		in_the_dark(game), game.world.prop_count(), game.world.depleted.size(), state.left.size(),
+		state.spent.size(), state.built.size()]
+	if key == _target_key:
+		return _target
+	_target = _find_use_target(game)
+	_target_key = key
+	return _target
+
+
+static func _find_use_target(game: Game) -> WorldProp:
 	var p := game.player.pos
 	var ahead := Vector2.from_angle(game.player.facing)
 	var best: WorldProp = null
