@@ -80,6 +80,8 @@ func setup(g: Game) -> void:
 		Survival.hold(g, h)
 	elif g.player.model != null:
 		g.player.model.set_held(inv.held)
+	_handled_seen = inv.handled.size()
+	_known = _recipes_known()
 	inv.changed.connect(_on_inventory_changed)
 	Events.screen_changed.connect(_on_screen_changed)
 	Events.hit.connect(_on_hit)
@@ -183,6 +185,50 @@ func _on_screen_changed(_screen: StringName, _open: bool) -> void:
 func _on_inventory_changed() -> void:
 	if game.player.model != null and game.player.model.held != game.inventory.held:
 		game.player.model.set_held(game.inventory.held)
+	_note_known()
+
+
+## The kinds ever carried, and the recipes known (Crafting.known), as of the
+## pack's last change. A recipe joins the make page when the last thing it wants
+## is first carried, and nothing said so: a player found new rows by chance.
+## When ONE new kind lands and makes recipes known, they are said, once. More at
+## a time is a load or a gift, not a find, and is only taken as the new mark.
+var _handled_seen := 0
+var _known := {}
+const NEW_LINE := "Something new to make: %s."
+## Named in the line before it says "and more".
+const NEW_NAMED := 3
+
+
+func _recipes_known() -> Dictionary:
+	var out := {}
+	for r: Dictionary in Recipes.LIST:
+		if not r.has("action") and Crafting.known(game.inventory, r):
+			out[r.id] = r
+	return out
+
+
+func _note_known() -> void:
+	var now := _recipes_known()
+	var grew := game.inventory.handled.size() - _handled_seen
+	_handled_seen = game.inventory.handled.size()
+	var fresh := PackedStringArray()
+	if grew == 1:
+		for id: StringName in now:
+			if _known.has(id):
+				continue
+			var r: Dictionary = now[id]
+			var built := StringName(r.get("builds", &""))
+			var what := ("a %s" % built) if built != &"" else UiRules.item_name(UiRules.recipe_output(r))
+			var words := "%s %s" % [what, UiRules.station_words(StringName(r.get("at", &"")))]
+			if not fresh.has(words):
+				fresh.append(words)
+	_known = now
+	if fresh.is_empty():
+		return
+	var shown := fresh.slice(0, NEW_NAMED)
+	var line := ", ".join(shown) + (" and more" if fresh.size() > NEW_NAMED else "")
+	Events.message.emit(NEW_LINE % line)
 
 
 ## The keys are read as the edge of the action's held state, not from input events
