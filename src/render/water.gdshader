@@ -411,13 +411,15 @@ void fragment() {
 		c = max(c, mix(SPRUCE1, BRINE1, 0.5) * mix(1.0, 0.6, pale));
 	}
 	c *= mix(mix(1.0, pooled ? 0.8 : 0.22, deep), 1.0, pale);
-	// THE SEA FROM FAR ABOVE KEEPS ITS BODY. At a man's height deep water is near
-	// black, and what lights it is what it mirrors; from up a walker's leg nothing
-	// near is mirrored in it, and a black sea under the air came out as the air's
-	// own colour, the same as the sky. So far up (`far`) the open sea's deep takes
-	// its own colour back, a deep blue a little green, lit like any surface.
+	// THE SEA SEEN FROM ABOVE KEEPS ITS BODY. At a man's height deep water is near
+	// black, and what lights it is what it mirrors. Looking down into it, from the
+	// play camera or from up a walker's leg (`far`), little is mirrored: a black
+	// sea showed only the sky's smears on black, and from far up came out as the
+	// air's own colour. So seen from above the open sea's deep takes its own
+	// colour back, a deep blue a little green, lit like any surface.
 	if (kind == 0) {
-		c = mix(c, SEA_FAR_BODY, far * deep * (1.0 - pale));
+		float above = persp ? far : 1.0;
+		c = mix(c, SEA_FAR_BODY, above * deep * (1.0 - pale));
 	}
 	// THE SUN'S HUE BELONGS IN THE WATER'S REFLECTION, NOT IN ITS BODY. The body
 	// colour is lit by the sun like any albedo, so an amber evening sun turned a
