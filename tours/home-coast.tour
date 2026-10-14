@@ -114,7 +114,7 @@ try 3
   await took:stone 14
 end
 try 3
-  near tip
+  near scrap_heap
   walk 0,0 0.05
   press use 0.1
   await took:scrap 20

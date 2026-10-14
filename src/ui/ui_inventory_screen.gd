@@ -335,7 +335,7 @@ func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 	UiSlate.meter(self, bar, load / (cap * 2.0), 0.5)
 	var creel_x := bar.position.x + bar.size.x / 2
 	UiDraw.rect(self, Rect2i(creel_x, bar.position.y - 4, 2, bar.size.y + 8), UiTheme.BRIGHT)
-	UiDraw.text(self, Vector2i(creel_x - UiFont.width("creel") / 2, bar.end.y + 2), "creel", UiTheme.TEXT_DIM)
+	UiDraw.text(self, Vector2i(creel_x - UiFont.width("full") / 2, bar.end.y + 2), "full", UiTheme.TEXT_DIM)
 	var held_name := UiRules.item_name(inventory.held) if inventory.held != &"" else "bare hands"
 	UiDraw.text(self, Vector2i(x0, ly + 72), "in hand", UiTheme.TEXT_DIM)
 	UiDraw.text(self, Vector2i(x0 + 96, ly + 72), held_name, UiTheme.TEXT)

@@ -104,7 +104,7 @@ func test_a_carried_tool_is_taken_in_hand_when_the_held_one_cannot_do_it() -> vo
 	g.inventory.add(&"pick")
 	Survival.hold(g, &"knife")
 	Fx.put(g, PropKind.COAL_TIP, Vector2(0.9, 0))
-	eq(Survival.describe_target(g), "coal tip - break", "the prompt names what the carried pick would do")
+	eq(Survival.describe_target(g), "coal heap - break", "the prompt names what the carried pick would do")
 	check(Fx.take(g), "worked with the pick")
 	eq(g.inventory.held, &"pick", "pick in hand")
 	eq(g.inventory.count(&"coal"), 1)

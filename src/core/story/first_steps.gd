@@ -30,7 +30,7 @@ const STEPS: Array[Dictionary] = [
 	{"key": &"wood", "text": "Gather more wood to burn into charcoal", "need": 4, "act": &"use", "target": &"driftwood"},
 	{"key": &"charcoal", "text": "Burn the wood into charcoal at your fire", "act": &"craft", "target": &"fire"},
 	{"key": &"haft", "text": "Carve a handle at your fire", "act": &"craft", "target": &"fire"},
-	{"key": &"plate", "text": "Pull scrap metal out of the junk tip", "act": &"use", "target": &"tip"},
+	{"key": &"plate", "text": "Pull scrap metal out of the scrap heap", "act": &"use", "target": &"tip"},
 	{"key": &"pick", "text": "Make a pickaxe at your fire", "act": &"craft", "target": &"fire"},
 	{"key": &"carry", "text": "Check your pack: the pickaxe is in it", "act": &"inventory", "target": &""},
 	{"key": &"iron", "text": "Break iron out of a rebar slab with the pickaxe", "act": &"use", "target": &"slab"},
@@ -56,7 +56,7 @@ const COVERS: Array[StringName] = [&"", &"fire_gather", &"fire_lay", &"charcoal_
 
 ## The word a target is called by where the mark stands over it.
 const WORD := {
-	&"maren": "Maren", &"driftwood": "driftwood", &"stone": "boulder", &"tip": "junk tip",
+	&"maren": "Maren", &"driftwood": "driftwood", &"stone": "boulder", &"tip": "scrap heap",
 	&"slab": "rebar slab", &"fire": "your fire", &"camp": "the crew's camp",
 }
 
