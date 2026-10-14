@@ -253,6 +253,10 @@ const DEFS := {
 		"where": {"countries": ["slums"], "grounds": ["road", "floor", "gravel", "rock"]},
 	},
 	&"dog.yard": {
+		# A BEAST LEAVES YOU BE until you strike it (owner, 2026-10-13: "they would
+		# need to be attacked for them to even think about attacking you"):
+		# indifferent, and only a blow turns it (FightSim._wake).
+		"disposition": &"indifferent",
 		# A dog goes in after you: the beasts were never the ones the water stopped.
 		"crosses": &"swim",
 		"model": &"dog", "machine": false, "approach": &"rush", "part": &"none",
@@ -264,6 +268,10 @@ const DEFS := {
 		"where": {"countries": GREEN_COUNTRIES, "green_max": 40},
 	},
 	&"dog.feral": {
+		# A BEAST LEAVES YOU BE until you strike it (owner, 2026-10-13: "they would
+		# need to be attacked for them to even think about attacking you"):
+		# indifferent, and only a blow turns it (FightSim._wake).
+		"disposition": &"indifferent",
 		# A dog goes in after you: the beasts were never the ones the water stopped.
 		"crosses": &"swim",
 		"model": &"dog", "machine": false, "approach": &"rush", "part": &"none",
@@ -275,6 +283,10 @@ const DEFS := {
 		"where": {"countries": GREEN_COUNTRIES, "green_min": 55, "day_min": 6},
 	},
 	&"bull.field": {
+		# A BEAST LEAVES YOU BE until you strike it (owner, 2026-10-13: "they would
+		# need to be attacked for them to even think about attacking you"):
+		# indifferent, and only a blow turns it (FightSim._wake).
+		"disposition": &"indifferent",
 		"model": &"bull", "machine": false, "approach": &"charge", "turns": 3, "part": &"none",
 		"pace": 3.5, "dash": 10.0, "quick": 470, "radius": 0.5, "height": 1.1, "life": 6,
 		"sees": 7, "hears": 10, "racket": 0, "reach": 1, "ready": 3, "forget": 16, "tether": 30, "safe": 16,
