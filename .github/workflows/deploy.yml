@@ -88,7 +88,9 @@ jobs:
           npx --prefix tools/web playwright install --with-deps chromium-headless-shell
 
       - name: Prove the web build boots (CPU WebGL)
-        run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=400
+        # 600 s: the title boots in 200-350 s on a runner's CPU WebGL, so 400 left a
+        # slow runner no room and failed good builds with no error at all.
+        run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=600
 
       # The landing page draws nothing on WebGL, so this runner proves it whole,
       # before it goes out: the game's face, every frame, no console error.
