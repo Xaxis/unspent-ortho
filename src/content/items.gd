@@ -176,7 +176,7 @@ const DEFS := {
 	# Cut out of a pressure block on the frost sea with a steel edge (Takes): the
 	# clear heart of a slab of sea ice, the raw the deep ice lens is ground from.
 	&"lens_ice": {"name": "lens ice", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"slate"]},
-	&"scrap": {"name": "piece of plate", "many": "plate", "bulk": 2.0, "group": &"material"},
+	&"scrap": {"name": "scrap metal", "many": "scrap metal", "bulk": 2.0, "group": &"material"},
 	# Steel wire rope cut out of a lift core in the Ruined Metropolis: the raw
 	# its elite material is drawn from (EliteStock: tower_cable). Machine-made,
 	# so it is drawn in the module's violet like plate is.

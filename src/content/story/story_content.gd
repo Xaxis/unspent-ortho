@@ -5954,7 +5954,7 @@ const LEAD := {
 	&"charcoal_gather": "Charcoal for the pick: four driftwood or dead wood, at {at}.",
 	&"charcoal_set": "Charcoal for the pick, for the iron: set it going at {at}.",
 	&"haft": "A handle for the pick, whittled from wood.",
-	&"plate": "Plate for the pick's head: turn over the scrap heap.",
+	&"plate": "Scrap metal for the pick's head: turn over the scrap heap.",
 	&"pick": "A pick for the iron, made at {at}.",
 	&"ore": "The crew past the old works pay for iron. Take the pick to a slab.",
 	&"camp": "Iron for the crew, so they stay away from her fire: the map marks the camp.",
@@ -5972,7 +5972,7 @@ const LEAD := {
 	&"rook_again": "Back to the crew, with what the yard told you: they want someone who knows the old machines.",
 	&"vera": "The Holdfast's leader, for what she wants of you: she is waiting at the camp.",
 	# The crossing (slice 3): a raft, then the narrows, then the archive.
-	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
+	&"raft": "A raft, for water no road crosses: driftwood, scrap metal, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the map marks where it is kept.",
 	# The archive (slice 3 step 4) and back at the camp (step 8).
