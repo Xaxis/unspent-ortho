@@ -630,6 +630,31 @@ func test_x_puts_a_row_down_and_asks_first_for_a_tool() -> void:
 	Fx.done(g)
 
 
+## A tool chosen in the pack is set against the one in hand on the hardness
+## ladder, in words: what choosing it would change.
+func test_the_pack_sets_a_tool_against_the_one_in_hand() -> void:
+	var g := Fx.flat()
+	g.inventory.add(&"knife")
+	g.inventory.add(&"pick_steel")
+	g.inventory.held = &"knife"
+	var s := UiInventoryScreen.new()
+	s.game = g
+	s.inventory = g.inventory
+	s.body = g.body
+	tree.root.add_child(s)
+	s.open()
+	s.select(&"pick_steel")
+	s.settle()
+	var said := await _said(s)
+	check(_has_word(said, "harder than your knife"), "a steel pick against the iron knife: %s" % str(said))
+	s.select(&"knife")
+	s.settle()
+	said = await _said(s)
+	check(not _has_word(said, "than your knife") and not _has_word(said, "as hard as"), "the knife is not set against itself: %s" % str(said))
+	s.queue_free()
+	Fx.done(g)
+
+
 func test_the_pack_says_the_headlamp_is_worn_and_tells_twin_uses_apart() -> void:
 	var g := Fx.flat()
 	if not g.inventory.has(&"lamp"):
@@ -644,7 +669,7 @@ func test_the_pack_says_the_headlamp_is_worn_and_tells_twin_uses_apart() -> void
 	s.settle()
 	var said := await _said(s)
 	var at := said.find("head")
-	check(at >= 0 and at + 1 < said.size() and said[at + 1].contains("headlamp"), "the headlamp he wears is on his head: %s" % str(said))
+	check(at >= 0 and at + 1 < said.size() and said[at + 1].contains("headlamp"), "the headlamp is worn on the head: %s" % str(said))
 	# What it goes into is what he could make: nothing wanting things he has never
 	# carried is named, only counted.
 	check(not said.any(func(w: String) -> bool: return w.begins_with("steel knife")), "no steel knife before charcoal or an edge: %s" % str(said))

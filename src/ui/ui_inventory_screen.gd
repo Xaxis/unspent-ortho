@@ -217,7 +217,7 @@ func _draw() -> void:
 		if int(row.count) > 1:
 			UiDraw.text(self, Vector2i(nx + 8, top), "×%d" % row.count, UiTheme.TEXT_DIM)
 			nx += 10 + UiFont.width("×%d" % row.count)
-		# The headlamp is always on his head (worn_in), lit or not.
+		# The headlamp is always on the head (worn_in), lit or not.
 		var lit := id == &"lamp" and game != null and game.body.lamp_lit
 		if inventory.held == id or UiLink.fitted(game, id) or id == &"lamp":
 			_tag(Vector2i(nx + 12, top), "HELD" if inventory.held == id else ("LIT" if lit else "WORN"))
@@ -295,6 +295,10 @@ func _draw_detail(R: Rect2i) -> void:
 		UiSlate.heading(self, Vector2i(x0, y), "hardness", right)
 		_draw_ladder(Vector2i(x0 + 12, y + UiTheme.LINE + 2), stuff)
 		y += UiTheme.LINE * 2 + 16
+		var against := against_held(id, stuff)
+		if against != "":
+			UiDraw.text(self, Vector2i(x0 + 12, y - 8), against, UiTheme.TEXT_DIM)
+			y += UiTheme.LINE
 	# A keeper's core is a choice, and it is drawn as one: its uses side by side,
 	# each with what it gives and costs, instead of a list of recipes.
 	var choice := UiRules.core_uses(id)
@@ -389,7 +393,7 @@ func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 		UiDraw.text(self, at + Vector2i(72, 0), ", ".join(on) if not on.is_empty() else "nothing", UiTheme.TEXT if not on.is_empty() else UiTheme.TEXT_DIM)
 
 
-## What is on the body in `slot`, by name. The headlamp is on his head from the
+## What is on the body in `slot`, by name. The headlamp is on the head from the
 ## start (50_survival), beside whatever else is.
 func worn_in(slot: StringName) -> PackedStringArray:
 	var on := PackedStringArray()
@@ -419,6 +423,25 @@ func _facts(id: StringName, count: int) -> PackedStringArray:
 		out.append("worn: %s" % d.kit)
 	out.append("bulk %s%s" % [UiRules.num(Items.bulk(id)), " each" if count > 1 else ""])
 	return out
+
+
+## The chosen tool's rung against the one in hand, in words: what choosing it
+## would change. "" when it is the one in hand, or nothing in hand is on the
+## ladder.
+func against_held(id: StringName, stuff: StringName) -> String:
+	var held := inventory.held if inventory != null else &""
+	if held == &"" or held == id:
+		return ""
+	var in_hand := LADDER.find(Items.stuff(held))
+	if in_hand < 0:
+		return ""
+	var here := LADDER.find(stuff)
+	var name := UiRules.item_name(held)
+	if here > in_hand:
+		return "harder than your %s: it takes what %s cannot" % [name, LADDER[in_hand]]
+	if here < in_hand:
+		return "softer than your %s" % name
+	return "as hard as your %s" % name
 
 
 func _draw_ladder(at: Vector2i, stuff: StringName) -> void:
