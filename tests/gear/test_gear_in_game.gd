@@ -89,6 +89,19 @@ func test_the_gear_page_fits_sockets_swaps_and_clears_with_one_key() -> void:
 	game.free()
 
 
+## The gear page opens beside a hostile from home because it reads; fitting or
+## swapping there, with the world stopped, would change the fight while it waits.
+func test_the_gear_page_will_not_fit_with_a_hostile_close() -> void:
+	var sys := _boot(["--give=oilskin:1", "--spawn=runner"])
+	await tree.process_frame
+	check(UiRules.hostile_near(tree.get_nodes_in_group(&"mobs"), game.player.pos), "a runner close by")
+	var l: Loadout = sys.get("loadout")
+	var said := SlateFeeds.act(&"loadout", game, &"body")
+	check(said.begins_with("!"), "fitting refuses: %s" % said)
+	eq(l.item(&"body"), &"", "and nothing went on")
+	game.free()
+
+
 ## The hand's row answers about the hand: what is held is carrying's business,
 ## and this page binds a module to the haft and takes it off again. It used to
 ## answer "You carry nothing for that." about a slot that was already full.
