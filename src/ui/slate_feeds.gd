@@ -18,26 +18,22 @@ class_name SlateFeeds
 ##   default: head body hands back tool craft, from the worn kit and the thing in
 ##   hand; resistances from Body.resist; no abilities; the base body in bare hands.
 ##
-## reads (disposition, interference):
+## reads (disposition, interference), drawn on home under the body:
 ##   {interference: float 0..1 (or -1 unknown), network: String,
 ##    asking: String — the plan's own note on what this REGION is still being
 ##      held for, one line, never a checklist (`Chapter.asking`, VISION §10.4);
 ##      "" where nothing has a file on the place,
 ##    causes: [String] — what the player is feeding the file right now, named
-##      (StoryContent.READS_CAUSE by cause id: a relic worn is `carried`),
-##    scans: [{id: StringName, kind: StringName, name: String, pos: Vector2,
-##             disposition: StringName (hostile wary observant indifferent), note: String}]}
-##   default: every living machine (roster `machine: true`) within READ_RADIUS
-##   tiles, hostile or indifferent by its `hostile` flag; animals give no
-##   signature; interference unknown.
+##      (StoryContent.READS_CAUSE by cause id: a relic worn is `carried`)}
+##   default: interference unknown, so home draws no machines' read. What each
+##   machine makes of the player is on the lock-on (TargetRead), not here.
 ##
 ## saves: not a feed. The saves app (UiSavesScreen) talks to the save system
 ##   (05_save: save_to, load_from) itself; it lives under home like the others.
 
 ## The apps that live under home (and read, so they open beside a hostile once
-## home is up); loadout and reads are filled through feeds.
-const APPS: Array[StringName] = [&"loadout", &"reads", &"saves"]
-const READ_RADIUS := 24.0
+## home is up); loadout is filled through a feed.
+const APPS: Array[StringName] = [&"loadout", &"saves"]
 const SLOTS: Array[StringName] = [&"head", &"body", &"hands", &"back", &"tool", &"craft"]
 ## Worn kit, by the slot it sits in.
 const KIT_SLOT := {&"plate": &"body", &"brace": &"hands", &"rig": &"back", &"lens": &"head", &"aerial": &"head"}
@@ -119,28 +115,9 @@ static func default_loadout(game: Game) -> Dictionary:
 	return {"slots": slots, "resist": resist, "abilities": []}
 
 
-static func default_reads(game: Game) -> Dictionary:
-	var scans: Array[Dictionary] = []
-	if game != null and game.is_inside_tree():
-		var p := game.player.pos
-		for m: Node in game.get_tree().get_nodes_in_group(&"mobs"):
-			var alive: Variant = m.get("alive")
-			var mp: Variant = m.get("pos")
-			if (alive != null and not bool(alive)) or not (mp is Vector2):
-				continue
-			if (mp as Vector2).distance_to(p) > READ_RADIUS:
-				continue
-			var k: Variant = m.get("kind")
-			var kind := StringName(k) if k != null else &""
-			# The stolen module reads machine signatures: a dog or a gull gives none.
-			if not bool(Roster.row(kind).get("machine", false)):
-				continue
-			var hostile: Variant = m.get("hostile")
-			scans.append({"id": StringName("scan_%d" % m.get_instance_id()), "kind": kind, "name": String(kind).get_slice(".", 0).replace("_", " "), "pos": mp,
-				"disposition": &"hostile" if hostile == null or bool(hostile) else &"indifferent", "note": ""})
-		scans.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a.pos as Vector2).distance_to(p) < (b.pos as Vector2).distance_to(p))
+static func default_reads(_game: Game) -> Dictionary:
 	# `asking` is empty rather than missing: a slate with no feed behind it must
 	# be the same SHAPE as one with, or every reader needs a default and a
 	# default on a "what is this place asking" question is the caller inventing
 	# the answer and then believing it (CLAUDE.md).
-	return {"interference": -1.0, "network": "", "asking": "", "scans": scans}
+	return {"interference": -1.0, "network": "", "asking": "", "causes": []}

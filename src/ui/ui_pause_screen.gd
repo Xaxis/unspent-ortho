@@ -1,7 +1,7 @@
 class_name UiPauseScreen
 extends UiScreen
 ## Esc: the slate's home. The world stops (the ui system pauses the tree).
-## Resume, the apps that have no key of their own (gear, machine reads, saves),
+## Resume, the apps that have no key of their own (gear, saves),
 ## the journal for a player who has forgotten its key, the keys, back to the
 ## title, or quit. The keys are one level down; Esc backs
 ## out. The replacement sub-panel says where and when the player is, their body,
@@ -72,7 +72,6 @@ func refresh() -> void:
 	var rows: Array[Dictionary] = [
 		{"id": &"resume", "text": "resume"},
 		{"id": &"loadout", "text": "gear", "app": true},
-		{"id": &"reads", "text": "machine reads", "app": true},
 		{"id": &"journal", "text": "journal", "app": true},
 		{"id": &"saves", "text": "saves", "app": true},
 		{"id": &"settings", "text": "settings", "app": true},

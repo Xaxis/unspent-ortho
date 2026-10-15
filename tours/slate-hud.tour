@@ -59,17 +59,12 @@ shot 07-a-step-closer
 tap map
 await app:none 5
 
-# --- What the machines left, named, and their survey through here --------------
-# Home, then READS. The list said "cut in rows" four times with four different
-# arrows; it names the work now, one row per kind, and the lower half of the
-# pane carries their bearing with the works strung along it.
+# --- What the machines make of you here ------------------------------------------
+# Home: how far this network has noticed you, and what the plan holds it for.
 tap pause
-choose reads
-tap use
-await app:reads 8
+await app:pause 8
 wait 0.7
-shot 08-machine-reads with app:reads
-tap pause
+shot 08-home-the-machines with app:pause
 tap pause
 await app:none 5
 shot 09-back-on-the-world

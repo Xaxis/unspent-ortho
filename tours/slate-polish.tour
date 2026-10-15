@@ -39,7 +39,7 @@ tap pause
 await app:none 3
 wait 0.6
 shot 10-the-heap-it-went-on
-# Home, and the three apps that hang off it on the strip.
+# Home, and the two apps that hang off it on the strip.
 tap pause
 await app:pause 3
 shot 11-home with app:pause
@@ -47,12 +47,6 @@ choose loadout
 tap use
 await app:loadout 3
 shot 12-gear with app:loadout
-tap pause
-await app:pause 3
-choose reads
-tap use
-await app:reads 3
-shot 13-machine-reads with app:reads
 tap pause
 await app:pause 3
 choose saves

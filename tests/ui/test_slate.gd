@@ -193,8 +193,9 @@ func test_every_word_on_the_glass_reads() -> void:
 	SlateFeeds.provide(&"loadout", func(_g: Game) -> Dictionary:
 		return {"slots": [{"id": &"head", "label": "head", "item": &"kit_lens", "modules": [{"id": &"m", "name": "seal", "grants": "cold"}]}, {"id": &"body", "label": "body", "item": &"", "modules": []}],
 			"resist": {&"cold": 0.5}, "abilities": [{"id": &"dash", "name": "dash", "ready": true, "note": "ready"}, {"id": &"veil", "name": "veil", "ready": false, "note": "charging"}]})
-	SlateFeeds.provide(&"reads", func(g: Game) -> Dictionary:
-		return {"interference": 0.4, "network": "coast grid", "scans": [{"id": &"a", "kind": &"runner", "name": "runner", "pos": g.player.pos + Vector2(4, 2), "disposition": &"hostile", "note": "it has your scent"}, {"id": &"b", "kind": &"watcher", "name": "watcher", "pos": g.player.pos + Vector2(-9, 5), "disposition": &"observant", "note": ""}]})
+	SlateFeeds.provide(&"reads", func(_g: Game) -> Dictionary:
+		return {"interference": 0.6, "network": "coast grid", "causes": [String(StoryContent.READS_CAUSE[&"carried"])],
+			"asking": "Sections of this file have never been walked."})
 	var g := Game.new()
 	tree.root.add_child(g)
 	g.setup(BootOptions.parse(["--size=64", "--seed=4", "--give=knife:1,mussels:3,stone:2,wick:2,las_hand:1,kit_brace:1,scrap:1"]))
@@ -207,8 +208,8 @@ func test_every_word_on_the_glass_reads() -> void:
 	var words := {}
 	# [app, a row to choose or "", home's page]
 	# The fed apps first, then the same apps with nothing wired in (what they say empty).
-	for pick: Array in [[&"inventory", &"las_hand", ""], [&"inventory", &"mussels", ""], [&"crafting", &"", ""], [&"map", &"", ""], [&"pause", &"", ""], [&"pause", &"", "keys"], [&"loadout", &"body", ""], [&"reads", &"a", ""], [&"saves", &"slot_2", ""],
-			[&"", &"", ""], [&"loadout", &"", ""], [&"reads", &"", ""], [&"saves", &"", ""]]:
+	for pick: Array in [[&"inventory", &"las_hand", ""], [&"inventory", &"mussels", ""], [&"crafting", &"", ""], [&"map", &"", ""], [&"pause", &"", ""], [&"pause", &"", "keys"], [&"loadout", &"body", ""], [&"saves", &"slot_2", ""],
+			[&"", &"", ""], [&"pause", &"", ""], [&"loadout", &"", ""], [&"saves", &"", ""]]:
 		if pick[0] == &"":
 			SlateFeeds.clear()
 			continue
@@ -223,8 +224,8 @@ func test_every_word_on_the_glass_reads() -> void:
 			(s as UiPauseScreen).page = pick[2]
 		for w: Dictionary in await _words_drawn(s):
 			words["%s|%s" % [w.text, (w.col as Color).to_html()]] = [s.screen_name, w]
-		if pick[0] == &"reads" and pick[1] == &"":
-			check(words.has("NO NETWORK READ|%s" % UiTheme.MACHINE[2].to_html()), "the empty reads were drawn too")
+		if pick[0] == &"pause" and pick[2] == "" and SlateFeeds.has_feed(&"reads"):
+			check(words.has("THE MACHINES|%s" % UiTheme.MACHINE[2].to_html()), "home's machines read was drawn too")
 		while ui.call("top") != null:
 			(ui.call("top") as UiScreen).handle(&"back")
 	g.free()

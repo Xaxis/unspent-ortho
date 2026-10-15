@@ -51,8 +51,8 @@ func test_a_worn_relic_warms_the_region_by_the_hour() -> void:
 	near(made, 0.0, 1e-4, "an hour in made kit does not")
 
 
-## A player must be able to learn why their region warms: the reads app names
-## the cause under its trace while a relic is worn (StoryContent.READS_CAUSE, by
+## A player must be able to learn why their region warms: home names the cause
+## under the machines' read while a relic is worn (StoryContent.READS_CAUSE, by
 ## id; the words are the story's), and says nothing of it in made kit.
 func _causes(fit: String) -> Array:
 	var g := _game(fit)
@@ -67,5 +67,5 @@ func _causes(fit: String) -> Array:
 func test_the_slate_names_what_you_carry() -> void:
 	var worn: Array = await _causes("glide_wing,mod_lock")
 	var made: Array = await _causes("glide_wing,oilskin")
-	check(worn.has(StoryContent.READS_CAUSE[&"carried"]), "wearing a relic, the reads app names the heat (%s)" % [worn])
+	check(worn.has(StoryContent.READS_CAUSE[&"carried"]), "wearing a relic, home names the heat (%s)" % [worn])
 	check(not made.has(StoryContent.READS_CAUSE[&"carried"]), "in made kit it does not")

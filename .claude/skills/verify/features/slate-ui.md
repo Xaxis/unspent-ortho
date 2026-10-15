@@ -2,7 +2,7 @@
 
 The hacked tablet and every app on it: map, carrying, making, gear, reads, journal, holding, saves, settings, pause, character.
 
-<!-- covers: screen:character, screen:crafting, screen:inventory, screen:journal, screen:loadout, screen:map, screen:pause, screen:reads, screen:saves, screen:settings, screen:settlement, screen:sheet, system:58_guide, system:90_ui -->
+<!-- covers: screen:character, screen:crafting, screen:inventory, screen:journal, screen:loadout, screen:map, screen:pause, screen:saves, screen:settings, screen:settlement, screen:sheet, system:58_guide, system:90_ui -->
 
 ## Sub-features
 
@@ -12,8 +12,7 @@ The hacked tablet and every app on it: map, carrying, making, gear, reads, journ
 - journal `src/ui/ui_journal_screen.gd`: `tools/shot.sh shots/journal.png --screen=journal`.
 - loadout `src/ui/ui_loadout_screen.gd`: `tools/shot.sh shots/loadout.png --screen=loadout`.
 - map `src/ui/ui_map_screen.gd`: `tools/shot.sh shots/map.png --screen=map`.
-- pause `src/ui/ui_pause_screen.gd`: `tools/shot.sh shots/pause.png --screen=pause`.
-- reads `src/ui/ui_reads_screen.gd`: `tools/shot.sh shots/reads.png --screen=reads`.
+- pause `src/ui/ui_pause_screen.gd`: `tools/shot.sh shots/pause.png --screen=pause`. Home: the body, what earns the next bracket, and the machines' read of this network (how far it has noticed you, a relic's heat, what the plan holds the place for): `tools/tour.sh tours/relic_heat.tour --seed=1 --hour=10 --weather=clear:0 --fit=glide_wing,mod_lock`, `tools/test.sh test_screens:test_home_says`.
 - saves `src/ui/ui_saves_screen.gd`: `tools/shot.sh shots/saves.png --screen=saves`.
 - settings `src/ui/ui_settings_screen.gd`: `tools/shot.sh shots/settings.png --screen=settings`.
 - settlement `src/ui/ui_settlement_screen.gd`: `tools/shot.sh shots/settlement.png --screen=holding`.

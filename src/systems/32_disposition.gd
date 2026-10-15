@@ -615,10 +615,10 @@ func _spot_for(kind: StringName) -> Vector2:
 
 # --- the slate's machine reads -------------------------------------------------
 
-## The reads app: what the network makes of the player, and what every machine
-## in range makes of them (SlateFeeds).
-## The plan's own note on the region the player is standing in, for the reads
-## app (docs/VISION.md). KEPT rather than asked every frame: `Chapters.of`
+## The reads feed, drawn on home: what the network makes of the player (SlateFeeds).
+## What each machine makes of them is on the lock-on (42_target).
+## The plan's own note on the region the player is standing in, for home
+## (docs/VISION.md). KEPT rather than asked every frame: `Chapters.of`
 ## sweeps `game.systems` three times, and an open page is a page drawn every
 ## frame — which is the exact shape that took play to 5-12 fps when `24_holds`
 ## asked it once per hold (#122). Only four things can change a chapter and this
@@ -638,21 +638,13 @@ func _reads(_g: Game) -> Dictionary:
 		_asking_region = net
 		_asking_dirty = false
 		_asking = Chapter.asking(Chapters.of(game, net))
-	var scans: Array = []
-	for m in sim.mobs:
-		if not m.alive or m.removed or not m.machine:
-			continue
-		if Senses.chebyshev(m.pos, sim.hero.pos) > SlateFeeds.READ_RADIUS:
-			continue
-		scans.append({"id": StringName("m%d" % m.id), "kind": m.kind, "name": String(m.kind),
-			"pos": m.pos, "disposition": m.disposition, "note": _note(m)})
 	# What the player keeps feeding the file, named, so a warming region says why
 	# (StoryContent.READS_CAUSE, by cause id).
 	var causes: Array[String] = []
 	if _relics_carried() > 0:
 		causes.append(String(StoryContent.READS_CAUSE[&"carried"]))
 	return {"interference": interference.value(net),
-		"network": _network_name(net), "scans": scans, "asking": _asking, "causes": causes}
+		"network": _network_name(net), "asking": _asking, "causes": causes}
 
 
 ## What the slate calls the network the player is standing in. A region, so two
@@ -676,16 +668,6 @@ func _network_name(net: int) -> String:
 	if nth <= 0:
 		return "%s network" % land
 	return "%s network %d" % [land, nth + 1]
-
-
-func _note(m: MobState) -> String:
-	if m.disturbed:
-		return "it has taken something amiss"
-	if m.roused():
-		return "it has you"
-	if m.suspicion >= 0.5:
-		return "it is not sure"
-	return String(m.role)
 
 
 ## Tour awaits: interference (a network rose), theft (hands on the plan's own

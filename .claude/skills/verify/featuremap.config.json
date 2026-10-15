@@ -506,13 +506,6 @@
   },
   {
    "kind": "screen",
-   "label": "reads",
-   "entry": "src/ui/ui_reads_screen.gd",
-   "reach": "tools/shot.sh shots/reads.png --screen=reads",
-   "area": "slate-ui"
-  },
-  {
-   "kind": "screen",
    "label": "saves",
    "entry": "src/ui/ui_saves_screen.gd",
    "reach": "tools/shot.sh shots/saves.png --screen=saves",

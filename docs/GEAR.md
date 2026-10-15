@@ -138,7 +138,7 @@ Each is red first, and each fight-changing one carries a bout number and a tour 
 | G6 | a LOOT row for every interior kind (§7) | built |
 | G7 | salvage: a recipe-made piece taken apart at a bench, 15 min, gives back its elite material and half the rest (`Reforge.salvage_recipes`) | built |
 | G8 | fight armour (§6), each naming its hook | built |
-| G9 | relic heat: each relic worn or in hand warms the region 0.03 an hour (Interference `carried`, after the hour's cooling); made kit does not; the reads app names it (`READS_CAUSE` `carried`) | built |
+| G9 | relic heat: each relic worn or in hand warms the region 0.03 an hour (Interference `carried`, after the hour's cooling); made kit does not; home names it under the machines' read (`READS_CAUSE` `carried`) | built |
 | G10 | land materials (§11) | waiting on the GEN batch |
 
 No hopeless matchup: every weapon beats every common machine (not a keeper, not a dart) at

@@ -182,20 +182,6 @@ func test_app_keys_open_their_apps_over_home() -> void:
 	g.free()
 
 
-func test_machine_reads_list_machines_not_animals() -> void:
-	var g := _make()
-	_calm(g)
-	var dog := _mob(g.player.pos + Vector2(2, 0), &"dog.yard")
-	var gull := _mob(g.player.pos + Vector2(0, 2), &"gulls")
-	var runner := _mob(g.player.pos + Vector2(3, 0), &"runner")
-	var feed := SlateFeeds.default_reads(g)
-	var kinds: Array = (feed.scans as Array).map(func(s: Dictionary) -> StringName: return s.kind)
-	eq(kinds, [&"runner"], "only the machine gives a signature")
-	for m: Node in [dog, gull, runner]:
-		m.free()
-	g.free()
-
-
 func _mob(at: Vector2, kind: StringName) -> Node:
 	var mob := Node.new()
 	mob.set_script(_mob_script())
@@ -350,14 +336,14 @@ func test_an_app_key_switches_the_glass_to_that_app() -> void:
 	g.free()
 
 
-func test_gear_reads_and_saves_are_reached_from_home_with_real_keys() -> void:
+func test_gear_and_saves_are_reached_from_home_with_real_keys() -> void:
 	var g := _make()
 	var ui := _ui(g)
 	_calm(g)
 	for i in 3:
 		await tree.process_frame
 	_listen_screens()
-	for app: StringName in [&"loadout", &"reads", &"saves"]:
+	for app: StringName in [&"loadout", &"saves"]:
 		check(await _tap_until(&"pause", _opened(&"pause")), "esc opens home")
 		var home: UiPauseScreen = ui.call("top")
 		var guard := 0

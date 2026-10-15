@@ -263,7 +263,9 @@ func test_a_rise_is_felt_in_the_world_and_never_written_on_the_screen() -> void:
 	await frames(1)
 
 
-func test_the_slate_reads_the_network_and_every_machine_in_range() -> void:
+## The network's read is home's (the reads feed); what each machine makes of the
+## player is its lock-on read.
+func test_the_slate_reads_the_network_and_the_lock_on_each_machine() -> void:
 	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0", "--spawn=harvester,runner"]))
 	await frames(3)
 	var sys := _system(g)
@@ -273,10 +275,10 @@ func test_the_slate_reads_the_network_and_every_machine_in_range() -> void:
 	gt(float(feed.interference), 0.0, "the slate knows the network has filed something")
 	check(String(feed.network).length() > 0, "and which network")
 	var by_kind: Dictionary = {}
-	for s: Dictionary in feed.scans:
-		by_kind[s.kind] = s.disposition
-	eq(by_kind.get(&"harvester"), &"indifferent", "the harvester is about its work")
-	eq(by_kind.get(&"runner"), &"hostile", "the runner is not")
+	for m: MobState in g.player.sim.mobs:
+		by_kind[m.kind] = TargetRead.of(m, g.player.pos, g.player.sim.moment).disposition
+	eq(by_kind.get(&"harvester"), "indifferent", "the harvester is about its work")
+	eq(by_kind.get(&"runner"), "hostile", "the runner is not")
 	g.queue_free()
 	await frames(1)
 

@@ -6,7 +6,7 @@ extends GameSystem
 ##   - opens apps on their keys (Tab/I carrying, C making, M map, Esc home) and
 ##     routes menu input to the top one (draw order = input priority); an app's
 ##     key while another app is up switches the glass to it, and on home opens
-##     it over home; gear, machine reads and saves open from home
+##     it over home; gear and saves open from home
 ## It reads the game's data and acts only through Inventory, Crafting, Survival's
 ## `eat` / `use_hint`, and SlateFeeds for the apps other packages fill.
 
@@ -52,7 +52,7 @@ var _horizontal := UiMenu.new()
 var _map_build_in := 2.0
 
 ## Apps with a key of their own, which switch between each other.
-const APPS: Array[StringName] = [&"inventory", &"crafting", &"map", &"loadout", &"reads", &"saves"]
+const APPS: Array[StringName] = [&"inventory", &"crafting", &"map", &"loadout", &"saves"]
 
 
 func setup(g: Game) -> void:
@@ -75,7 +75,6 @@ func setup(g: Game) -> void:
 	_add(UiCraftingScreen.new())
 	_add(UiMapScreen.new())
 	_add(UiLoadoutScreen.new())
-	_add(UiReadsScreen.new())
 	_add(UiSavesScreen.new())
 	_add(UiPauseScreen.new())
 	_add(UiSettingsScreen.new())
@@ -192,7 +191,7 @@ const NEAR_LINE := "Not with that so close."
 
 
 ## "" if app `n` can open now, else one plain line why not. Home opens beside
-## a hostile, and so do the apps that only read (gear, machine reads, saves)
+## a hostile, and so do the apps that only read (gear, saves)
 ## once home is up; carrying and making never do, however they are reached, or
 ## home would be a way round the rule (making skips world time; eating works).
 func why_not_open(n: StringName) -> String:

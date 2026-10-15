@@ -3,10 +3,6 @@ extends TestCase
 ## and do what their rows say, all without a world or a window. Every app is
 ## the same slate: it wakes when it opens, and its sounds are the slate's.
 
-## The gate's cached worlds, for the one question here that is about what the
-## land actually holds: whether the reads app has words for every work on it.
-const Worlds := preload("res://tests/core/test_world_gen.gd")
-
 var _changes: Array = []
 var _sounds: Array = []
 
@@ -157,10 +153,10 @@ func test_home_opens_its_apps_and_its_keys_back_out_one_level() -> void:
 	eq(s.menu.selected().id, &"resume")
 	var opened: Array[StringName] = []
 	s.open_app = func(n: StringName) -> void: opened.append(n)
-	for app: StringName in [&"loadout", &"reads", &"saves"]:
+	for app: StringName in [&"loadout", &"saves"]:
 		s.select(app)
 		s.handle(&"confirm")
-	eq(opened, [&"loadout", &"reads", &"saves"] as Array[StringName], "gear, reads and saves open from home")
+	eq(opened, [&"loadout", &"saves"] as Array[StringName], "gear and saves open from home")
 	check(s.is_open, "and home stays under them")
 	# Settings is an app like the others now, not a page of letters home turns into.
 	s.select(&"settings")
@@ -335,10 +331,10 @@ func test_an_app_wakes_with_a_scan_at_whole_pixels() -> void:
 
 ## The apps the wave's other packages fill: each opens, navigates, refuses with
 ## a reason until its package wires in, and closes.
-func test_gear_reads_and_saves_open_navigate_and_close() -> void:
+func test_gear_and_saves_open_navigate_and_close() -> void:
 	_listen()
 	SlateFeeds.clear()
-	for s: UiScreen in [UiLoadoutScreen.new(), UiReadsScreen.new(), UiSavesScreen.new()]:
+	for s: UiScreen in [UiLoadoutScreen.new(), UiSavesScreen.new()]:
 		tree.root.add_child(s)
 		s.open()
 		check(s.is_open, "%s opens" % s.screen_name)
@@ -348,8 +344,7 @@ func test_gear_reads_and_saves_open_navigate_and_close() -> void:
 			check(s.menu.index != first, "%s moves down" % s.screen_name)
 		_sounds.clear()
 		s.handle(&"confirm")
-		if s.screen_name != &"reads":
-			check(_sounds.has(&"ui_slate_deny") and s.note != "", "%s says why it cannot yet: %s" % [s.screen_name, s.note])
+		check(_sounds.has(&"ui_slate_deny") and s.note != "", "%s says why it cannot yet: %s" % [s.screen_name, s.note])
 		s.handle(&"back")
 		check(not s.is_open, "%s closes" % s.screen_name)
 		s.free()
@@ -507,42 +502,6 @@ func test_gear_says_what_this_land_presses_with() -> void:
 	var said := await _said(s)
 	check(_has_word(said, BiomeRegistry.at(g.world, g.player.pos).display_name), "the land is named: %s" % str(said))
 	check(_has_word(said, "presses"), "and what it does to you: %s" % str(said))
-	s.free()
-	Fx.done(g)
-
-
-func test_machine_reads_read_the_ground_when_nothing_living_does() -> void:
-	SlateFeeds.clear()
-	var g := Fx.flat()
-	var s := UiReadsScreen.new()
-	s.game = g
-	tree.root.add_child(s)
-	s.open()
-	s.settle()
-	s.refresh()
-	check(s.menu.rows.is_empty(), "no machine in reach")
-	var bare := await _said(s)
-	check(_has_word(bare, "unworked ground"), "unworked land says so: %s" % str(bare))
-	check(_has_word(bare, "survey"), "and the survey bearing still reads back")
-	g.world.landmarks.append({"kind": &"quarry", "pos": g.player.pos + Vector2(20, 0), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"quarry"})
-	g.world.landmarks.append({"kind": &"burn", "pos": g.player.pos + Vector2(0, -60), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"scorch"})
-	# The page re-reads the ground twice a second, not per frame: it is the whole
-	# landmark list, sorted (see UiReadsScreen.soil).
-	s.refresh()
-	var soil := s.ground()
-	eq(s.soil(), soil, "the read the page draws is the read it last took")
-	eq((soil.works as Array).size(), 2, "both works read")
-	eq(StringName((soil.works as Array)[0].mark), &"quarry", "the nearest first")
-	gt(float(soil.bearing), 0.0, "the machines surveyed this land along one bearing")
-	var said := await _said(s)
-	check(_has_word(said, UiReadsScreen.mark_words(&"quarry")), "what they did here, in words: %s" % str(said))
-	check(_has_word(said, "20"), "and how far")
-	# The sweep reaches READ_RADIUS; the works are further off than that. The
-	# instrument says which way they lie rather than plotting nothing at all.
-	check(_has_word(said, "1 work beyond reach"), "the radar owns the one it cannot plot: %s" % str(said))
-	g.world.landmarks.append({"kind": &"cut", "pos": g.player.pos + Vector2(0, 80), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"cut"})
-	s.refresh()
-	check(_has_word(await _said(s), "2 works beyond reach"), "and counts them as they come")
 	s.free()
 	Fx.done(g)
 
@@ -797,44 +756,3 @@ func test_home_says_what_the_machines_make_of_this_place() -> void:
 	check(String(read.asking) != "" and _has_word(said, String(read.asking)), "and what the plan holds this place for: %s" % str(said))
 	s.free()
 	Sx.end(g)
-
-
-## The machine reads app names the WORK, not the mark it left. Four rows of
-## "cut in rows" with four different arrows is what a placeholder looks like,
-## and on the coast the four nearest works really are all turf rows.
-func test_the_reads_app_names_the_work_and_not_only_its_mark() -> void:
-	eq(UiReadsScreen.work_words(&"turf_rows", &"cut"), "turf cut in rows")
-	eq(UiReadsScreen.work_words(&"clearcut", &"cut"), "the wood felled flat", "two works with one mark read differently")
-	eq(UiReadsScreen.work_words(&"drill_field", &"bores"), "a field drilled through")
-	eq(UiReadsScreen.work_words(&"", &"scorch"), "burnt over", "a landmark with no kind still says what it left")
-	eq(UiReadsScreen.work_words(&"nothing_yet", &"cut"), "nothing yet", "and a kind nobody has words for yet says its own name")
-	var seen := {}
-	for k: Variant in UiReadsScreen.WORK_WORDS:
-		var w: String = UiReadsScreen.WORK_WORDS[k]
-		check(not seen.has(w), "no two works are called '%s'" % w)
-		seen[w] = true
-		check(w.length() < 30, "'%s' fits the pane" % w)
-
-
-## Walked over what worldgen actually emits, not over the table's own keys: the
-## table had words for `corridor`, which nothing records any more, and none for
-## `pans`, `breaking_yard` or `closing_corridor`, which the two new landscapes
-## do — so seven of the forty-one marked landmarks on the gate's seeds read as
-## raw ids on the machine reads pane. A landscape added after this one cannot
-## bring the placeholder register back without failing here.
-func test_every_marked_work_worldgen_makes_has_words_for_the_reads_app() -> void:
-	var kinds := {}
-	for s: int in Worlds.WORLD_SEEDS:
-		for m in Worlds.world(s).landmarks:
-			if not m.has("mark"):
-				continue
-			kinds[m.kind] = int(kinds.get(m.kind, 0)) + 1
-	gt(kinds.size(), 8, "the seeds between them mark a good spread of works")
-	var raw := 0
-	var marked := 0
-	for k: StringName in kinds:
-		marked += int(kinds[k])
-		if not UiReadsScreen.WORK_WORDS.has(k):
-			raw += int(kinds[k])
-			check(false, "'%s' (%d marked) has no words: the pane would print its id" % [k, kinds[k]])
-	eq(raw, 0, "%d of %d marked landmarks would read as an id" % [raw, marked])

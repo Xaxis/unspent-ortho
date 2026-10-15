@@ -236,14 +236,6 @@
       "tests": []
     },
     {
-      "id": "screen:reads",
-      "kind": "screen",
-      "entry": "src/ui/ui_reads_screen.gd",
-      "reach": "tools/shot.sh shots/reads.png --screen=reads",
-      "area": "slate-ui",
-      "tests": []
-    },
-    {
       "id": "screen:saves",
       "kind": "screen",
       "entry": "src/ui/ui_saves_screen.gd",
