@@ -680,8 +680,9 @@ func _feed(_g: Game) -> Dictionary:
 		var mods: Array[Dictionary] = []
 		for m in loadout.modules(s):
 			mods.append({"id": m, "name": UiRules.item_name(m), "grants": _grants(m)})
+		var next := next_act(s)
 		rows.append({"id": s, "label": Gear.label(s), "item": loadout.item(s),
-			"sockets": Gear.sockets(loadout.item(s)), "modules": mods})
+			"sockets": Gear.sockets(loadout.item(s)), "modules": mods, "next": next.verb, "warn": next.warn})
 	# What the gear gives, and not what the legs do: the page is about what is worn.
 	var abilities := book.rows(Time.get_ticks_msec() / 1000.0).filter(
 		func(r: Dictionary) -> bool: return not Abilities.INNATE.has(r.id))
@@ -767,6 +768,47 @@ func _act(_g: Game, row_id: StringName) -> String:
 		return "Off." if broke == "" else "Off. %s" % broke
 	loadout.fit(slot, next)
 	return "%s on." % UiRules.item_name(next).capitalize()
+
+
+## What E does to `slot` next, without doing it, in `_act`'s own order, so the
+## page names it on its key: "fit", "socket", "swap", "take off", "bind",
+## "unbind", or "" when it would only refuse. One key did four jobs and the strip
+## said "fit" for all of them. `warn` is what a pull that may break a module says
+## first (Reforge.warning), so the gamble is taken with open eyes.
+func next_act(slot: StringName) -> Dictionary:
+	var out := {"verb": "", "warn": ""}
+	if not Gear.SLOTS.has(slot):
+		return out
+	var here := loadout.item(slot)
+	if slot == Gear.HAND_SLOT:
+		if here == &"":
+			return out
+		if loadout.free_sockets(Gear.HAND_SLOT) > 0:
+			out.verb = "bind" if _spare_module(Gear.HAND_SLOT) != &"" else ""
+		elif not loadout.modules(Gear.HAND_SLOT).is_empty():
+			out.verb = "unbind"
+			out.warn = _pull_warning(Gear.HAND_SLOT)
+		return out
+	if here == &"":
+		out.verb = "fit" if not _spare_pieces(slot).is_empty() else ""
+	elif _spare_module(slot) != &"":
+		out.verb = "socket"
+	elif _next_piece(slot, here) != &"":
+		out.verb = "swap"
+	else:
+		out.verb = "take off"
+		out.warn = _pull_warning(slot)
+	return out
+
+
+## What pulling `slot`'s modules here would put at risk, said before it is done.
+func _pull_warning(slot: StringName) -> String:
+	var at_bench := Survival.stations_near(game).has(&"bench")
+	for m in loadout.modules(slot):
+		var w := Reforge.warning(m, at_bench)
+		if w != "":
+			return w
+	return ""
 
 
 ## The hand's own row: bind what is carried to the haft, then unbind it. Swapping

@@ -43,7 +43,7 @@ static func survives(module: StringName, at_bench: bool, seed_value: int, n: int
 static func warning(module: StringName, at_bench: bool) -> String:
 	if not risky(module, at_bench):
 		return ""
-	return "%s is drilled in; prising it out here may break it." % Items.display_name(module)
+	return "%s is drilled in; prising it out here may break it." % Items.display_name(module).capitalize()
 
 
 static func broke_line(module: StringName) -> String:
