@@ -389,18 +389,9 @@ static func laden_tier(carried: float) -> int:
 	return 0
 
 
-## Wearing a piece of salvage kit for `slot`. A bag that keeps one worn piece
-## (`worn`, the survival package's) is asked for that; a bag without one counts
-## any carried piece, so kit works before and after the two are merged.
-static func wears(inv: Inventory, slot: StringName) -> bool:
-	return inv != null and inv.wears(slot)
-	if &"worn" in inv:
-		var worn: StringName = inv.get(&"worn")
-		return worn != &"" and Items.def(worn).get("kit", &"") == slot
-	for id: StringName in inv.items:
-		if Items.def(id).get("kit", &"") == slot:
-			return true
-	return false
+## Wearing a piece of salvage kit of `kind` (Inventory.wears); no bag wears nothing.
+static func wears(inv: Inventory, kind: StringName) -> bool:
+	return inv != null and inv.wears(kind)
 
 
 ## Wear a tool by `uses` through Inventory.wear (survival's edge rules, which

@@ -3,7 +3,7 @@ class_name TargetRead
 ## 2026-09-16): its health, what it can do, what it has noticed and what it is
 ## doing about the player. Pure, so a test reads a body without a frame drawn.
 ##
-##   TargetRead.of(mob, from, moment, world, query)  -> the full read
+##   TargetRead.of(mob, from, moment, world, query, now, held)  -> the full read
 ##   TargetRead.tag(mob, now)                        -> what the wordless tag shows
 ##
 ## Everything here is read off the simulation the fight already runs. Nothing
@@ -18,9 +18,9 @@ const CALM := 0.05
 
 
 ## What any subject reads as: a fight body in full, a person as a person.
-static func of_subject(s: TargetSubject, from: Vector2, moment: Moment, world: WorldData = null, query: WorldQuery = null, now: float = 0.0) -> Dictionary:
+static func of_subject(s: TargetSubject, from: Vector2, moment: Moment, world: WorldData = null, query: WorldQuery = null, now: float = 0.0, held: StringName = &"") -> Dictionary:
 	if s.body != null:
-		return of(s.body, from, moment, world, query, now)
+		return of(s.body, from, moment, world, query, now, held)
 	if not s.place.is_empty():
 		return of_place(s, from)
 	return of_person(s, from)
@@ -110,8 +110,9 @@ static func doing(row: Dictionary) -> String:
 
 
 ## The whole read. `from` is the player; `moment` what the fight knows about
-## the hour, the weather and what the player is doing about being noticed.
-static func of(m: MobState, from: Vector2, moment: Moment, world: WorldData = null, query: WorldQuery = null, now: float = 0.0) -> Dictionary:
+## the hour, the weather and what the player is doing about being noticed;
+## `held` what is in the player's hands, which a plated body is read against.
+static func of(m: MobState, from: Vector2, moment: Moment, world: WorldData = null, query: WorldQuery = null, now: float = 0.0, held: StringName = &"") -> Dictionary:
 	var row := m.row
 	return {
 		"id": m.id,
@@ -125,7 +126,7 @@ static func of(m: MobState, from: Vector2, moment: Moment, world: WorldData = nu
 		"max_health": m.max_health,
 		"fraction": m.health_fraction(),
 		"pips": pips(m.health_fraction()),
-		"stats": stats(m, from),
+		"stats": stats(m, from, held),
 		"powers": powers(m),
 		"awareness": awareness(m, from, moment, world, query),
 		"thinking": thinking(m, now, moment.seed_value if moment != null else 0),
@@ -153,10 +154,17 @@ static func pips(fraction: float) -> Array:
 	return [whole, part]
 
 
-## The numbers a player fights by, in the order they matter in a fight.
-static func stats(m: MobState, from: Vector2) -> Array:
+## The numbers a player fights by, in the order they matter in a fight. Plating
+## first: an edge that rings off it (FightRules.bites) makes the rest moot, and
+## the read is the one place that says so before a blow is struck.
+static func stats(m: MobState, from: Vector2, held: StringName = &"") -> Array:
 	var row := m.row
 	var out: Array = []
+	var plate := String(row.get("plating", &""))
+	if plate != "":
+		var who := "your " + Items.display_name(held) if held != &"" else "bare hands"
+		var does := "bites" if FightRules.bites(row, held) else ("rings off it" if held != &"" else "ring off it")
+		out.append(["plate", "%s: %s %s" % [plate, who, does]])
 	var bite: Variant = row.get("bite", {})
 	if bite is Dictionary and not (bite as Dictionary).is_empty():
 		var b: Dictionary = bite
