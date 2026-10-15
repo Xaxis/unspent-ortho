@@ -591,6 +591,38 @@ func test_the_making_page_says_when_long_work_comes_off_the_fire() -> void:
 	Fx.done(g)
 
 
+## The holding lists the pieces whose makings the player has carried, and the
+## piece the goal asks for: all twenty-one on the first day, most wanting things
+## from lands not yet walked, read as a wall of refusals.
+func test_the_holding_lists_what_the_player_has_carried_the_makings_of() -> void:
+	var g := Fx.flat()
+	var was := Guide.last_goal_key
+	Guide.last_goal_key = &""
+	var s := UiSettlementScreen.new()
+	s.game = g
+	tree.root.add_child(s)
+	s.open()
+	var listed := func() -> Array:
+		var out := []
+		for r: Dictionary in s.menu.rows:
+			if r.get("build", false):
+				out.append(int(r.kind))
+		return out
+	check(not (listed.call() as Array).has(StructureKind.TURRET), "no turret before its makings were ever carried: %s" % str(listed.call()))
+	check(not g.inventory.has_handled(&"rag"), "a rag has never been carried")
+	check(not (listed.call() as Array).has(StructureKind.LEAN_TO), "so no lean-to")
+	g.inventory.add(&"stone", 3)
+	g.inventory.add(&"deadwood", 2)
+	s.refresh()
+	check((listed.call() as Array).has(StructureKind.HEARTH), "stone and deadwood carried: a hearth")
+	Guide.last_goal_key = &"holding"
+	s.refresh()
+	check((listed.call() as Array).has(StructureKind.LEAN_TO), "the goal's lean-to is listed before its rag was found")
+	Guide.last_goal_key = was
+	s.free()
+	Fx.done(g)
+
+
 func test_the_controls_page_names_the_key_that_puts_things_down() -> void:
 	var keys := {}
 	for pair: Array in UiPauseScreen.KEYS:

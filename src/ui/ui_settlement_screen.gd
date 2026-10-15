@@ -47,7 +47,13 @@ func refresh() -> void:
 	var rows: Array[Dictionary] = []
 	rows.append({"header": "put up here"})
 	var inv := game.inventory if game != null else null
+	var goal := int(Guide.GOAL_MAKES.get(Guide.last_goal_key, {}).get("piece", -1))
 	for kind: int in StructureKind.BUILDABLE:
+		# Only what the player has carried the makings of, and the piece the goal
+		# asks for: on the first day all twenty-one were listed, most of them
+		# wanting things from lands not yet walked, a wall of refusals.
+		if inv != null and kind != goal and not SettlementBuild.known(inv, kind):
+			continue
 		var why := SettlementBuild.why_not(inv, kind)
 		if why == "" and holdings != null:
 			why = String(holdings.call("why_not_here", kind))

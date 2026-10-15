@@ -30,6 +30,22 @@ static func missing(inv: Inventory, kind: int) -> Dictionary:
 	return out
 
 
+## A piece is known once everything it costs has been in the pack, and one of
+## the cores it wants if it wants one: the holding lists what the player can act
+## on, the way making lists only known recipes (Crafting.known).
+static func known(inv: Inventory, kind: int) -> bool:
+	for id: StringName in StructureKind.cost(kind):
+		if not inv.has_handled(id):
+			return false
+	var cores := StructureKind.needs_one(kind)
+	if cores.is_empty():
+		return true
+	for id: StringName in cores:
+		if inv.has_handled(id):
+			return true
+	return false
+
+
 static func can_make(inv: Inventory, kind: int) -> bool:
 	return StructureKind.buildable(kind) and missing(inv, kind).is_empty() and \
 		(StructureKind.needs_one(kind).is_empty() or reward_held(inv, kind) != &"")
