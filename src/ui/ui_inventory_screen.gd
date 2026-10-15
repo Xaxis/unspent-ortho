@@ -78,6 +78,12 @@ func verb_for(id: StringName) -> StringName:
 static func why_refused(id: StringName) -> String:
 	if Gear.is_module(id):
 		return "A module goes into a piece you wear: home, then gear."
+	# A craft is launched by its own key beside where it goes (44_crafts); the
+	# pack used to call a raft something to make things with.
+	if CraftKinds.known(id):
+		if CraftKinds.afloat(id):
+			return PlayerSettings.spell("%s launches it at the water's edge.", [&"ride"])
+		return PlayerSettings.spell("%s puts it down to ride.", [&"ride"])
 	match UiRules.item_group(id):
 		&"goods":
 			return "That is for making things with."

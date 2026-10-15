@@ -105,6 +105,10 @@ func test_only_found_tools_are_held() -> void:
 	eq(UiRules.item_group(&"wick"), &"found", "a charge is listed with found things")
 	eq(s.verb_for(&"wick"), &"", "but a charge is not held")
 	check(UiInventoryScreen.why_refused(&"wick").ends_with("."), "one plain sentence: %s" % UiInventoryScreen.why_refused(&"wick"))
+	# A craft is launched with its own key, and the pack says which; it called a
+	# raft something to make things with.
+	var raft := UiInventoryScreen.why_refused(&"raft")
+	check(raft.contains(PlayerSettings.label_of(&"ride")) and raft.contains("water"), "a raft says how it is launched: %s" % raft)
 	s.free()
 
 
