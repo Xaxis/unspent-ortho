@@ -249,6 +249,19 @@ static func next_wind(b: Body) -> String:
 	var more := Brackets.run_to_next(b.run_tiles)
 	return "+1: run %d more paces" % ceili(more) if more > 0.0 else ""
 
+## Stamina in its brackets, as the HUD draws it, each a health cell wide: the
+## "+1" beside it is one more of these, and a long bar gave it nothing to count.
+func _draw_wind(at: Vector2i, b: Body) -> void:
+	var n := Brackets.wind_count(b.run_tiles)
+	var left := clampf(b.wind / maxf(1.0, b.max_wind), 0.0, 1.0) * n
+	for i in n:
+		var seg := Rect2i(at.x + i * 24, at.y, 6 * UiRules.PER_CELL - 2, 14)
+		UiDraw.rect(self, seg, UiTheme.GHOST)
+		var part := clampf(left - i, 0.0, 1.0)
+		if part > 0.0:
+			UiDraw.rect(self, Rect2i(seg.position.x, seg.position.y, roundi(seg.size.x * part), seg.size.y), UiTheme.TEXT)
+
+
 ## The body as the slate last read it: health, wind, hunger, wet and load.
 func _draw_body(at: Vector2i, right: int) -> void:
 	const HUNGER := ["fed", "peckish", "hungry", "starving"]
@@ -266,7 +279,7 @@ func _draw_body(at: Vector2i, right: int) -> void:
 	UiDraw.text(self, Vector2i(x + NEXT_X, y), next_health(b), UiTheme.TEXT_DIM)
 	y += 24
 	UiDraw.text(self, Vector2i(x, y), "stamina", UiTheme.TEXT_DIM)
-	UiSlate.meter(self, Rect2i(x + 112, y + 2, 240, 14), b.wind / maxf(1.0, b.max_wind))
+	_draw_wind(Vector2i(x + 112, y + 2), b)
 	UiDraw.text(self, Vector2i(x + NEXT_X, y), next_wind(b), UiTheme.TEXT_DIM)
 	y += 24
 	var h := clampi(b.hunger_level(game.clock.minutes), 0, 3)

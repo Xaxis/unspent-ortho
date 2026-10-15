@@ -70,7 +70,7 @@ func _check() -> void:
 		Events.message.emit(health_line(total, Brackets.machines_to_next(b.machines_down) >= 0))
 		_lit(&"health")
 	if wind > _wind:
-		var total := roundi(FightRules.WIND / Brackets.WIND_BRACKET) + wind
+		var total := Brackets.wind_count(b.run_tiles)
 		Events.message.emit(wind_line(total, Brackets.run_to_next(b.run_tiles) >= 0.0))
 		_lit(&"wind")
 	_health = health

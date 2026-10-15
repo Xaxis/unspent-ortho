@@ -773,6 +773,35 @@ func test_e_in_the_pack_puts_on_what_is_worn_and_lights_the_lamp() -> void:
 	Sx.end(g)
 
 
+## Home draws stamina in its brackets, as the HUD does: its "+1" is one more of
+## them, and a long bar gave it nothing to count.
+func test_home_draws_stamina_in_its_brackets() -> void:
+	var Sx := preload("res://tests/save/save_fixture.gd")
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=11", "--weather=clear:0"])
+	await tree.process_frame
+	var s := UiPauseScreen.new()
+	s.game = g
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	for run: float in [0.0, 300.0]:
+		g.body.run_tiles = run
+		var cells := 0
+		UiDraw.tape.clear()
+		UiDraw.taping = true
+		s.queue_redraw()
+		await tree.process_frame
+		UiDraw.taping = false
+		for d: Dictionary in UiDraw.tape:
+			if d.kind == &"rect" and d.ci == s and (d.rect as Rect2i).size == Vector2i(6 * UiRules.PER_CELL - 2, 14) and d.col == UiTheme.GHOST:
+				cells += 1
+		UiDraw.tape.clear()
+		eq(cells, Brackets.wind_count(run), "%d paces run: a bracket each" % run)
+	gt(float(Brackets.wind_count(300.0)), float(Brackets.wind_count(0.0)), "and running earns one more")
+	s.free()
+	Sx.end(g)
+
+
 ## Home says what earns the next bracket: they were only said once earned.
 func test_home_says_what_earns_the_next_bracket() -> void:
 	var Sx := preload("res://tests/save/save_fixture.gd")
