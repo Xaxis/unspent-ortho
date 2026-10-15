@@ -2343,7 +2343,7 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 	# keeper's), the part short of a whole point carried to the next blow.
 	# A worn plate is spent by the blows it meets, and spent it turns nothing
 	# until it is mended (Items `worn_by`, Crafting `mend_kit`).
-	var plate: StringName = hero.inventory.worn if hero.inventory != null and hero.plated else &""
+	var plate: StringName = hero.inventory.worn_of(&"plate") if hero.inventory != null and hero.plated else &""
 	if dmg > 0 and hero.plated and by != null and not Sentinels.is_keeper(by.row) \
 			and (by.role == Roles.HUNTER or by.raider or by.sent) \
 			and (plate == &"" or hero.inventory.edge(plate) > 0):

@@ -950,8 +950,8 @@ static func leave_bag(game: Game, at: Vector2) -> WorldProp:
 	var keep := {}
 	if inv.held != &"":
 		keep[inv.held] = 1
-	if inv.worn != &"":
-		keep[inv.worn] = maxi(int(keep.get(inv.worn, 0)), 1)
+	for k in inv.kits:
+		keep[k] = maxi(int(keep.get(k, 0)), 1)
 	var fitted := _loadout(game)
 	if fitted != null:
 		for id: StringName in fitted.all_ids():

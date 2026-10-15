@@ -230,7 +230,7 @@ func _play(g: Game) -> void:
 	check(g.inventory.has(&"haft"), "the haft is carried")
 	# The rest of a day: a worn edge, a wound, wet clothes, kit on, the lamp lit, a sky.
 	g.inventory.wear(&"axe_hand", 40)
-	g.inventory.wear_kit(&"kit_lens")
+	check(g.inventory.wears(&"lens") and g.inventory.wears(&"rig"), "kit carried from the start is on, a piece to a slot")
 	g.body.health = 7
 	g.body.arrests = 1
 	# No resist set by hand: it is the fitted gear's (54_gear._refit), worked out
@@ -295,7 +295,7 @@ func _live(g: Game) -> Dictionary:
 		"items": g.inventory.items.duplicate(),
 		"edges": g.inventory.edges.duplicate(),
 		"held": g.inventory.held,
-		"worn": g.inventory.worn,
+		"kits": g.inventory.kits.duplicate(),
 		"handled": g.inventory.handled.duplicate(),
 		"health": g.body.health,
 		"lamp": g.body.lamp_lit,

@@ -286,17 +286,22 @@ func test_suggest_prefers_a_first_tool() -> void:
 	Fx.done(g)
 
 
-func test_kit_is_worn_one_piece_at_a_time_and_the_rig_carries_more() -> void:
+## Kit is worn a piece to a slot, like the rest of what is worn: plate on the
+## body, a brace on the hands, a rig on the back, a lens or an aerial on the head.
+func test_kit_is_worn_a_piece_to_a_slot_and_the_rig_carries_more() -> void:
 	var inv := Inventory.new()
 	near(inv.creel(), 40.0, 0.001)
 	inv.add(&"kit_rig")
-	check(inv.wears(&"rig"), "the first piece goes on")
+	check(not inv.wears(&"rig"), "carried is not worn: the loadout puts kit on (54_gear)")
+	check(inv.wear_kit(&"kit_rig"))
 	near(inv.creel(), 60.0, 0.001, "a rig carries twenty more")
 	inv.add(&"kit_plate")
-	check(inv.wears(&"rig") and not inv.wears(&"plate"), "one piece at a time")
 	check(inv.wear_kit(&"kit_plate"))
-	check(inv.wears(&"plate") and not inv.wears(&"rig"))
-	near(inv.creel(), 40.0, 0.001)
+	check(inv.wears(&"plate") and inv.wears(&"rig"), "plate on the body and a rig on the back, both")
+	inv.add(&"kit_lens")
+	inv.add(&"kit_aerial")
+	check(inv.wear_kit(&"kit_lens") and inv.wear_kit(&"kit_aerial"))
+	check(inv.wears(&"aerial") and not inv.wears(&"lens"), "a lens and an aerial share the head")
 	check(not inv.wear_kit(&"stone"), "stone is not kit")
 	inv.remove(&"kit_plate")
 	check(not inv.wears(&"plate"), "taken off when gone")

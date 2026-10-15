@@ -20,8 +20,17 @@ const DULL_LINE := "It is not biting the way it did."
 var items: Dictionary = {} # StringName -> int
 var edges: Dictionary = {} # StringName -> int, only for tools
 var held: StringName = &""
-## The one salvage kit piece worn (&"" = none). Worn kit still counts toward load.
-var worn: StringName = &""
+## The kit worn (plate, brace, rig, lens, aerial), each in a slot of its own
+## (Items `slot`) alongside the rest of what is worn. In a game the loadout puts
+## it on and keeps this list (54_gear); the core reads what it does from here.
+## Worn kit still counts toward load.
+var kits: Array[StringName] = []
+## The kit a save says was worn, kept apart from `kits` (which the loadout
+## rewrites as it loads) so the gear system can put it on (54_gear `_load`).
+var kits_loaded: Array[StringName] = []
+## A piece of kit just picked up (`add`), for the gear system to put on if its
+## slot is free; &"" once taken (take_new_kit). A load sets items without it.
+var _new_kit: StringName = &""
 var _dull_noticed: Dictionary = {} # StringName -> true once the notice was given
 ## Every kind ever carried. The making page lists a recipe only once each thing it
 ## wants has been in the pack (Crafting.known), so the page grows with what is found.
@@ -41,13 +50,18 @@ func add(id: StringName, n: int = 1) -> void:
 		return
 	items[id] = count(id) + n
 	handled[id] = true
+	if Items.def(id).get("kit", &"") != &"":
+		_new_kit = id
 	if Items.has_edge(id):
 		edges[id] = 10000
 		_dull_noticed.erase(id)
-	# The first piece of kit goes on: there is nothing else to do with it.
-	if worn == &"" and Items.def(id).get("kit", &"") != &"":
-		worn = id
 	changed.emit()
+
+
+func take_new_kit() -> StringName:
+	var id := _new_kit
+	_new_kit = &""
+	return id
 
 
 func has_handled(id: StringName) -> bool:
@@ -63,8 +77,7 @@ func remove(id: StringName, n: int = 1) -> bool:
 		edges.erase(id)
 		if held == id:
 			held = &""
-		if worn == id:
-			worn = &""
+		kits.erase(id)
 	changed.emit()
 	return true
 
@@ -118,16 +131,32 @@ func spend_kit(id: StringName, uses: int = 1) -> bool:
 	return edges[id] == 0
 
 
-## True if the worn piece of kit is for `slot` (plate brace rig lens aerial).
-func wears(slot: StringName) -> bool:
-	return worn != &"" and Items.def(worn).get("kit", &"") == slot
+## True if a piece of kit of `kind` is worn (plate brace rig lens aerial).
+func wears(kind: StringName) -> bool:
+	return worn_of(kind) != &""
 
 
-## Wear one piece of salvage kit (one at a time); &"" takes it off.
+## The worn piece of kit of `kind`, or &"".
+func worn_of(kind: StringName) -> StringName:
+	for id in kits:
+		if Items.def(id).get("kit", &"") == kind:
+			return id
+	return &""
+
+
+## Put a carried piece of kit on in its slot, over the kit there; &"" takes all
+## kit off. A game wears kit through its loadout (54_gear `put_on`), which keeps
+## `kits`; this is a body with no gear system's way (fixtures, tools).
 func wear_kit(id: StringName) -> bool:
-	if id != &"" and (not has(id) or Items.def(id).get("kit", &"") == &""):
+	if id == &"":
+		kits.clear()
+		changed.emit()
+		return true
+	if not has(id) or Items.def(id).get("kit", &"") == &"":
 		return false
-	worn = id
+	var slot := Gear.slot_of(id)
+	kits.assign(kits.filter(func(k: StringName) -> bool: return Gear.slot_of(k) != slot))
+	kits.append(id)
 	changed.emit()
 	return true
 
@@ -142,8 +171,8 @@ func bulk() -> float:
 ## Load that can be carried without being laden: the creel, a worn rig, a carried basket.
 func creel() -> float:
 	var c := CREEL
-	if worn != &"":
-		c += Items.def(worn).get("creel", 0.0)
+	for k in kits:
+		c += float(Items.def(k).get("creel", 0.0))
 	if has(&"basket"):
 		c += Items.def(&"basket").get("creel", 0.0)
 	return c

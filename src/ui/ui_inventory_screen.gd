@@ -71,7 +71,7 @@ func verb_for(id: StringName) -> StringName:
 		&"food":
 			return &"eat" if UiLink.can_eat(game, inventory) else &""
 		&"to wear":
-			return &"wear" if UiLink.can_wear(inventory) else &""
+			return &"wear"
 	return &""
 
 
@@ -172,20 +172,13 @@ func _on_confirm(row: Dictionary) -> void:
 		&"light":
 			Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
 			say("The headlamp is on." if UiLink.toggle_lamp(game) else "The headlamp is off.")
-		&"wear" when Gear.is_wearable(id):
+		&"wear":
 			var line := UiLink.put_on(game, id)
 			if line.begins_with("!"):
 				refuse(line.substr(1))
 			else:
 				Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
 				say(line)
-		&"wear":
-			Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
-			if UiLink.worn(inventory) == id:
-				UiLink.wear(inventory, &"")
-				say("Took off the %s." % name)
-			elif UiLink.wear(inventory, id):
-				say("Wearing the %s." % name)
 	refresh()
 
 
@@ -224,7 +217,7 @@ func _draw() -> void:
 		if int(row.count) > 1:
 			UiDraw.text(self, Vector2i(nx + 8, top), "×%d" % row.count, UiTheme.TEXT_DIM)
 			nx += 10 + UiFont.width("×%d" % row.count)
-		if inventory.held == id or UiLink.worn(inventory) == id or UiLink.fitted(game, id) or (id == &"lamp" and game != null and game.body.lamp_lit):
+		if inventory.held == id or UiLink.fitted(game, id) or (id == &"lamp" and game != null and game.body.lamp_lit):
 			_tag(Vector2i(nx + 12, top), "HELD" if inventory.held == id else ("LIT" if id == &"lamp" else "WORN"))
 		UiDraw.text_right(self, right, top, UiRules.num(Items.bulk(id) * int(row.count)), UiTheme.TEXT_DIM)
 	if scroll > 0:
@@ -252,7 +245,7 @@ func _verb_words(verb: StringName, id: StringName) -> String:
 		&"hold":
 			return "put away" if inventory.held == id else "hold"
 		&"wear":
-			return "take off" if UiLink.worn(inventory) == id or UiLink.fitted(game, id) else "wear"
+			return "take off" if UiLink.fitted(game, id) else "wear"
 		&"light":
 			return "put out" if game != null and game.body.lamp_lit else "light"
 	return String(verb)
@@ -379,14 +372,11 @@ func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 	var held_name := UiRules.item_name(inventory.held) if inventory.held != &"" else "bare hands"
 	UiDraw.text(self, Vector2i(x0, ly + 72), "in hand", UiTheme.TEXT_DIM)
 	UiDraw.text(self, Vector2i(x0 + 96, ly + 72), held_name, UiTheme.TEXT)
-	if UiLink.can_wear(inventory):
-		# The headlamp is on his head from the start (50_survival), beside any kit.
+	if inventory != null:
+		# The headlamp is on his head from the start (50_survival), beside what is worn.
 		var on := PackedStringArray()
 		if inventory.has(&"lamp"):
 			on.append(UiRules.item_name(&"lamp"))
-		var w := UiLink.worn(inventory)
-		if w != &"":
-			on.append(UiRules.item_name(w))
 		for id: StringName in inventory.items:
 			if UiLink.fitted(game, id):
 				on.append(UiRules.item_name(id))

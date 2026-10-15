@@ -101,19 +101,20 @@ static func fits(slot: StringName) -> String:
 
 static func default_loadout(game: Game) -> Dictionary:
 	var slots: Array[Dictionary] = []
-	var worn := &""
+	var kits: Array[StringName] = []
 	var held := &""
 	var resist := {}
 	if game != null:
-		worn = game.inventory.worn
+		kits = game.inventory.kits
 		held = game.inventory.held
 		resist = game.body.resist
 	for s in SLOTS:
 		var item := &""
 		if s == &"tool":
 			item = held
-		elif worn != &"" and KIT_SLOT.get(Items.def(worn).get("kit", &""), &"") == s:
-			item = worn
+		for k in kits:
+			if Gear.slot_of(k) == s:
+				item = k
 		slots.append({"id": s, "label": String(s), "item": item, "sockets": Gear.sockets(item), "modules": []})
 	return {"slots": slots, "resist": resist, "abilities": []}
 

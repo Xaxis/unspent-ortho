@@ -63,31 +63,30 @@ static func creel(inv: Inventory, body: Body) -> float:
 	return UiRules.creel(body) if body != null else UiRules.CREEL
 
 
-## The worn piece of kit, or &"".
-static func worn(inv: Inventory) -> StringName:
-	return inv.worn
-
-
-static func can_wear(inv: Inventory) -> bool:
-	return inv != null
-
-
-## Put on (or take off, with &"") a piece of kit.
-static func wear(inv: Inventory, id: StringName) -> bool:
-	return inv.wear_kit(id)
-
-
-## Whether a carried gear piece (Gear.is_wearable) is on the body (54_gear).
+## Whether a carried piece worn in a slot (Gear.is_wearable: gear and kit alike)
+## is on the body: the loadout's (54_gear), or with no gear system, the kit worn.
 static func fitted(game: Game, id: StringName) -> bool:
 	var g := game.get_node_or_null(^"54_gear") if game != null else null
-	return g != null and int(g.call(&"fitted_count", id)) > 0
+	if g != null:
+		return int(g.call(&"fitted_count", id)) > 0
+	return game != null and game.inventory.kits.has(id)
 
 
-## Put a gear piece on from the pack, or take it off: the gear system's line,
-## a leading "!" for a refusal.
+## Put a worn piece on from the pack, or take it off: the gear system's line, a
+## leading "!" for a refusal. With no gear system (a fixture) kit goes on through
+## the inventory and nothing else does.
 static func put_on(game: Game, id: StringName) -> String:
 	var g := game.get_node_or_null(^"54_gear") if game != null else null
-	return String(g.call(&"put_on", id)) if g != null else "!Gear is put on in a game."
+	if g != null:
+		return String(g.call(&"put_on", id))
+	if game == null or Items.def(id).get("kit", &"") == &"":
+		return "!Gear is put on in a game."
+	var name := UiRules.item_name(id).capitalize()
+	if game.inventory.kits.has(id):
+		game.inventory.kits.erase(id)
+		game.inventory.changed.emit()
+		return "%s off." % name
+	return ("%s on." % name) if game.inventory.wear_kit(id) else "!That is not carried."
 
 
 ## Whether the first steps are still being walked (58_guide): the card is the guide.

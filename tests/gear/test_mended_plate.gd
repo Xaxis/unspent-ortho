@@ -165,7 +165,7 @@ func test_the_game_says_the_plate_is_spent() -> void:
 	var g := Sx.game(tree, ["--seed=4", "--size=64", "--hour=10", "--give=kit_plate:1"])
 	await frames(3)
 	var inv := g.inventory
-	eq(inv.worn, &"kit_plate", "worn as it came into the bag")
+	check(inv.wears(&"plate"), "worn as it came into the bag")
 	inv.set_edge(&"kit_plate", 100)
 	var said: Array[String] = []
 	var hear := func(text: String) -> void: said.append(text)

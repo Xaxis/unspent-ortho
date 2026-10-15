@@ -360,7 +360,7 @@ static func save_inventory(inv: Inventory) -> Dictionary:
 		handled.append(String(id))
 	handled.sort()
 	return {"items": SaveCodec.counts(inv.items), "edges": SaveCodec.counts(inv.edges), "held": String(inv.held),
-		"worn": String(inv.worn), "dull": dull, "handled": handled}
+		"kits": Array(inv.kits).map(func(k: StringName) -> String: return String(k)), "dull": dull, "handled": handled}
 
 
 static func load_inventory(game: Game, v: Variant) -> void:
@@ -383,7 +383,14 @@ static func load_inventory(game: Game, v: Variant) -> void:
 		dull[StringName(str(id))] = true
 	inv.set("_dull_noticed", dull)
 	var worn := StringName(str(d.get("worn", "")))
-	inv.worn = worn if worn == &"" or inv.has(worn) else &""
+	# Kit worn, each in its slot; a save from before slots wore one piece ("worn").
+	inv.kits.clear()
+	var kits: Array = d.get("kits", [] if worn == &"" else [String(worn)])
+	for k: Variant in kits:
+		var id := StringName(str(k))
+		if inv.has(id) and not inv.kits.has(id):
+			inv.kits.append(id)
+	inv.kits_loaded.assign(inv.kits)
 	var held := StringName(str(d.get("held", "")))
 	inv.set_held(held)
 	if game.player != null and game.player.model != null:
