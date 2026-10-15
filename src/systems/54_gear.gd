@@ -737,6 +737,11 @@ func put_on(id: StringName) -> String:
 func _act(_g: Game, row_id: StringName) -> String:
 	if not Gear.SLOTS.has(row_id):
 		return "!Nothing fits there."
+	# The page opens beside a hostile from home, with the world stopped, because
+	# it reads (90_ui); fitting or swapping there would change the fight while it
+	# waits, the way making or eating would.
+	if not game.aloft and UiRules.hostile_near(get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
+		return "!Not with that so close."
 	var slot: StringName = row_id
 	var here := loadout.item(slot)
 	# The hand is the inventory's: what is held is chosen in carrying, and the only
