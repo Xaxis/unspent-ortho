@@ -4,8 +4,8 @@ extends UiScreen
 ## Resume, the apps that have no key of their own (gear, machine reads, saves),
 ## the journal for a player who has forgotten its key, the keys, back to the
 ## title, or quit. The keys are one level down; Esc backs
-## out. The replacement sub-panel says where and when the player is, and when
-## the game was last saved. Leaving (to the title, or quit) takes the autosave
+## out. The replacement sub-panel says where and when the player is, their body,
+## what the machines make of them here, and when the game was last saved. Leaving (to the title, or quit) takes the autosave
 ## first when it is calm (05_save).
 
 ## The keys this page lists and what each does. The ACTIONS are written here and
@@ -25,6 +25,8 @@ const KEYS := [
 	[[&"inventory"], "carrying"],
 	[[&"craft"], "making"],
 	[[&"map"], "map"],
+	[[&"journal"], "journal"],
+	[[&"holding"], "holding"],
 	[[&"target"], "hold: lock onto a machine"],
 	[[&"target_prev", &"target_next"], "the one before, the next"],
 	[[&"shoulder"], "over your shoulder"],
@@ -180,6 +182,7 @@ func _draw() -> void:
 		draw_keys([["esc", "back"]])
 		return
 	UiSlate.heading(self, Vector2i(px, R.position.y + 16), "here", R.end.x - 24)
+	var slate_y := R.position.y + 344
 	if game != null:
 		var p := game.player.pos
 		var biome := BiomeRegistry.at(game.world, p)
@@ -187,9 +190,10 @@ func _draw() -> void:
 		UiDraw.text(self, Vector2i(px + 8, R.position.y + 48 + UiTheme.LINE), game.clock.label(), UiTheme.TEXT)
 		UiDraw.text(self, Vector2i(px + 8, R.position.y + 48 + UiTheme.LINE * 2), "%s of the land seen" % UiRules.share(seen_share), UiTheme.TEXT_DIM)
 		_draw_body(Vector2i(px, R.position.y + 136), R.end.x - 24)
+		slate_y = maxi(slate_y, _draw_machines(Vector2i(px, R.position.y + 312), R.end.x - 24) + 24)
 	var line := saved_line()
 	if line != "":
-		var sy := R.position.y + 344
+		var sy := slate_y
 		UiSlate.heading(self, Vector2i(px, sy), "slate", R.end.x - 24)
 		UiDraw.text(self, Vector2i(px + 8, sy + 32), line, UiTheme.TEXT)
 	draw_keys([["e", "choose"], ["esc", "resume"]])
@@ -197,6 +201,37 @@ func _draw() -> void:
 
 ## Where the next bracket's line stands, past the widest meter.
 const NEXT_X := 380
+
+
+## What the machines make of the player here, off the network the player stands
+## in (the reads feed, 32_disposition): how far it has noticed them, what they
+## keep feeding it (a relic worn), and what the plan still holds this place for.
+## Home is where a player stops to take stock, so the region's read is here, in
+## the module's violet. Returns the y under the last line drawn; nothing is
+## drawn while no network is read.
+func _draw_machines(at: Vector2i, right: int) -> int:
+	var read := SlateFeeds.feed(&"reads", game)
+	var v := float(read.get("interference", -1.0))
+	if v < 0.0:
+		return at.y
+	UiSlate.heading(self, at, "the machines", right, UiTheme.MACHINE[2])
+	var x := at.x + 8
+	var y := at.y + 32
+	var hot := Interference.level_of(v) >= 2
+	UiDraw.text(self, Vector2i(x, y), "noticed", UiTheme.MACHINE[2])
+	UiSlate.meter(self, Rect2i(x + 112, y + 2, 240, 14), v, Interference.THRESHOLDS[2], UiTheme.MACHINE[3])
+	var said := String(Interference.name_of(v))
+	var network := String(read.get("network", ""))
+	if network != "":
+		said += " · " + network
+	UiDraw.text(self, Vector2i(x + NEXT_X, y), said, UiTheme.WARN if hot else UiTheme.MACHINE[3])
+	y += 24
+	for cause: Variant in (read.get("causes", []) as Array):
+		y += UiSlate.wrapped(self, Vector2i(x, y), right - x, String(cause), UiTheme.WARN) * UiTheme.LINE
+	var asking := String(read.get("asking", ""))
+	if asking != "":
+		y += UiSlate.wrapped(self, Vector2i(x, y), right - x, asking, UiTheme.MACHINE[3]) * UiTheme.LINE
+	return y
 
 
 ## What earns the next health bracket (Brackets): a bracket was only ever said

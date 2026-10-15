@@ -600,6 +600,17 @@ func test_the_controls_page_names_the_key_that_puts_things_down() -> void:
 	check(InputMap.has_action(&"drop"), "and the game answers that key")
 
 
+## Every page of the slate with a key of its own is on the controls page: the
+## journal and the holding answered keys the page never named.
+func test_the_controls_page_names_every_page_key() -> void:
+	var listed: Array[StringName] = []
+	for pair: Array in UiPauseScreen.KEYS:
+		listed.append_array(pair[0])
+	for action: StringName in [&"inventory", &"craft", &"map", &"journal", &"holding"]:
+		check(InputMap.has_action(action), "the game answers %s" % action)
+		check(action in listed, "and the controls page names it: %s" % action)
+
+
 func test_x_puts_a_row_down_and_asks_first_for_a_tool() -> void:
 	var g := Fx.flat()
 	g.inventory.add(&"driftwood", 3)
@@ -761,6 +772,29 @@ func test_home_says_what_earns_the_next_bracket() -> void:
 	said = await _said(s)
 	var paces := "%d more paces" % ceili(Brackets.run_to_next(300.0))
 	check(_has_word(said, "3 more machines") and _has_word(said, paces), "and they count down as he earns: %s" % str(said))
+	s.free()
+	Sx.end(g)
+
+
+## Home says what the machines make of the player here: how far the network has
+## noticed them, what a relic worn keeps telling it, and what the plan still
+## holds this place for. These were on a page of their own few ever opened.
+func test_home_says_what_the_machines_make_of_this_place() -> void:
+	var Sx := preload("res://tests/save/save_fixture.gd")
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=11", "--weather=clear:0", "--fit=glide_wing,mod_lock"])
+	await tree.process_frame
+	var s := UiPauseScreen.new()
+	s.game = g
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	var read := SlateFeeds.feed(&"reads", g)
+	var said := await _said(s)
+	check(_has_word(said, "the machines"), "home has the machines' read: %s" % str(said))
+	check(_has_word(said, String(Interference.name_of(float(read.interference)))) and _has_word(said, String(read.network)),
+		"how far the network has noticed them, and which: %s" % str(said))
+	check(_has_word(said, String(StoryContent.READS_CAUSE[&"carried"])), "the relic worn is named as what feeds it: %s" % str(said))
+	check(String(read.asking) != "" and _has_word(said, String(read.asking)), "and what the plan holds this place for: %s" % str(said))
 	s.free()
 	Sx.end(g)
 
