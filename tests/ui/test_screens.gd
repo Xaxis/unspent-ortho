@@ -655,6 +655,30 @@ func test_the_pack_sets_a_tool_against_the_one_in_hand() -> void:
 	Fx.done(g)
 
 
+## A tool says its grade and what the grade buys. A rare tool read exactly like
+## a common one, though the grade is the whole of what sets them apart.
+func test_the_pack_says_a_tools_grade_and_its_modules() -> void:
+	var g := Fx.flat()
+	g.inventory.add(&"pick_steel")
+	g.inventory.add(&"axe_works")
+	var s := UiInventoryScreen.new()
+	s.game = g
+	s.inventory = g.inventory
+	s.body = g.body
+	tree.root.add_child(s)
+	s.open()
+	for id: StringName in [&"pick_steel", &"axe_works"]:
+		s.select(id)
+		s.settle()
+		var said := await _said(s)
+		var grade := String(GearTree.row(id).grade)
+		var n := Gear.sockets(id)
+		var want := grade if n <= 0 else "%s · takes %s" % [grade, "a module" if n == 1 else "%d modules" % n]
+		check(_has_word(said, want), "%s says '%s': %s" % [id, want, str(said)])
+	s.queue_free()
+	Fx.done(g)
+
+
 func test_the_pack_says_the_headlamp_is_worn_and_tells_twin_uses_apart() -> void:
 	var g := Fx.flat()
 	if not g.inventory.has(&"lamp"):

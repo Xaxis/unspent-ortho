@@ -417,6 +417,12 @@ func _facts(id: StringName, count: int) -> PackedStringArray:
 				out.append("spends %d charge a swing" % int(d.wick))
 		else:
 			out.append(("%s · %s" % [verb, stuff]) if verb != "" else "%s, for a fight" % stuff)
+	# Its grade, and what the grade buys: modules, never a bigger number
+	# (GearTree). A rare tool read exactly like a common one.
+	var grade := StringName(GearTree.row(id).get("grade", &""))
+	if grade != &"":
+		var n := Gear.sockets(id)
+		out.append(String(grade) if n <= 0 else "%s · takes %s" % [grade, "a module" if n == 1 else "%d modules" % n])
 	if float(d.get("feeds", 0.0)) > 0.0:
 		out.append("feeds %s" % UiRules.duration(float(d.feeds) * 60.0))
 	if d.has("kit"):
