@@ -734,7 +734,8 @@ func test_home_says_what_earns_the_next_bracket() -> void:
 	g.body.machines_down = 2
 	g.body.run_tiles = 300.0
 	said = await _said(s)
-	check(_has_word(said, "3 more machines") and _has_word(said, "400 more paces"), "and they count down as he earns: %s" % str(said))
+	var paces := "%d more paces" % ceili(Brackets.run_to_next(300.0))
+	check(_has_word(said, "3 more machines") and _has_word(said, paces), "and they count down as he earns: %s" % str(said))
 	s.free()
 	Sx.end(g)
 
