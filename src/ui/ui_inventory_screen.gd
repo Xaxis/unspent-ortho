@@ -386,7 +386,7 @@ func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 		var at := Vector2i(x0 + (i % 2) * col_w, ly + 100 + (i / 2) * UiTheme.LINE)
 		var on := worn_in(WORN_SLOTS[i])
 		UiDraw.text(self, at, String(WORN_SLOTS[i]), UiTheme.TEXT_DIM)
-		UiDraw.text(self, at + Vector2i(72, 0), ", ".join(on) if not on.is_empty() else "-", UiTheme.TEXT if not on.is_empty() else UiTheme.GHOST)
+		UiDraw.text(self, at + Vector2i(72, 0), ", ".join(on) if not on.is_empty() else "nothing", UiTheme.TEXT if not on.is_empty() else UiTheme.TEXT_DIM)
 
 
 ## What is on the body in `slot`, by name. The headlamp is on his head from the
