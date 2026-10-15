@@ -44,6 +44,10 @@ const HINTS := {
 	&"make": ["%s makes things at the fire. Long work cooks while you go.", [&"craft"]],
 	&"carry": ["%s shows what you carry. Leave what you do not need.", [&"inventory"]],
 	&"lamp": ["Night. %s switches the headlamp on.", [&"lamp"]],
+	# Wet slows every step, and the sea at the wake and the coast's rain are the
+	# first pressure there is. Said soaked through, once: what dries a body and
+	# what keeps the rain off it (Condition.RAIN_OFF). No key: a thing to know.
+	&"wet": ["Wet through, you walk slower. A fire or a roof dries you; an oilskin keeps the rain off.", []],
 	# **THE CORE VERB OF AN ACTION GAME, AND IT WAS NEVER NAMED.** `side` is the
 	# only lesson that carries `swing`, it is the HELD lesson delivered after
 	# plate has already rung, and its words ("strike the side that is lit")
@@ -131,6 +135,8 @@ const STEPS_ALLOW: Array[StringName] = [&"walk", &"fight", &"dodge", &"target", 
 
 ## Load over this share of the creel asks for the carrying page.
 const CARRY_SHARE := 0.6
+## Soaked past this (the wet gauge's accent, UiRules.needs), the wet lesson is said.
+const WET_SAID := 0.75
 ## Nightfall past which the lamp is asked for.
 const LAMP_NIGHTFALL := 0.4
 ## Tiles within which a body counts as seen for its hint (the camera shows about 13 across).
@@ -857,6 +863,8 @@ static func _first_applicable(game: Game, wants: Callable) -> StringName:
 		return &"lamp"
 	if wants.call(&"carry") and game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
 		return &"carry"
+	if wants.call(&"wet") and game.body.wet > WET_SAID and not Survival.keeps_rain_off(game):
+		return &"wet"
 	for ab: StringName in granted(game):
 		var id := StringName("ability_%s" % ab)
 		if wants.call(id):
