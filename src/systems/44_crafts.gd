@@ -296,14 +296,23 @@ func _step_off_state() -> void:
 		game.player.hero.ride = null
 
 
+## Farther than this a move is a cut, not a step: the picture jumps with the
+## body. Boarding, launching and stepping off move it a few tiles at most
+## (CraftKinds.launch_reach), and a hard cut there jolted the whole frame for a
+## hop the eye can follow, so the camera's own follow carries it instead.
+const GLIDE_MOST := 6.0
+
+
 ## Move the body, the fight body with it (the contract: in a running game the
-## fight body owns position), and the land about it.
-func _put_body(to: Vector2) -> void:
+## fight body owns position), and the land about it. `cut` jumps the camera
+## with it however near: a staged boot has no frames to glide in.
+func _put_body(to: Vector2, cut := false) -> void:
+	var from := _at()
 	to = game.player.place(to)
 	game.player.sync_view(0.0)
 	if game.view != null:
 		game.view.ensure_near(to)
-	if game.camera != null:
+	if game.camera != null and (cut or from.distance_to(to) > GLIDE_MOST):
 		game.camera.snap_to(game.player.position)
 
 
@@ -438,7 +447,7 @@ func _from_options() -> void:
 			continue
 		var c := add(kind, spot, game.player.facing)
 		if kind == StringName(o.aboard) and c != null:
-			_put_body(spot)
+			_put_body(spot, true)
 			_aboard_state(c)
 
 

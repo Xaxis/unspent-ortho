@@ -154,6 +154,32 @@ func test_it_carries_the_body_over_water_no_one_could_wade_and_the_sim_moves_it(
 ##
 ## Restated to that, because the old assertion could only pass in a build where
 ## the owner's ruling had not landed.
+## Putting a raft in moves the body a few tiles out. The picture follows it there
+## rather than jumping the whole frame with it, and is on him again within a
+## second.
+func test_putting_in_glides_the_picture_out_with_him() -> void:
+	var sys := _boot(["--give=raft:1"])
+	if not _to_the_tideline():
+		_done()
+		return
+	for i in 3:
+		await tree.process_frame
+	var before := _focus()
+	eq(sys.call("launch", &"raft"), &"", "launched")
+	var hop := before.distance_to(Vector2(game.player.position.x, game.player.position.z))
+	gt(hop, 1.0, "the raft went in a step or more out")
+	near(_focus().distance_to(before), 0.0, 0.01, "the picture did not jump with him")
+	for i in 90:
+		await tree.process_frame
+	near(_focus().distance_to(Vector2(game.player.position.x, game.player.position.z)), 0.0, 0.1, "and it is on him again")
+	_done()
+
+
+func _focus() -> Vector2:
+	var at: Vector3 = game.camera.get("_smoothed")
+	return Vector2(at.x, at.z)
+
+
 func test_a_body_on_foot_swims_the_water_a_raft_rides_over() -> void:
 	var sys := _boot()
 	check(sys != null)
