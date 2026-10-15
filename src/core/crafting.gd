@@ -249,12 +249,13 @@ static func _carries_verb(inv: Inventory, verb: StringName) -> bool:
 ## &"" when none is short of whole.
 static func _kit_to_mend(inv: Inventory, slot: StringName) -> StringName:
 	var best := &""
+	var worn := inv.worn_of(slot)
 	for id: StringName in inv.items:
 		if Items.def(id).get("kit", &"") != slot or not Items.def(id).has("worn_by") or inv.edge(id) >= 10000:
 			continue
-		if best == &"" or id == inv.worn or inv.edge(id) < inv.edge(best):
+		if best == &"" or id == worn or inv.edge(id) < inv.edge(best):
 			best = id
-			if id == inv.worn:
+			if id == worn:
 				break
 	return best
 

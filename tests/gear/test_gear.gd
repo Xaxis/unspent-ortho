@@ -130,7 +130,8 @@ func test_every_piece_of_gear_is_made_drawn_and_worth_wearing() -> void:
 		# grants an ability. (Some answer landscapes still to come: radiation and
 		# EM belong to the glass desert and the server fields.)
 		var r := Gear.resist_of(id)
-		var useful := Gear.ability_of(id) != &""
+		# Or it is kit, whose worth is the body's own: health, stamina, load, sight, hearing.
+		var useful: bool = Gear.ability_of(id) != &"" or Items.def(id).get("kit", &"") != &""
 		for h: Variant in r:
 			check(Hazards.IDS.has(StringName(h)), "%s resists %s, which is not a hazard" % [id, h])
 			useful = useful or Hazards.IDS.has(StringName(h))

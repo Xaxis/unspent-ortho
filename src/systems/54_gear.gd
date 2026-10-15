@@ -96,6 +96,11 @@ func setup(g: Game) -> void:
 	SlateFeeds.on_act(&"loadout", _act)
 	SaveGame.register(&"gear", _save, _load)
 	_fit_from_options()
+	# Kit carried from the start (--give) goes on as kit picked up does.
+	for id: StringName in g.inventory.items:
+		var slot := Gear.slot_of(id)
+		if Items.def(id).get("kit", &"") != &"" and slot != &"" and loadout.item(slot) == &"":
+			loadout.fit(slot, id)
 	loadout.hold(g.inventory.held)
 	_refit()
 
@@ -110,10 +115,23 @@ func _exit_tree() -> void:
 func _on_inventory_changed() -> void:
 	loadout.hold(game.inventory.held)
 	loadout.keep_only(func(id: StringName, n: int) -> bool: return game.inventory.count(id) >= n)
+	_put_on_new_kit()
 	_refit()
 
 
+## A piece of kit just picked up goes on in its slot if the slot is free, there
+## being nothing else to do with it; one taken off stays off.
+func _put_on_new_kit() -> void:
+	var id := game.inventory.take_new_kit()
+	var slot := Gear.slot_of(id)
+	if id != &"" and slot != &"" and game.inventory.has(id) and loadout.item(slot) == &"":
+		loadout.fit(slot, id)
+
+
 func _refit() -> void:
+	# What the kit on the body does is read from the inventory by the core (health,
+	# wind, carrying, sight, hearing): it is told which kit the slots hold.
+	game.inventory.kits.assign(loadout.all_ids().filter(func(id: StringName) -> bool: return Items.def(id).get("kit", &"") != &""))
 	game.body.resist = Gear.resist_total(loadout)
 	# And what it changes in a fight (FightKit): read where a blow lands.
 	if game.player != null and game.player.hero != null:
@@ -128,7 +146,7 @@ func _refit() -> void:
 ## world cannot disagree about what is on.
 func worn_look() -> Dictionary:
 	var body := AvatarState.of(game).look
-	var look := GearLook.compose(body if not body.is_empty() else PersonLook.BASE, loadout, game.inventory.worn if game.inventory != null else &"")
+	var look := GearLook.compose(body if not body.is_empty() else PersonLook.BASE, loadout)
 	# The headlamp is worn while it is carried (Items `lamp`).
 	if game.inventory != null and game.inventory.has(&"lamp"):
 		var gear: Array = (look.get("gear", []) as Array).duplicate()
@@ -978,7 +996,13 @@ func _save() -> Variant:
 func _load(v: Variant) -> void:
 	if not (v is Dictionary):
 		return
+	var kits: Array[StringName] = game.inventory.kits_loaded.duplicate()
 	loadout.load_from((v as Dictionary).get("loadout", {}))
+	# A save from before kit had slots wore its one piece outside the loadout.
+	for id: StringName in kits:
+		var slot := Gear.slot_of(id)
+		if slot != &"" and loadout.item(slot) == &"" and not loadout.all_ids().has(id):
+			loadout.fit(slot, id)
 	loadout.hold(game.inventory.held)
 	book.load_from((v as Dictionary).get("cooldowns", {}), Time.get_ticks_msec() / 1000.0)
 	_pulls = SaveCodec.to_int((v as Dictionary).get("pulls", 0))
