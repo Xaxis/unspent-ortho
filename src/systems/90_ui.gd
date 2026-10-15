@@ -227,6 +227,59 @@ func switch_to(n: StringName) -> bool:
 	return open_screen(n, true)
 
 
+## A click on a tab was taken this frame: the same click is the swing action,
+## and must not also confirm the chosen row (`_read_keys`).
+var _swallow_swing := false
+
+
+## A left click on a tab of the open app's strip puts that app on the glass. The
+## slate is steered by the keys; on the web a hand goes to the mouse first, and
+## the strip it clicked did nothing.
+func _input(event: InputEvent) -> void:
+	var mb := event as InputEventMouseButton
+	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var s := top()
+	if s == null or game == null or game.talking:
+		return
+	var app := UiSlate.tab_at(s.device_rect, Vector2i(s.make_input_local(mb).position))
+	if app == &"":
+		return
+	_swallow_swing = true
+	get_viewport().set_input_as_handled()
+	@warning_ignore("return_value_discarded")
+	click_tab(app)
+
+
+## App `app` on the glass from its tab: home closes what is over it, an app that
+## lives under home opens over home, and the rest switch the way their keys do.
+func click_tab(app: StringName) -> bool:
+	var s := top()
+	if s == null or s.screen_name == app or not screens.has(app):
+		return false
+	var home: UiScreen = screens.get(UiSlate.UNDER)
+	if app == UiSlate.UNDER or app in SlateFeeds.APPS:
+		if not stack.has(home):
+			if why_not_open(UiSlate.UNDER) != "":
+				return false
+			s.close(true)
+			if not open_screen(UiSlate.UNDER, true):
+				return false
+		while top() != home:
+			top().close(true)
+		return app == UiSlate.UNDER or open_screen(app, true)
+	if APPS.has(s.screen_name) and APPS.has(app):
+		return switch_to(app)
+	var why := why_not_open(app)
+	if why != "":
+		Events.sfx.emit(&"ui_slate_deny", Vector3.ZERO)
+		s.refuse(why)
+		return false
+	while top() != null:
+		top().close(true)
+	return open_screen(app, true)
+
+
 func _on_closed(s: UiScreen) -> void:
 	stack.erase(s)
 	if s.screen_name == &"pause":
@@ -271,6 +324,9 @@ func _read_keys() -> bool:
 		return top() != null
 	if _page_up():
 		return false
+	if _swallow_swing:
+		_swallow_swing = false
+		down[&"swing"] = false
 	var s := top()
 	if s != null:
 		for pair: Array in PAGE_KEYS:

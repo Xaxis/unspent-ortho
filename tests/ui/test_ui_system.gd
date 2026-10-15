@@ -289,9 +289,62 @@ func _tap_until(action: StringName, done: Callable, seconds: float = 4.0) -> boo
 	return true
 
 
+## A left click on app `n`'s tab, sent through Input the way a mouse sends it, at
+## the middle of where the strip draws that tab on the app on top.
+func _click_tab(ui: Node, n: StringName) -> void:
+	var s: UiScreen = ui.call("top")
+	var at := Vector2.ZERO
+	for tab: Dictionary in UiSlate.tab_layout(s.device_rect):
+		if tab.app == n:
+			at = Vector2((tab.hit as Rect2i).get_center())
+	# A mouse reports window pixels; the viewport maps them onto the slate's.
+	var on_screen := s.get_viewport().get_final_transform() * (s.get_global_transform_with_canvas() * at)
+	for pressed: bool in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT
+		ev.pressed = pressed
+		ev.position = on_screen
+		ev.global_position = on_screen
+		Input.parse_input_event(ev)
+		# Headless, nothing flushes what Input buffers: a window's event loop would.
+		Input.flush_buffered_events()
+		await tree.process_frame
+	await tree.process_frame
+
+
 ## Wait until app `n` is on the glass (&"" = nothing is).
 func _opened(n: StringName) -> Callable:
 	return func() -> bool: return _live.has(n) if n != &"" else _live.is_empty()
+
+
+## A click on a tab puts that app on the glass as its key would, and is not also
+## the swing that confirms the chosen row: home opened by a click stays open on
+## its "resume" row.
+func test_a_click_on_a_tab_puts_that_app_up() -> void:
+	var g := _make()
+	var ui := _ui(g)
+	_calm(g)
+	for i in 3:
+		await tree.process_frame
+	_listen_screens()
+	check(await _tap_until(&"inventory", _opened(&"inventory")), "the pack is open")
+	await _click_tab(ui, &"map")
+	eq((ui.call("top") as UiScreen).screen_name, &"map", "a click on MAP puts the map up")
+	await _click_tab(ui, &"pause")
+	for i in 3:
+		await tree.process_frame
+	eq((ui.call("top") as UiScreen).screen_name, &"pause", "a click on HOME opens home, and the click did not resume")
+	check(tree.paused, "the world is stopped under home")
+	await _click_tab(ui, &"loadout")
+	eq((ui.call("top") as UiScreen).screen_name, &"loadout", "a click on GEAR opens it")
+	check((ui.get("stack") as Array).has((ui.get("screens") as Dictionary)[&"pause"]), "over home")
+	await _click_tab(ui, &"inventory")
+	eq((ui.call("top") as UiScreen).screen_name, &"inventory", "and a click on CARRY goes back to the pack")
+	check(tree.paused, "over home still, as its key opens it from gear")
+	while ui.call("top") != null:
+		(ui.call("top") as UiScreen).close()
+	_drop_screens()
+	g.free()
 
 
 func test_the_real_actions_open_and_close_pages() -> void:
