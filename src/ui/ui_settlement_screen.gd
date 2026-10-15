@@ -129,6 +129,7 @@ func _draw() -> void:
 		if row.has("header"):
 			UiSlate.heading(self, Vector2i(x0, top), String(row.header), right)
 			continue
+		note_row(i, Rect2i(x0 - 8, top - 2, right - x0 + 14, UiTheme.LINE))
 		var ok := UiMenu.enabled(row)
 		var col := UiTheme.TEXT if ok else UiTheme.TEXT_DIM
 		if i == menu.index:

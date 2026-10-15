@@ -164,6 +164,7 @@ func _draw() -> void:
 		var row := menu.rows[i]
 		var e: Dictionary = row.entry
 		var top := LIST_TOP + i * ROW_PITCH
+		note_row(i, Rect2i(x0 - 8, top - 4, right - x0 + 14, ROW_PITCH - 8))
 		var chosen := i == menu.index
 		if chosen:
 			UiDraw.rect(self, Rect2i(x0 - 8, top - 4, right - x0 + 14, ROW_PITCH - 8), UiTheme.GLASS_LIT)

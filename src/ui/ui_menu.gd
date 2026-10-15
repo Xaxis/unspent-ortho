@@ -15,6 +15,11 @@ var rows: Array[Dictionary] = []
 ## Index into rows of the chosen row; -1 when nothing is selectable.
 var index := -1
 
+## Where each row was last drawn on the glass, by index: a click is read
+## against it. A screen notes a row as it draws it (UiScreen.note_row), and the
+## frame clears them, so a row scrolled off the glass is never clicked.
+var drawn: Dictionary = {}
+
 var _hold_dir := 0
 var _hold_time := 0.0
 var _next_repeat := 0.0
@@ -50,6 +55,14 @@ func set_rows(new_rows: Array[Dictionary], key: String = "id") -> void:
 		if selectable(rows[i]):
 			index = i
 			return
+
+
+## The selectable row drawn under `p`, or -1.
+func row_at(p: Vector2i) -> int:
+	for i: int in drawn:
+		if i < rows.size() and selectable(rows[i]) and (drawn[i] as Rect2i).has_point(p):
+			return i
+	return -1
 
 
 func selected() -> Dictionary:

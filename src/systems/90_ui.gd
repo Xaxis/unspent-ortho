@@ -231,9 +231,11 @@ func switch_to(n: StringName) -> bool:
 var _swallow_swing := false
 
 
-## A left click on a tab of the open app's strip puts that app on the glass. The
-## slate is steered by the keys; on the web a hand goes to the mouse first, and
-## the strip it clicked did nothing.
+## A left click on an open page does what the key would to what it is on: a tab
+## puts that app on the glass, a row is chosen (and a row already chosen is
+## used). The slate is steered by the keys; on the web a hand goes to the mouse
+## first, and what it clicked did nothing. A click on bare glass does nothing:
+## it used to be a swing, which confirmed whatever row was chosen.
 func _input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
 	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
@@ -241,13 +243,15 @@ func _input(event: InputEvent) -> void:
 	var s := top()
 	if s == null or game == null or game.talking:
 		return
-	var app := UiSlate.tab_at(s.device_rect, Vector2i(s.make_input_local(mb).position))
-	if app == &"":
-		return
 	_swallow_swing = true
 	get_viewport().set_input_as_handled()
-	@warning_ignore("return_value_discarded")
-	click_tab(app)
+	var at := Vector2i(s.make_input_local(mb).position)
+	var app := UiSlate.tab_at(s.device_rect, at)
+	if app != &"":
+		@warning_ignore("return_value_discarded")
+		click_tab(app)
+		return
+	s.click_row(s.menu.row_at(at))
 
 
 ## App `app` on the glass from its tab: home closes what is over it, an app that

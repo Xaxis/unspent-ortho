@@ -283,6 +283,23 @@ func _click_tab(ui: Node, n: StringName) -> void:
 	for tab: Dictionary in UiSlate.tab_layout(s.device_rect):
 		if tab.app == n:
 			at = Vector2((tab.hit as Rect2i).get_center())
+	await _click_at(s, at)
+
+
+## A left click on the row whose id is `id`, at the middle of where the app on
+## top last drew it.
+func _click_row(ui: Node, id: StringName) -> void:
+	var s: UiScreen = ui.call("top")
+	var at := Vector2.ZERO
+	for i: int in s.menu.drawn:
+		if s.menu.rows[i].get("id") == id:
+			at = Vector2((s.menu.drawn[i] as Rect2i).get_center())
+	check(at != Vector2.ZERO, "%s is drawn on %s" % [id, s.screen_name])
+	await _click_at(s, at)
+
+
+## A left click at `at` on app `s`'s glass, as a mouse sends it.
+func _click_at(s: UiScreen, at: Vector2) -> void:
 	# A mouse reports window pixels; the viewport maps them onto the slate's.
 	var on_screen := s.get_viewport().get_final_transform() * (s.get_global_transform_with_canvas() * at)
 	for pressed: bool in [true, false]:
@@ -301,6 +318,34 @@ func _click_tab(ui: Node, n: StringName) -> void:
 ## Wait until app `n` is on the glass (&"" = nothing is).
 func _opened(n: StringName) -> Callable:
 	return func() -> bool: return _live.has(n) if n != &"" else _live.is_empty()
+
+
+## A click on a row chooses it, and a click on the row already chosen uses it, as
+## the key would. A click on bare glass does nothing: it used to be a swing that
+## confirmed the chosen row, so a click anywhere on home resumed the game.
+func test_a_click_on_a_row_chooses_it_and_a_second_uses_it() -> void:
+	var g := _make()
+	var ui := _ui(g)
+	_calm(g)
+	for i in 3:
+		await tree.process_frame
+	_listen_screens()
+	check(await _tap_until(&"pause", _opened(&"pause")), "home is open")
+	var home: UiPauseScreen = ui.call("top")
+	await tree.process_frame
+	await _click_at(home, Vector2(UiSlate.SPARE.get_center()))
+	for i in 3:
+		await tree.process_frame
+	eq((ui.call("top") as UiScreen).screen_name, &"pause", "a click on bare glass does nothing: home is still open")
+	await _click_row(ui, &"loadout")
+	eq(home.menu.selected().get("id"), &"loadout", "a click on gear chooses it")
+	eq((ui.call("top") as UiScreen).screen_name, &"pause", "and only chooses it")
+	await _click_row(ui, &"loadout")
+	eq((ui.call("top") as UiScreen).screen_name, &"loadout", "a second click opens it")
+	while ui.call("top") != null:
+		(ui.call("top") as UiScreen).close()
+	_drop_screens()
+	g.free()
 
 
 ## A click on a tab puts that app on the glass as its key would, and is not also

@@ -210,6 +210,7 @@ func _draw() -> void:
 		if row.has("header"):
 			UiSlate.heading(self, Vector2i(x0, top), String(row.header), right)
 			continue
+		note_row(i, Rect2i(x0 - 8, top - 2, right - x0 + 14, UiTheme.LINE))
 		var id: StringName = row.id
 		var chosen := i == menu.index
 		var col := UiTheme.TEXT if UiMenu.enabled(row) or UiRules.item_group(id) == &"goods" else UiTheme.TEXT_DIM

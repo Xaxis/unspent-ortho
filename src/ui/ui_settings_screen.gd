@@ -278,6 +278,7 @@ func _draw() -> void:
 			UiDraw.text(self, Vector2i(x0, top), String(row.header).to_upper(), UiTheme.TEXT_DIM)
 			UiDraw.hline(self, x0, right, top + UiFont.SIZE, UiTheme.GHOST)
 			continue
+		note_row(i, Rect2i(x0 - 8, top - 4, right - x0 + 14, ROW_PITCH - 6))
 		var chosen := i == menu.index
 		if chosen:
 			UiDraw.rect(self, Rect2i(x0 - 8, top - 4, right - x0 + 14, ROW_PITCH - 6), UiTheme.GLASS_LIT)

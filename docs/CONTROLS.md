@@ -26,6 +26,8 @@ Rules in every scheme:
 - Shift holds to run and taps to dodge; dodge also has a key of its own.
 - No menu key sits under a finger that fights. No scheme uses the number row.
 - The arrows walk, and every slate page is steered by the walk (use or swing confirms).
+  With a mouse, a click on a tab opens that app as its key would, a click on a row chooses
+  it, and a second click on the chosen row uses it. A click on bare glass does nothing.
   Over the shoulder the arrows turn the view instead, and the walk there is only the move
   keys that are not also look keys (`game.gd`).
 - On a Mac nothing sits on Ctrl: Godot turns Ctrl+left click into a right click, which is

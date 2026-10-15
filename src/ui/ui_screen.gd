@@ -131,6 +131,26 @@ func handle(action: StringName) -> bool:
 	return false
 
 
+## Row `i` is drawn over `r` this frame: a click there is a click on it.
+func note_row(i: int, r: Rect2i) -> void:
+	menu.drawn[i] = r
+
+
+## A click on row `i`: the first chooses it, and a click on the row already
+## chosen does what the use key does to it.
+func click_row(i: int) -> void:
+	if not is_open or i < 0 or i >= menu.rows.size() or not UiMenu.selectable(menu.rows[i]):
+		return
+	if i == menu.index:
+		@warning_ignore("return_value_discarded")
+		handle(&"confirm")
+		return
+	menu.index = i
+	Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+	_on_choice_changed()
+	queue_redraw()
+
+
 ## Move the choice to the row whose id is `id`, if there is one (shots, links).
 func select(id: StringName) -> void:
 	for i in menu.rows.size():
@@ -212,6 +232,7 @@ func _process(delta: float) -> void:
 
 ## The veil, the device, the status bar with this app lit.
 func draw_frame(app: StringName = screen_name) -> void:
+	menu.drawn.clear()
 	UiSlate.veil(self)
 	draw_device()
 	UiSlate.status(self, app, clock_text(), device_rect)

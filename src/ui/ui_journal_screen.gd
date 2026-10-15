@@ -223,6 +223,7 @@ func _draw() -> void:
 		if row.has("header"):
 			UiSlate.heading(self, Vector2i(x0, top), String(row.header), right)
 			continue
+		note_row(i, Rect2i(x0 - 8, top - 2, right - x0 + 14, UiTheme.LINE))
 		var col := UiTheme.TEXT_DIM if row.get("dim", false) else UiTheme.TEXT
 		var aside := _aside(row)
 		if i == menu.index and not row.get("dim", false):
