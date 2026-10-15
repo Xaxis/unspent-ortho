@@ -71,25 +71,20 @@ await answered:heat 25
 shot 06-the-burning-answered with land:burning,answered:heat
 
 # --- 4. The part comes out of the body that was carrying it -------------------
-# Round it to its WORKING PART and swing, over and over, the way a player does. A
-# cutter carries its part at its back, so met face on it is all plate: a run of
-# this tour that used `walkto mob` put twenty-four swings into the front of one
-# and rang every single one of them off. The await has to be INSIDE the loop, too:
-# nothing else in there can fail, and a `try` whose lines all succeed runs once.
 place bonelands
 wait 1.5
 spawn cutter
 shot 07-a-cutter-on-its-round with mob:cutter,land:bonelands
-# Brought most of the way down first: what this section shows is the part coming
-# out of the body, and a scripted swing at its back is no match for a roused
-# cutter's whole life (it put the tour down and the coast was cleared under it,
-# on main too).
+# Walked round to its working part and felled there, on the real kill path
+# (98_tour `fell`): what this section shows is the part coming out of the body,
+# not the fight that brings it down. Swinging at its back until it fell was a
+# coin the frames before it tossed: a wounded cutter turns and runs on its round,
+# main missed its first try, and two UI changes that touched nothing in a fight
+# made it miss all twenty-six (2026-10-15). The hands strip only a body in reach
+# and in front of them (48_carcasses), so the walk comes first.
 wound cutter 0.2
-try 26
-  walkto part 4
-  tap swing
-  await killed 1.2
-end
+walkto part 4
+fell cutter
 # What it was carrying is still on it where it fell (48_carcasses): the hands
 # strip it a piece at a time, plate first, held down until the filament edge is
 # off it. No second `await killed` here: an await CONSUMES the event it waited for
