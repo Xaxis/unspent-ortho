@@ -105,6 +105,9 @@ func test_the_key_lets_it_fall_and_it_soaks_you() -> void:
 	eq(sim.veils.size(), 1, "a veil stands")
 	eq(g.inventory.count(&"wick"), 2, "for two charges")
 	gt(g.body.wet, 0.29, "it soaks you")
+	await tree.physics_frame
+	await tree.physics_frame
+	gt(g.body.wet, 0.29, "and you stay soaked: it is on the clock you dry by")
 	check(not g.body.lamp_lit, "and puts your lamp out")
 	var lights := Sx.system(g, "15_lights")
 	lights.call(&"toggle_lantern")

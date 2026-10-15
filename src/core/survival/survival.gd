@@ -698,7 +698,7 @@ static func sleep(game: Game) -> bool:
 	_skip(game, wake - now, &"sleep")
 	state.woke_at = wake
 	game.body.tired = 0.0
-	if not roof and not game.inventory.has(&"oilcloth") and _weather_wets(game, wake):
+	if not roof and not game.inventory.has(&"oilcloth") and not keeps_rain_off(game) and _weather_wets(game, wake):
 		state.wet_until = wake + Condition.WET_MINUTES
 	else:
 		state.wet_until = -INF
@@ -1244,7 +1244,7 @@ static func sweep(game: Game, _delta: float) -> void:
 	keep_lamp(game)
 	var p := game.player.pos
 	var g := w.ground_at(floori(p.x), floori(p.y))
-	if Ground.is_water(g) or (not in_village(game) and _weather_wets(game, now)):
+	if Ground.is_water(g) or (not in_village(game) and not keeps_rain_off(game) and _weather_wets(game, now)):
 		state.wet_until = now + Condition.WET_MINUTES
 	elif fire_near(game) != null and state.wet_until > now:
 		# A fire dries you six times as fast as the air does.
@@ -1317,6 +1317,21 @@ static func _skip(game: Game, minutes: float, reason: StringName) -> void:
 static func _act(game: Game, action: StringName, seconds: float) -> void:
 	if game.player != null and game.player.model != null:
 		game.player.model.play_action(action, seconds)
+
+
+## Does what he wears keep the rain off him (Condition.RAIN_OFF)?
+static func keeps_rain_off(game: Game) -> bool:
+	return Condition.keeps_rain_off(float(game.body.resist.get(&"wet", 0.0)))
+
+
+## Soak the body by `share` of a full wetting, on the clock it dries by. Body.wet
+## is worked out from that clock every frame (update_body), so a write to it
+## alone is gone the next frame.
+static func soak(game: Game, share: float) -> void:
+	var state := SurvivalState.of(game)
+	var now := game.clock.minutes
+	state.wet_until = minf(maxf(state.wet_until, now) + share * Condition.WET_MINUTES, now + Condition.WET_MINUTES)
+	game.body.wet = clampf((state.wet_until - now) / Condition.WET_MINUTES, 0.0, 1.0)
 
 
 ## Is the sky wetting a body at `minutes`, where it stands (the weather of

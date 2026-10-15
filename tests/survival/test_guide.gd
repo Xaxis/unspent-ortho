@@ -422,6 +422,20 @@ func _offered(g: Game) -> Array:
 	return out
 
 
+## Wet slows every step, and the coast soaks him first. Soaked through, the guide
+## says what dries him and what keeps the rain off; dry, or in an oilskin, it
+## says nothing about it.
+func test_soaked_through_the_guide_names_the_oilskin() -> void:
+	var g := Fx.flat()
+	check(not _offered(g).has(&"wet"), "dry: nothing to say")
+	Survival.soak(g, 1.0)
+	check(_offered(g).has(&"wet"), "soaked: said")
+	check(String(Guide.HINTS[&"wet"][0]).contains("oilskin"), "and it names the oilskin")
+	g.body.resist = {&"wet": 0.55}
+	check(not _offered(g).has(&"wet"), "wearing one: not said")
+	Fx.done(g)
+
+
 func test_building_is_taught_when_the_creel_can_actually_build() -> void:
 	# A whole pillar of the game nobody was told about (VISION §9): a player can
 	# put a place up, keep it, and have the machines come for it. Said the first
