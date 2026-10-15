@@ -109,7 +109,6 @@ func setup(o: BootOptions) -> void:
 	dev = DevTitle.attach(self, _layer)
 	settings = UiSettingsScreen.new()
 	settings.standalone = true
-	settings.device_rect = UiTitleMenu.DEVICE
 	_layer.add_child(settings)
 	character = UiCharacterScreen.new()
 	character.standalone = true

@@ -143,6 +143,20 @@ func test_back_on_the_character_page_is_the_title_again() -> void:
 	Sx.finish()
 
 
+## Every page the title opens is laid out on the page slate's panes, so it has
+## to stand on the page slate. Settings stood on the title's small device and
+## drew its list over the bare coast, half across the title's own slate.
+func test_the_title_opens_its_pages_on_a_slate_they_fit() -> void:
+	Sx.use_root("title-pages")
+	var t := _title()
+	var holder := t.get_parent()
+	for page: UiScreen in [t.settings, t.character]:
+		check(page.device_rect.encloses(UiSlate.LIST) and page.device_rect.encloses(UiSlate.SPARE),
+			"%s's panes are inside its slate: %s" % [page.screen_name, page.device_rect])
+	holder.free()
+	Sx.finish()
+
+
 ## The ask that made the two above depend on what ran before them, tested on
 ## purpose: with an autosave standing, the first press says what it would cost
 ## and starts nothing, and the second press goes through.
