@@ -53,6 +53,11 @@ func note(t_ms: float, at: Vector2) -> void:
 		_p.remove_at(0)
 
 
+## The newest place noted, or INF with none.
+func latest() -> Vector2:
+	return _p[_p.size() - 1] if not _p.is_empty() else Vector2.INF
+
+
 func clear() -> void:
 	_t.clear()
 	_p.clear()
