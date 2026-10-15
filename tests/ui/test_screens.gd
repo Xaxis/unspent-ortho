@@ -120,6 +120,22 @@ func test_a_thing_leaving_keeps_the_cursor_nearby() -> void:
 	s.free()
 
 
+## A tool the making page would make is set against the one in hand, as the pack
+## sets it: choosing what to make meant remembering what the hand held.
+func test_the_making_page_sets_a_tool_against_the_one_in_hand() -> void:
+	var s := UiCraftingScreen.new()
+	s.inventory = Inventory.new()
+	s.inventory.add(&"knife")
+	s.inventory.held = &"knife"
+	s.recipes_override = [Crafting.recipe(&"pick_cemented")]
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	var said := await _said(s)
+	check(_has_word(said, "harder than your knife"), "a steel pick against the iron knife: %s" % str(said))
+	s.free()
+
+
 func test_crafting_makes_when_it_can_and_says_what_is_short() -> void:
 	_listen()
 	var s := UiCraftingScreen.new()

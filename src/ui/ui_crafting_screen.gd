@@ -312,7 +312,11 @@ func _draw_recipe(R: Rect2i) -> void:
 	# What it is for, so a recipe is chosen for a reason (UiRules.purpose).
 	var why := UiRules.purpose(r)
 	if why != "":
-		UiSlate.wrapped(self, Vector2i(tx, R.position.y + 46 + UiTheme.LINE * line), R.end.x - UiSlate.SPARE_INSET - tx, why, UiTheme.TEXT)
+		line += UiSlate.wrapped(self, Vector2i(tx, R.position.y + 46 + UiTheme.LINE * line), R.end.x - UiSlate.SPARE_INSET - tx, why, UiTheme.TEXT)
+	# A tool it makes, set against the one in hand, as the pack sets it.
+	var against := UiRules.against_held(inventory.held, out) if inventory != null and out != &"" else ""
+	if against != "":
+		UiSlate.wrapped(self, Vector2i(tx, R.position.y + 46 + UiTheme.LINE * line), R.end.x - UiSlate.SPARE_INSET - tx, against, UiTheme.TEXT_DIM)
 	# The table starts clear of the box and of the SCAN caption under it.
 	var table_top := box.end.y + UiFont.SIZE + 16
 	var table_bottom := _draw_table(Rect2i(x0, table_top, R.size.x - UiSlate.MARGIN_L - 24, 0), r, row)
