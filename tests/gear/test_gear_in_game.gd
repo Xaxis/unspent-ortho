@@ -89,6 +89,33 @@ func test_the_gear_page_fits_sockets_swaps_and_clears_with_one_key() -> void:
 	game.free()
 
 
+## The gear page's key names what E does next to the chosen slot, in the order E
+## does it; it said "fit" for all four. A pull that may break a drilled module
+## says so before it is made.
+func test_the_gear_page_says_what_e_does_next() -> void:
+	var sys := _boot(["--give=wrap_warm:1,oilskin:1,mod_wadding:1"])
+	var next := func(slot: StringName) -> Dictionary:
+		for s: Dictionary in SlateFeeds.feed(&"loadout", game).slots:
+			if s.id == slot:
+				return s
+		return {}
+	var said: Array[String] = []
+	for i in 4:
+		said.append(String(next.call(&"body").next))
+		SlateFeeds.act(&"loadout", game, &"body")
+	eq(said, ["fit", "socket", "swap", "take off"] as Array[String], "E's next act, named before each press")
+	eq(String(next.call(&"body").warn), "", "a made module unties anywhere: nothing to warn of")
+	game.free()
+	sys = _boot(["--fit=glide_wing,mod_lock"])
+	var l: Loadout = sys.get("loadout")
+	var slot := Gear.slot_of(&"glide_wing")
+	check(l.modules(slot).has(&"mod_lock"), "the lock is drilled into the wing")
+	var row: Dictionary = next.call(slot)
+	eq(String(row.next), "take off", "the wing's next act is to come off")
+	check(String(row.warn).contains("may break"), "and away from a bench it says the lock may break first: %s" % row.warn)
+	game.free()
+
+
 ## The gear page opens beside a hostile from home because it reads; fitting or
 ## swapping there, with the world stopped, would change the fight while it waits.
 func test_the_gear_page_will_not_fit_with_a_hostile_close() -> void:

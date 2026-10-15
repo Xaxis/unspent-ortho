@@ -470,6 +470,30 @@ static func _has_word(said: Array[String], part: String) -> bool:
 	return false
 
 
+## The gear page's key names what E does next to the chosen slot (the feed's
+## `next`), and a pull that may break a module says so on the strip first.
+func test_the_gear_key_says_what_e_does_next_and_warns_of_a_pull() -> void:
+	SlateFeeds.clear()
+	var warn := "Lock is drilled in; prising it out here may break it."
+	SlateFeeds.provide(&"loadout", func(_g: Game) -> Dictionary:
+		return {"slots": [{"id": &"back", "label": "back", "item": &"glide_wing", "modules": [], "next": "take off", "warn": warn},
+			{"id": &"body", "label": "body", "item": &"", "modules": [], "next": "fit", "warn": ""}],
+			"resist": {}, "abilities": []})
+	var s := UiLoadoutScreen.new()
+	tree.root.add_child(s)
+	s.open()
+	s.select(&"back")
+	s.settle()
+	var said := await _said(s)
+	check(_has_word(said, "take off"), "E says it takes the wing off: %s" % str(said))
+	check(_has_word(said, "may break"), "and warns before the pull: %s" % str(said))
+	s.select(&"body")
+	said = await _said(s)
+	check(_has_word(said, "fit") and not _has_word(said, "may break"), "an empty slot: fit, and no warning: %s" % str(said))
+	s.free()
+	SlateFeeds.clear()
+
+
 func test_an_empty_gear_slot_says_what_can_go_in_it() -> void:
 	SlateFeeds.clear()
 	for slot: StringName in SlateFeeds.SLOTS:

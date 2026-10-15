@@ -274,8 +274,17 @@ func _draw() -> void:
 		UiSlate.meter(self, Rect2i(c.end.x - meter_w, c.position.y + 2, meter_w, 14), v)
 	if cells.size() < hz.size():
 		UiDraw.text_right(self, rright, UiSlate.SPARE.end.y - 24, "+%d" % (hz.size() - cells.size()), UiTheme.TEXT_DIM)
-	var keys := [["e", "fit"], ["a d", "turn"], ["esc", "back"]]
-	draw_keys(keys)
+	# E names what it does to the chosen slot next (54_gear `next_act`), and a
+	# pull that may break a module says so before it is made.
+	var slot: Dictionary = menu.selected().get("slot", {})
+	var verb := String(slot.get("next", "fit"))
+	var keys: Array = [["e", verb]] if verb != "" else []
+	keys.append_array([["a d", "turn"], ["esc", "back"]])
+	var warn := String(slot.get("warn", ""))
+	if warn != "" and note == "":
+		UiSlate.keys(self, keys, warn, 0.0, true, device_rect)
+	else:
+		draw_keys(keys)
 
 
 ## What this land does to a body, at the foot of the slots: the reason an empty

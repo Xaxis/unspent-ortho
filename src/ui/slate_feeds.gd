@@ -12,7 +12,9 @@ class_name SlateFeeds
 ## loadout (hazards, gear, abilities):
 ##   {slots: [{id: StringName, label: String, item: StringName (&"" empty),
 ##             sockets: int (how many modules the piece takes; 3 without a feed),
-##             modules: [{id: StringName, name: String, grants: String}]}],
+##             modules: [{id: StringName, name: String, grants: String}],
+##             next: String (what E does to it next: fit, socket, swap, take off,
+##               bind, unbind; "" refuses), warn: String (what a pull may break, said first)}],
 ##    resist: {hazard id: 0..1}, abilities: [{id, name: String, ready: bool, note: String}],
 ##    figure: {look: PersonLook spec, held: StringName, wing: bool}}  the body the page draws
 ##   default: head body hands back tool craft, from the worn kit and the thing in
