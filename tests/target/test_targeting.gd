@@ -87,6 +87,21 @@ func test_the_frame_leans_between_the_player_and_what_they_read() -> void:
 	eq(Targeting.centre_of([a, b], Vector2.ZERO), Vector2(2, 1))
 
 
+## A keeper plated in steel says so on the read, against what is in the hands:
+## the iron knife he wakes with rings off it, a steel edge bites. Said before a
+## blow is struck, by the fight's own rule (FightRules.bites).
+func test_a_plated_body_reads_whether_the_held_edge_bites() -> void:
+	var m := _mob(&"sentinel.coast", Vector2(3, 0))
+	var by_knife: Array = TargetRead.of(m, Vector2.ZERO, Moment.new(), null, null, 0.0, &"knife").stats
+	eq(by_knife[0][0], "plate", "plating is the first thing read")
+	eq(by_knife[0][1], "steel: your knife rings off it")
+	var by_steel: Array = TargetRead.of(m, Vector2.ZERO, Moment.new(), null, null, 0.0, &"knife_shear").stats
+	eq(by_steel[0][1], "steel: your steel knife bites")
+	eq(TargetRead.of(m, Vector2.ZERO, Moment.new()).stats[0][1], "steel: bare hands ring off it")
+	var bare: Array = TargetRead.of(_mob(&"runner", Vector2(3, 0)), Vector2.ZERO, Moment.new(), null, null, 0.0, &"knife").stats
+	check(not bare.any(func(s: Array) -> bool: return s[0] == "plate"), "an unplated body says nothing of plate")
+
+
 func test_a_read_says_what_the_body_is_and_what_it_can_do() -> void:
 	var m := _mob(&"runner", Vector2(3, 0))
 	m.health = maxi(1, m.max_health / 2)

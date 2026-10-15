@@ -405,7 +405,8 @@ func _take_read() -> void:
 	var from := game.player.pos
 	var now := game.player.sim.now if game.player.sim != null else 0.0
 	if locked != null:
-		read = TargetRead.of_subject(locked, from, moment, game.world, game.query, now)
+		read = TargetRead.of_subject(locked, from, moment, game.world, game.query, now,
+			game.inventory.held if game.inventory != null else &"")
 	else:
 		read = {}
 	rows = []
