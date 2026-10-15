@@ -41,7 +41,7 @@ func on_press(ctx: AbilityCtx) -> bool:
 	var sim := _sim(ctx)
 	sim.veil(ctx.heading())
 	var b := ctx.body()
-	b.wet = minf(1.0, b.wet + WET)
+	Survival.soak(ctx.game, WET)
 	b.lamp_lit = false
 	# A world minute a real second (docs/DESIGN.md's clock): out while it falls.
 	b.doused_until = ctx.minutes() + FightSim.VEIL_MS / 1000.0

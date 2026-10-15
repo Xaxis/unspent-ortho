@@ -176,6 +176,35 @@ func test_wading_wets_you_and_a_fire_dries_you_faster() -> void:
 	Fx.done(g)
 
 
+## The oilskin's whole point: out in the rain, what he wears keeps the wet off
+## him and his pace whole (Body.resist, summed as 54_gear sums it). A brim alone
+## does not, and wading soaks anybody.
+func test_an_oilskin_keeps_the_rain_off_and_wading_still_soaks() -> void:
+	var g := Fx.flat()
+	g.body.fed_until = g.clock.minutes + 600.0
+	Weather.force(&"rain", 1.0)
+	var worn := Loadout.new()
+	check(worn.fit(&"head", &"hat_brim"), "a brim on")
+	g.body.resist = Gear.resist_total(worn)
+	Survival.sweep(g, 1.0)
+	Survival.update_body(g)
+	near(g.body.wet, 1.0, 0.001, "a brim alone: soaked in the rain")
+	SurvivalState.of(g).wet_until = -INF
+	check(worn.fit(&"body", &"oilskin"), "an oilskin on")
+	g.body.resist = Gear.resist_total(worn)
+	Survival.sweep(g, 1.0)
+	Survival.update_body(g)
+	near(g.body.wet, 0.0, 0.001, "dry in the same rain")
+	near(g.body.move_factor, 1.0, 0.001, "and walking at full pace")
+	var w := g.world
+	w.ground[floori(g.player.pos.y) * w.size + floori(g.player.pos.x)] = Ground.WATER
+	Survival.sweep(g, 1.0)
+	Survival.update_body(g)
+	near(g.body.wet, 1.0, 0.001, "wading soaks him anyway")
+	Weather.unforce()
+	Fx.done(g)
+
+
 func test_wake_minute_is_the_next_one() -> void:
 	near(Condition.wake_minute(22.0 * 60.0, false), 32.0 * 60.0, 1e-6)
 	near(Condition.wake_minute(3.0 * 60.0, true), 6.0 * 60.0, 1e-6)

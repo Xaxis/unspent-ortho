@@ -18,6 +18,10 @@ const MIN_FACTOR := 0.20 / 0.45
 const TIRED_AFTER_H := 18.0
 ## Wet lasts this long after the rain stops or you leave the water. (source)
 const WET_MINUTES := 90.0
+## Worn gear that keeps out this share of the wet (Body.resist, written by
+## 54_gear) keeps the rain off the body: an oilskin alone does, lesser pieces
+## together can. Wading soaks anybody.
+const RAIN_OFF := 0.5
 ## Sleep is refused from 07:00 to 16:59, and within 4 h of waking. (source)
 const SLEEP_REFUSED_FROM := 7.0
 const SLEEP_REFUSED_UNTIL := 17.0
@@ -117,6 +121,10 @@ static func wake_minute(now: float, roof: bool) -> float:
 	if t <= now:
 		t += 1440.0
 	return t
+
+
+static func keeps_rain_off(wet_resist: float) -> bool:
+	return wet_resist >= RAIN_OFF
 
 
 ## Weather kinds that wet a body out in them (names as Weather.at returns them;
