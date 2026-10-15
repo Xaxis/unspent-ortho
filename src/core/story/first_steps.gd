@@ -33,9 +33,9 @@ const STEPS: Array[Dictionary] = [
 	{"key": &"plate", "text": "Pull scrap metal out of the scrap heap", "act": &"use", "target": &"tip"},
 	{"key": &"pick", "text": "Make a pickaxe at your fire", "act": &"craft", "target": &"fire"},
 	{"key": &"carry", "text": "Check your pack: the pickaxe is in it", "act": &"inventory", "target": &""},
-	{"key": &"iron", "text": "Break iron out of a rebar slab with the pickaxe", "act": &"use", "target": &"slab"},
+	{"key": &"iron", "text": "Break rebar out of a rebar slab with the pickaxe", "act": &"use", "target": &"slab"},
 	{"key": &"survey", "text": "Open the map: the crew's camp is marked", "act": &"map", "target": &""},
-	{"key": &"camp", "text": "Take the iron to the crew's camp", "act": &"", "target": &"camp"},
+	{"key": &"camp", "text": "Take the rebar to the crew's camp", "act": &"", "target": &"camp"},
 ]
 
 ## The steps only an act shows, which the asker latches (a page opened).

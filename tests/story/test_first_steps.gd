@@ -132,3 +132,14 @@ func test_the_card_is_said_once_not_twice() -> void:
 	g.queue_free()
 	await frames(1)
 	Story.forget()
+
+
+## The card names what the slab gives the way the pack names it. It asked for
+## iron while the pack held a "length of rebar", which sent a player looking
+## for a thing already carried.
+func test_the_card_names_the_rebar_as_the_pack_does() -> void:
+	var word := Items.many_name(&"rebar")
+	for row: Dictionary in FirstSteps.STEPS:
+		if row.key in [&"iron", &"camp"]:
+			var text := String(row.text)
+			check(text.contains(word) and not text.contains("iron"), "%s names %s: %s" % [row.key, word, text])
