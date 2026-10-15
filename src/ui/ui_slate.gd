@@ -219,31 +219,75 @@ static func status(ci: CanvasItem, app: StringName, clock: String, d: Rect2i = D
 	x += UiFont.width("slate") + 12
 	if tabs:
 		UiDraw.vline(ci, x, y + 4, y + 16, UiTheme.FAINT)
-		x += 12
+	for tab: Dictionary in (tab_layout(d) if tabs else []):
+		var label: String = tab.label
+		var lit: bool = tab.app == app
+		match tab.mark:
+			&"bar":
+				# Home and what hangs off it stand apart from the keyed apps.
+				UiDraw.vline(ci, tab.mark_x, y + 4, y + 16, UiTheme.FAINT)
+			&"chevron":
+				# The chevron: these are reached by going through home, not by a key.
+				chevron(ci, Vector2i(tab.mark_x, y + 4), UiTheme.FAINT)
+			&"dot":
+				# One dim point between them: they are one set, all behind that Esc.
+				UiDraw.px(ci, tab.mark_x, y + 10, UiTheme.FAINT)
+		if int(tab.cap_x) >= 0:
+			mini_cap(ci, Vector2i(tab.cap_x, y), tab.key, lit or (app != &"" and tab.app == UNDER and tab_under_home(app)))
+		if lit:
+			UiDraw.rect(ci, Rect2i(int(tab.x) - 6, y - 2, UiFont.width(label) + 12, UiTheme.LINE), UiTheme.GLASS_LIT)
+			UiDraw.hline(ci, int(tab.x) - 6, int(tab.x) + UiFont.width(label) + 4, y + UiFont.SIZE, UiTheme.TEXT)
+		UiDraw.text(ci, Vector2i(tab.x, y), label, UiTheme.BRIGHT if lit else UiTheme.TEXT_DIM)
+	UiDraw.text_right(ci, g.end.x - MARGIN_R - 28, y, clock, UiTheme.TEXT_DIM)
+
+
+## The strip's tabs as `status` sets them out on `d`'s glass, one per tab:
+##   {app, label, key (its cap's text, "" for one under home), cap_x (-1 with no
+##    cap), mark (&"" | &"bar" | &"chevron" | &"dot") and mark_x, x (the label),
+##    hit (the rect a click on the tab answers to)}
+## Drawing and a click read this one layout, so a tab answers where it is drawn.
+static func tab_layout(d: Rect2i = DEVICE) -> Array[Dictionary]:
+	var g := glass_of(d)
+	var y := g.position.y + 2
+	var x := g.position.x + MARGIN_L + UiFont.width("slate") + 24
+	var out: Array[Dictionary] = []
 	var under_home := false
-	for tab: Array in (TABS if tabs else []):
-		var label: String = tab[1]
-		var lit: bool = tab[0] == app
+	for tab: Array in TABS:
+		var e := {"app": tab[0], "label": String(tab[1]), "key": "", "cap_x": -1, "mark": &"", "mark_x": 0}
 		var k: String = tab[2]
+		var left := x
 		if k != "":
 			if tab[0] == UNDER:
-				# Home and what hangs off it stand apart from the keyed apps.
-				UiDraw.vline(ci, x - 4, y + 4, y + 16, UiTheme.FAINT)
+				e.mark = &"bar"
+				e.mark_x = x - 4
 				x += 10
-			x += mini_cap(ci, Vector2i(x, y), cap(k), lit or (app != &"" and tab[0] == UNDER and tab_under_home(app))) + 6
+				left = x
+			e.key = cap(k)
+			e.cap_x = x
+			x += maxi(14, UiFont.width(String(e.key)) + 8) + 6
 		elif not under_home:
-			# The chevron: these are reached by going through home, not by a key.
 			under_home = true
-			x += chevron(ci, Vector2i(x, y + 4), UiTheme.FAINT) + 8
+			e.mark = &"chevron"
+			e.mark_x = x
+			x += 3 * UiBase.PITCH + 8
+			left = x
 		else:
-			# One dim point between them: they are one set, all behind that Esc.
-			UiDraw.px(ci, x - 10, y + 10, UiTheme.FAINT)
-		if lit:
-			UiDraw.rect(ci, Rect2i(x - 6, y - 2, UiFont.width(label) + 12, UiTheme.LINE), UiTheme.GLASS_LIT)
-			UiDraw.hline(ci, x - 6, x + UiFont.width(label) + 4, y + UiFont.SIZE, UiTheme.TEXT)
-		UiDraw.text(ci, Vector2i(x, y), label, UiTheme.BRIGHT if lit else UiTheme.TEXT_DIM)
-		x += UiFont.width(label) + (14 if under_home else 18)
-	UiDraw.text_right(ci, g.end.x - MARGIN_R - 28, y, clock, UiTheme.TEXT_DIM)
+			e.mark = &"dot"
+			e.mark_x = x - 10
+		e.x = x
+		var w := UiFont.width(String(e.label))
+		e.hit = Rect2i(left - 6, y - 2, x + w + 12 - left, UiTheme.LINE)
+		x += w + (14 if under_home else 18)
+		out.append(e)
+	return out
+
+
+## The app whose tab is under `p` on `d`'s strip, or &"".
+static func tab_at(d: Rect2i, p: Vector2i) -> StringName:
+	for tab: Dictionary in tab_layout(d):
+		if (tab.hit as Rect2i).has_point(p):
+			return tab.app
+	return &""
 
 
 ## A small right-pointing chevron. Returns its width.
