@@ -19,8 +19,11 @@ const HEALTH_BRACKET := 3
 const WIND_BRACKET := 800.0
 ## Machines brought down, in all, for each health bracket earned that way.
 const MACHINES_FOR: Array[int] = [2, 5, 9, 14, 20, 27]
-## Tiles run, in all, for each wind bracket.
-const RUN_FOR: Array[float] = [250.0, 700.0, 1400.0, 2300.0, 3400.0]
+## Tiles run, in all, for each wind bracket: the first within the first errand,
+## the last about three hours into a game. At a run (6.4 tiles a second) they
+## are 40 s, 3, 9, 21 and 39 minutes of running in all. All five used to come
+## inside nine minutes of it, in the first hour, and stamina never grew again.
+const RUN_FOR: Array[float] = [250.0, 1200.0, 3500.0, 8000.0, 15000.0]
 ## The most health brackets keepers may add (one each).
 const KEEPERS_MOST := 6
 
