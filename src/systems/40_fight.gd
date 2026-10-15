@@ -218,6 +218,14 @@ func drawn(body: Object) -> Vector2:
 	var pace: DrawnPace = _hero_pace if body == sim.hero else _paces.get(body)
 	if pace == null:
 		return Vector2.INF
+	# Set somewhere else between ticks (a realm's crossing, a place staged, a
+	# respawn): drawn where it is now, not slid from where it was for the frames
+	# before the next tick notes it. Drawn at the old place for one frame, the view
+	# was focused there and built ground nobody was standing on.
+	var now: Variant = body.get("pos")
+	if now is Vector2 and pace.latest().is_finite() and (now as Vector2).distance_to(pace.latest()) > DrawnPace.JUMP:
+		pace.clear()
+		return Vector2.INF
 	var tick := 1000.0 / float(Engine.physics_ticks_per_second)
 	return pace.at(DrawnPace.real_ms(sim.now, sim.carry(), Engine.get_physics_interpolation_fraction(), tick))
 
