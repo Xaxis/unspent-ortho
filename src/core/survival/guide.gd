@@ -728,20 +728,18 @@ static func _land_said(id: StringName) -> String:
 ## first steps run (FirstSteps, 58_guide) the card teaches their keys, and only
 ## what a machine in view makes urgent is said over it.
 static func hint_for(game: Game, retired: Dictionary, keyed_only := false, only: Array = []) -> Dictionary:
-	for id: StringName in _applicable(game):
-		if keyed_only and (HINTS[id][1] as Array).is_empty():
-			continue
-		if not only.is_empty() and not only.has(id):
-			continue
-		if not retired.has(id):
-			# The line is a TEMPLATE and the actions are names: whoever says it
-			# resolves them against the live keys (58_guide), because a key label
-			# is the settings package's to answer and core does not read it.
-			return {"id": id, "line": HINTS[id][0], "keys": HINTS[id][1]}
-	return {}
+	var wants := func(id: StringName) -> bool:
+		return not retired.has(id) and (only.is_empty() or only.has(id)) \
+			and not (keyed_only and (HINTS[id][1] as Array).is_empty())
+	var id := _first_applicable(game, wants)
+	if id == &"":
+		return {}
+	# The line is a TEMPLATE and the actions are names: whoever says it resolves
+	# them against the live keys (58_guide), because a key label is the settings
+	# package's to answer and core does not read it.
+	return {"id": id, "line": HINTS[id][0], "keys": HINTS[id][1]}
 
 
-## The hints that fit the moment, most pressing first.
 ## Whether the plan is standing on a road the player could walk to from here.
 ## Asked of whoever KEEPS the holds rather than derived again: `RoadHold.sites`
 ## walks every road in the world, and a lesson is not worth that on any frame.
@@ -828,8 +826,13 @@ static func _at_a_face(game: Game) -> bool:
 	return not f.is_empty() and int(f.to_level) - int(f.from_level) > Jump.UP_LEVELS
 
 
-static func _applicable(game: Game) -> Array[StringName]:
-	var out: Array[StringName] = []
+## The first hint that fits the moment and that `wants` (id -> bool) still
+## asks for, most pressing first. A lesson's own test runs only once it is
+## wanted: they were all run every time (a target in reach, a face to climb, a
+## ledge, a fire to lay, a held road), three askers four times a second, while
+## all but a few were retired or filtered out, and a quarter second's read was
+## 5 ms on average and up to 17.
+static func _first_applicable(game: Game, wants: Callable) -> StringName:
 	var sim := game.player.sim if game.player != null else null
 	if sim != null:
 		for m in sim.mobs:
@@ -838,46 +841,50 @@ static func _applicable(game: Game) -> Array[StringName]:
 			# Said as a hunter first comes on, before it is close enough to hush the page
 			# (a line said in a fight waits until it is over, out of its moment).
 			if m.machine and not m.indifferent() and m.roused() and Senses.chebyshev(m.pos, sim.hero.pos) > Survival.THREAT_RADIUS:
-				out.append(&"fight")
-				out.append(&"dodge")
+				for id: StringName in [&"fight", &"dodge"]:
+					if wants.call(id):
+						return id
 			var seen := m.pos.distance_to(sim.hero.pos) <= SIGHT
-			if seen and m.machine:
-				out.append(&"target")
-			if seen and m.machine and not m.roused() and not game.body.crouched:
-				out.append(&"crouch")
-			if seen and m.first_meeting and not m.roused():
-				out.append(&"runner")
-			if seen and m.patrol and m.indifferent():
-				out.append(&"worker")
-	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and game.inventory.has(&"lamp"):
-		out.append(&"lamp")
-	if game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
-		out.append(&"carry")
-	for id: StringName in granted(game):
-		out.append(StringName("ability_%s" % id))
-	if _can_build(game):
-		out.append(&"holding")
-	if game.world != null and game.player != null and Haven.holds(game.world, game.player.pos):
-		out.append(&"haven")
-	if _road_is_held(game):
-		out.append(&"road")
-	if _journal_holds_something():
-		out.append(&"journal")
-	if game.world != null and game.player != null \
+			if seen and m.machine and wants.call(&"target"):
+				return &"target"
+			if seen and m.machine and not m.roused() and not game.body.crouched and wants.call(&"crouch"):
+				return &"crouch"
+			if seen and m.first_meeting and not m.roused() and wants.call(&"runner"):
+				return &"runner"
+			if seen and m.patrol and m.indifferent() and wants.call(&"worker"):
+				return &"worker"
+	if wants.call(&"lamp") and FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and game.inventory.has(&"lamp"):
+		return &"lamp"
+	if wants.call(&"carry") and game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
+		return &"carry"
+	for ab: StringName in granted(game):
+		var id := StringName("ability_%s" % ab)
+		if wants.call(id):
+			return id
+	if wants.call(&"holding") and _can_build(game):
+		return &"holding"
+	if wants.call(&"haven") and game.world != null and game.player != null and Haven.holds(game.world, game.player.pos):
+		return &"haven"
+	if wants.call(&"road") and _road_is_held(game):
+		return &"road"
+	if wants.call(&"journal") and _journal_holds_something():
+		return &"journal"
+	if wants.call(&"map") and game.world != null and game.player != null \
 			and game.player.pos.distance_to(game.world.spawn) > MAP_FAR:
-		out.append(&"map")
-	if _at_a_face(game):
-		out.append(&"climb")
-	if _at_a_ledge(game):
-		out.append(&"jump")
-	if Survival.use_target(game) != null:
-		out.append(&"take")
-	if _fire(game) == null and not Survival._makeable_build(game, &"fire").is_empty():
-		out.append(&"fire")
-	if Survival.station_near(game) != &"":
-		out.append(&"make")
-	out.append(&"walk")
-	return out
+		return &"map"
+	if wants.call(&"climb") and _at_a_face(game):
+		return &"climb"
+	if wants.call(&"jump") and _at_a_ledge(game):
+		return &"jump"
+	if wants.call(&"take") and Survival.use_target(game) != null:
+		return &"take"
+	if wants.call(&"fire") and _fire(game) == null and not Survival._makeable_build(game, &"fire").is_empty():
+		return &"fire"
+	if wants.call(&"make") and Survival.station_near(game) != &"":
+		return &"make"
+	if wants.call(&"walk"):
+		return &"walk"
+	return &""
 
 
 ## The fire the goal means: the nearest of the fires the player built and any

@@ -328,23 +328,10 @@ func faced_words_d() -> float:
 
 
 ## What the key would open: {slot: ID}, {person: ROW} or {prop: PROP}, or {}
-## when it is the ground's or nobody's. Worked out once a frame: the key's line
-## asks it, and so does every system asking whether the words outrank its own
-## press (Survival.words_in_front), and each asking was a walk over every person
-## and readable thing near him.
-var _front_frame := -1
-var _front := {}
-
-
+## when it is the ground's or nobody's. Worked out fresh on every asking: within
+## one frame a read, a prop put down or a step changes the answer, and a copy
+## kept for the frame answered the second press with the first press's words.
 func _what_is_in_front() -> Dictionary:
-	var frame := Engine.get_process_frames()
-	if frame != _front_frame:
-		_front_frame = frame
-		_front = _work_out_in_front()
-	return _front
-
-
-func _work_out_in_front() -> Dictionary:
 	var person := _person_in_front()
 	var prop := _readable_in_front()
 	var person_d: float = person.get("_d", INF) if not person.is_empty() else INF
