@@ -250,6 +250,11 @@ static func _walk_apart(action: StringName) -> float:
 ## Where a body is drawn standing at `p` (WorldView.drawn_height), asked of the
 ## view this game draws now, so a realm crossing carries every body with it.
 func drawn_height(p: Vector2) -> float:
+	# Out of its depth the drawn sea bed is no floor. A swimmer is posed at the
+	# waterline from the tile's level (Swim), as a raft floats there; stood on the
+	# drawn bed, it was under the sea and seen from nowhere.
+	if Swim.deep(world, p):
+		return world.height_at(p)
 	return view.drawn_height(p) if view != null else world.height_at(p)
 
 

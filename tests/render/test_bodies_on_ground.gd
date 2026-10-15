@@ -37,3 +37,31 @@ func test_a_body_stands_on_the_land_as_it_is_drawn() -> void:
 	gt(float(tried), 1.0, "and he can stand on some of them")
 	lt(worst, 0.02, "standing there, he is drawn on the drawn land (worst %.2f off)" % worst)
 	Sx.end(g)
+
+
+## Out of its depth a body swims at the waterline. Stood on the drawn sea bed, a
+## swimmer was under the sea and could not be seen from above or over the
+## shoulder: only the foam it made showed where it was.
+func test_a_swimmer_is_drawn_at_the_waterline_not_on_the_sea_bed() -> void:
+	Sx.use_root("bodies-swimming")
+	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11", "--weather=clear:0"])
+	await process_frames(3)
+	var home := g.player.pos
+	var deep := Vector2.INF
+	for r in range(4, 60):
+		for k in 32:
+			var p := home + Vector2.from_angle(k * TAU / 32.0) * r
+			if Swim.deep(g.world, p):
+				deep = p
+				break
+		if deep.is_finite():
+			break
+	check(deep.is_finite(), "deep water near the start")
+	g.view.ensure_near(deep)
+	await process_frames(2)
+	lt(g.view.drawn_height(deep), g.world.height_at(deep) - 0.25, "the sea bed is drawn well under the swimming level")
+	g.player.place(deep)
+	g.player.sync_view(0.0)
+	check(g.player.swimming, "the player is swimming")
+	near(g.player.on_land().y - g.player.lift, g.world.height_at(deep), 0.02, "and is drawn at the swimming level, not on the bed")
+	Sx.end(g)
