@@ -211,7 +211,5 @@ src/ui/ui_map_data.gd::thinned::raw
 src/ui/ui_map_screen.gd::_draw_overlay::list
 src/ui/ui_map_screen.gd::_on_open::builder UiMapData.new
 src/ui/ui_map_screen.gd::discoveries::list
-src/ui/ui_reads_screen.gd::along_bearing::list
-src/ui/ui_reads_screen.gd::ground::list
 src/ui/ui_title.gd::_village_clearance::list
 src/ui/ui_title.gd::setup::builder WorldGen.generate
