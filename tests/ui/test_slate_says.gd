@@ -26,7 +26,8 @@ func test_the_strip_draws_home_before_what_hangs_off_it() -> void:
 	s.open()
 	s.settle()
 	var said := await _words(s)
-	var want := ["slate", UiSlate.cap("i"), "CARRY", UiSlate.cap("c"), "MAKE", UiSlate.cap("m"), "MAP", UiSlate.cap("esc"), "HOME", "GEAR", "READS", "SAVES"]
+	var want := ["slate", UiSlate.cap("i"), "CARRY", UiSlate.cap("c"), "MAKE", UiSlate.cap("m"), "MAP", UiSlate.cap("n"), "JOURNAL",
+		UiSlate.cap("h"), "HOLDING", UiSlate.cap("esc"), "HOME", "GEAR", "READS", "SAVES"]
 	var got: Array[String] = []
 	for w: String in said:
 		if want.has(w) and not got.has(w):

@@ -66,10 +66,12 @@ const WAKE_SECONDS := 0.2
 const SWITCH_SECONDS := 0.1
 
 ## Apps in the order the status bar lists them: [screen name, tab label, key].
-## Every tab names the key that reaches it. Three have keys of their own; home
+## Every tab names the key that reaches it. Five have keys of their own; home
 ## is Esc; the three that live under home follow it behind a chevron, so the
-## Esc cap reads as reaching them THROUGH home and never promises more.
-const TABS := [[&"inventory", "CARRY", "i"], [&"crafting", "MAKE", "c"], [&"map", "MAP", "m"], [&"pause", "HOME", "esc"], [&"loadout", "GEAR", ""], [&"reads", "READS", ""], [&"saves", "SAVES", ""]]
+## Esc cap reads as reaching them THROUGH home and never promises more. An app
+## with a key and no tab lit nothing while it was open, and its key was named
+## nowhere on the glass.
+const TABS := [[&"inventory", "CARRY", "i"], [&"crafting", "MAKE", "c"], [&"map", "MAP", "m"], [&"journal", "JOURNAL", "n"], [&"holding", "HOLDING", "h"], [&"pause", "HOME", "esc"], [&"loadout", "GEAR", ""], [&"reads", "READS", ""], [&"saves", "SAVES", ""]]
 ## The app the keyless tabs are chosen inside.
 const UNDER: StringName = &"pause"
 
