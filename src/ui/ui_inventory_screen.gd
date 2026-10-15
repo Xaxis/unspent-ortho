@@ -217,8 +217,10 @@ func _draw() -> void:
 		if int(row.count) > 1:
 			UiDraw.text(self, Vector2i(nx + 8, top), "×%d" % row.count, UiTheme.TEXT_DIM)
 			nx += 10 + UiFont.width("×%d" % row.count)
-		if inventory.held == id or UiLink.fitted(game, id) or (id == &"lamp" and game != null and game.body.lamp_lit):
-			_tag(Vector2i(nx + 12, top), "HELD" if inventory.held == id else ("LIT" if id == &"lamp" else "WORN"))
+		# The headlamp is always on his head (worn_in), lit or not.
+		var lit := id == &"lamp" and game != null and game.body.lamp_lit
+		if inventory.held == id or UiLink.fitted(game, id) or id == &"lamp":
+			_tag(Vector2i(nx + 12, top), "HELD" if inventory.held == id else ("LIT" if lit else "WORN"))
 		UiDraw.text_right(self, right, top, UiRules.num(Items.bulk(id) * int(row.count)), UiTheme.TEXT_DIM)
 	if scroll > 0:
 		UiDraw.text_right(self, right, LIST_TOP - UiTheme.LINE, "↑", UiTheme.TEXT_DIM)
@@ -312,7 +314,7 @@ func _draw_detail(R: Rect2i) -> void:
 		if not demo.is_empty() or Crafting.known(inventory, r):
 			uses.append(r)
 	var unknown := every.size() - uses.size()
-	var room := (R.end.y - 140 - y) / UiTheme.LINE - 1
+	var room := (R.end.y - LOAD_H - 16 - y) / UiTheme.LINE - 1
 	if every.is_empty() or room < 1:
 		return
 	UiSlate.heading(self, Vector2i(x0, y), "goes into", right)
@@ -357,10 +359,17 @@ func _draw_choice(at: Vector2i, right: int, uses: Array[Dictionary]) -> void:
 
 ## The load, always: carried bulk against the creel as a segmented meter (its
 ## second half is past the creel, in the warning), and what is in hand and worn.
+## The slots a body wears things in, as the gear page fits them, shown under the
+## load two by two: what is on the body, where, without leaving the pack.
+const WORN_SLOTS: Array[StringName] = [&"head", &"body", &"hands", &"back"]
+## How tall the load block at the foot of the panel stands.
+const LOAD_H := 172
+
+
 func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 	var load := inventory.bulk()
 	var cap := UiLink.creel(inventory, body)
-	var ly := R.end.y - 124
+	var ly := R.end.y - LOAD_H
 	UiDraw.hline(self, x0, right, ly - 12, UiTheme.GHOST)
 	UiDraw.text(self, Vector2i(x0, ly), "LOAD", UiTheme.TEXT_DIM)
 	UiDraw.text_right(self, right, ly, "%s of %s" % [UiRules.num(load), UiRules.num(cap)], UiTheme.WARN if load > cap else UiTheme.TEXT)
@@ -372,16 +381,24 @@ func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 	var held_name := UiRules.item_name(inventory.held) if inventory.held != &"" else "bare hands"
 	UiDraw.text(self, Vector2i(x0, ly + 72), "in hand", UiTheme.TEXT_DIM)
 	UiDraw.text(self, Vector2i(x0 + 96, ly + 72), held_name, UiTheme.TEXT)
-	if inventory != null:
-		# The headlamp is on his head from the start (50_survival), beside what is worn.
-		var on := PackedStringArray()
-		if inventory.has(&"lamp"):
-			on.append(UiRules.item_name(&"lamp"))
-		for id: StringName in inventory.items:
-			if UiLink.fitted(game, id):
-				on.append(UiRules.item_name(id))
-		UiDraw.text(self, Vector2i(x0 + 300, ly + 72), "worn", UiTheme.TEXT_DIM)
-		UiDraw.text(self, Vector2i(x0 + 360, ly + 72), ", ".join(on) if not on.is_empty() else "nothing", UiTheme.TEXT)
+	var col_w := (right - x0) / 2
+	for i in WORN_SLOTS.size():
+		var at := Vector2i(x0 + (i % 2) * col_w, ly + 100 + (i / 2) * UiTheme.LINE)
+		var on := worn_in(WORN_SLOTS[i])
+		UiDraw.text(self, at, String(WORN_SLOTS[i]), UiTheme.TEXT_DIM)
+		UiDraw.text(self, at + Vector2i(72, 0), ", ".join(on) if not on.is_empty() else "-", UiTheme.TEXT if not on.is_empty() else UiTheme.GHOST)
+
+
+## What is on the body in `slot`, by name. The headlamp is on his head from the
+## start (50_survival), beside whatever else is.
+func worn_in(slot: StringName) -> PackedStringArray:
+	var on := PackedStringArray()
+	if slot == &"head" and inventory.has(&"lamp"):
+		on.append(UiRules.item_name(&"lamp"))
+	for id: StringName in inventory.items:
+		if Gear.slot_of(id) == slot and UiLink.fitted(game, id):
+			on.append(UiRules.item_name(id))
+	return on
 
 
 func _facts(id: StringName, count: int) -> PackedStringArray:

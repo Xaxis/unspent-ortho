@@ -643,8 +643,8 @@ func test_the_pack_says_the_headlamp_is_worn_and_tells_twin_uses_apart() -> void
 	s.select(&"knife")
 	s.settle()
 	var said := await _said(s)
-	var at := said.find("worn")
-	check(at >= 0 and at + 1 < said.size() and said[at + 1].contains("headlamp"), "the headlamp he wears is worn: %s" % str(said))
+	var at := said.find("head")
+	check(at >= 0 and at + 1 < said.size() and said[at + 1].contains("headlamp"), "the headlamp he wears is on his head: %s" % str(said))
 	# What it goes into is what he could make: nothing wanting things he has never
 	# carried is named, only counted.
 	check(not said.any(func(w: String) -> bool: return w.begins_with("steel knife")), "no steel knife before charcoal or an edge: %s" % str(said))
