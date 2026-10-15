@@ -38,6 +38,12 @@ static func wind_earned(run_tiles: float) -> int:
 	return _passed(RUN_FOR, run_tiles)
 
 
+## Every wind bracket the body has, the ones it started with and the earned:
+## how many the HUD and home draw stamina in.
+static func wind_count(run_tiles: float) -> int:
+	return roundi(FightRules.WIND / WIND_BRACKET) + wind_earned(run_tiles)
+
+
 ## Machines still to bring down for the next health bracket earned that way, or
 ## -1 when none is left to earn by it.
 static func machines_to_next(machines: int) -> int:

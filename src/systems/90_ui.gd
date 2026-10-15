@@ -454,7 +454,7 @@ func _feed_hud() -> void:
 	var b := game.body
 	var inv := game.inventory
 	hud.set_body(b.health, b.max_health, b.wind, b.max_wind)
-	hud.wind_brackets = roundi(FightRules.WIND / Brackets.WIND_BRACKET) + Brackets.wind_earned(b.run_tiles)
+	hud.wind_brackets = Brackets.wind_count(b.run_tiles)
 	hud.set_held(inv.held)
 	hud.set_charge(UiRules.charge_shown(inv.held), inv.count(&"wick"))
 	hud.set_pressures(UiRules.pressures(b, game.clock.minutes, inv.bulk(), UiLink.creel(inv, b)))
