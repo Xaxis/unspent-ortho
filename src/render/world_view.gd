@@ -586,6 +586,7 @@ func _park_reach() -> float:
 ## player was 1 s of the start at 110 ms a chunk, S5e).
 func ensure_near(p: Vector2, most := 0) -> void:
 	focus = p
+	_attach_step(-1)
 	_look_out()
 	var built := 0
 	for key in _wanted(0.0):
@@ -606,6 +607,7 @@ func ensure_near(p: Vector2, most := 0) -> void:
 ## built. The loading page draws the first view this way, one chunk a frame.
 func build_one_near(p: Vector2) -> int:
 	focus = p
+	_attach_step(-1)
 	var missing := 0
 	for key in _wanted(0.0):
 		if _parked.has(key):
@@ -633,10 +635,11 @@ func _process(_delta: float) -> void:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
 		if not _have(_task_key):
-			_add_chunk(_task_key, _task_chunk, _task_decor, _task_usec, [] if _task_dirty else _task_props)
+			_add_chunk(_task_key, _task_chunk, _task_decor, _task_usec, [] if _task_dirty else _task_props, true)
 		_task_chunk = null
 		_task_decor = []
 		_task_props = []
+	_attach_step(ATTACH_BUDGET_USEC)
 	_rebake_step()
 	_look_out()
 	_sea_under_seen()
@@ -1340,7 +1343,7 @@ func _build(key: Vector2i) -> void:
 ## Put a chunk built as arrays into the scene: meshes, decor, props.
 ## `worker_usec`: what building its arrays cost. `baked`: bake_props() output,
 ## or [] to bake them here (a chunk edited while its worker ran).
-func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, worker_usec: int, baked: Array) -> void:
+func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, worker_usec: int, baked: Array, defer_props := false) -> void:
 	var t0 := Time.get_ticks_usec()
 	var node := Node3D.new()
 	node.name = "chunk_%d_%d" % [key.x, key.y]
@@ -1376,7 +1379,10 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 	if baked.is_empty():
 		var snap := _snapshot(key)
 		baked = bake_props(ch, mesher, snap[0], snap[1])
-	_attach_props(node, baked)
+	if defer_props:
+		_queue_props(node, baked)
+	else:
+		_attach_props(node, baked)
 	for a: Variant in baked:
 		if a is Array:
 			bytes += Far._surface_bytes(a)
@@ -1490,6 +1496,7 @@ func _rebake_worker(ch: TerrainMesher.Chunk, props: Array, spans: Array) -> void
 ## here on the main thread.
 func _swap_props(key: Vector2i, baked: Array, mid: Array = []) -> void:
 	var node: Node3D = _chunks[key]
+	_cancel_attach(node)
 	_drop_parts(node, ["props", "props_found", "props_leaf"])
 	_attach_props(node, baked)
 	if node.get_node_or_null("mid_done") != null:
@@ -1803,18 +1810,79 @@ func _attach_props(node: Node3D, baked: Array) -> void:
 static func _attach_runs(node: Node3D, baked: Array, names: Array, mats: Array, hidden := false) -> void:
 	for i in 3:
 		for run: Array in _runs(baked, i):
-			var arrays: Array = run[1]
-			var mesh := ArrayMesh.new()
-			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, prop_flags(arrays))
-			var mi := MeshInstance3D.new()
-			mi.name = names[i]
-			mi.mesh = mesh
-			mi.material_override = mats[i]
-			if hidden:
-				# Only ever drawn into the sun's shadow, through its `_casts` twin.
-				mi.visible = false
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			_cell_node(node, int(run[0])).add_child(mi)
+			_attach_run(node, int(run[0]), run[1], names[i], mats[i], hidden)
+
+
+## One cell's run of one prop part, as a mesh in that cell.
+static func _attach_run(node: Node3D, cell: int, arrays: Array, name: String, mat: Material, hidden := false) -> void:
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, prop_flags(arrays))
+	var mi := MeshInstance3D.new()
+	mi.name = name
+	mi.mesh = mesh
+	mi.material_override = mat
+	if hidden:
+		# Only ever drawn into the sun's shadow, through its `_casts` twin.
+		mi.visible = false
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_cell_node(node, cell).add_child(mi)
+
+
+## A streamed chunk's prop meshes go in over the frames after it lands, a few
+## milliseconds of them a frame: about eighty meshes and their nodes were 27 ms
+## of one frame on the main thread on the start coast, the whole landing up to
+## 370 ms, a hitch each time a walk crossed into new ground. The land itself is
+## in at once, and a chunk lands at the edge of the view, so its props come in
+## there. Anything that needs a chunk whole (ensure_near, the loading page) puts
+## the rest in first; a rebake of the chunk's props drops what was still queued.
+const ATTACH_BUDGET_USEC := 3000
+var _attaching: Array = []
+
+
+func _queue_props(node: Node3D, baked: Array) -> void:
+	if baked.size() < 4:
+		return
+	var runs: Array = []
+	for i in 3:
+		for run: Array in _runs(baked, i):
+			runs.append([i, run[0], run[1]])
+	if not runs.is_empty():
+		_attaching.append({"node": node, "runs": runs, "at": 0})
+
+
+## Put queued prop meshes in until `budget_usec` is spent (-1: all of them).
+func _attach_step(budget_usec: int) -> void:
+	const NAMES: Array[String] = ["props", "props_found", "props_leaf"]
+	var mats: Array[Material] = [_world_mat, PropModels.found_material(), _leaf_mat]
+	var t0 := Time.get_ticks_usec()
+	while not _attaching.is_empty():
+		var job: Dictionary = _attaching[0]
+		var held: Variant = job.node
+		if not is_instance_valid(held):
+			_attaching.pop_front()
+			continue
+		var node := held as Node3D
+		var runs: Array = job.runs
+		var at := int(job.at)
+		while at < runs.size():
+			var r: Array = runs[at]
+			_attach_run(node, int(r[1]), r[2], NAMES[int(r[0])], mats[int(r[0])])
+			at += 1
+			if budget_usec >= 0 and Time.get_ticks_usec() - t0 >= budget_usec:
+				break
+		job.at = at
+		if at < runs.size():
+			return
+		_attaching.pop_front()
+		_lod_apply(node)
+		if budget_usec >= 0 and Time.get_ticks_usec() - t0 >= budget_usec:
+			return
+
+
+func _cancel_attach(node: Node3D) -> void:
+	for i in range(_attaching.size() - 1, -1, -1):
+		if (_attaching[i] as Dictionary).node == node:
+			_attaching.remove_at(i)
 
 
 ## Insulator points a mast carries cables from, in model space.
