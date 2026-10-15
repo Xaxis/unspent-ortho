@@ -351,6 +351,27 @@ const STATION_FOR := {&"fire": "cooks, burns charcoal and works iron; you sleep 
 ## One line on what the thing a recipe makes is FOR, under its name on the make
 ## page: a tool by what it works on, food by how long it feeds, worn kit by what
 ## it adds, a station by what it does. "" for a material, whose uses are its own list.
+## The hardness ladder: a seam needs a tool of at least its rung.
+const LADDER: Array[StringName] = [&"wood", &"iron", &"steel", &"crucible"]
+
+
+## Tool `id` against `held` on the hardness ladder, in words: what taking it up
+## would change. "" when it is the tool in hand, or either is off the ladder.
+static func against_held(held: StringName, id: StringName) -> String:
+	if held == &"" or held == id:
+		return ""
+	var in_hand := LADDER.find(Items.stuff(held))
+	var here := LADDER.find(Items.stuff(id))
+	if in_hand < 0 or here < 0:
+		return ""
+	var name := item_name(held)
+	if here > in_hand:
+		return "harder than your %s: it takes what %s cannot" % [name, LADDER[in_hand]]
+	if here < in_hand:
+		return "softer than your %s" % name
+	return "as hard as your %s" % name
+
+
 static func purpose(r: Dictionary) -> String:
 	var built := StringName(r.get("builds", &""))
 	if built != &"":

@@ -12,8 +12,6 @@ extends UiScreen
 ## written twice (UiSlate.scan_size says what happens when those two drift).
 const SCAN := 234
 const SKETCH := SCAN - UiSlate.SCAN_INSET
-## The hardness ladder: a seam needs a tool of at least its rung.
-const LADDER: Array[StringName] = [&"wood", &"iron", &"steel", &"crucible"]
 const LIST_TOP := UiSlate.LIST.position.y + 36
 ## Groups whose rows ask before they are put down: a tool, the lamp and worn
 ## kit are what a slip would cost you, and X sits beside C.
@@ -291,11 +289,11 @@ func _draw_detail(R: Rect2i) -> void:
 			y += UiTheme.LINE * (1 + UiSlate.wrapped(self, Vector2i(x0 + 12, y + UiTheme.LINE), right - x0 - 12, ", ".join(names), UiTheme.TEXT)) + 8
 	# A made tool's rung on the hardness ladder: what it can take.
 	var stuff := StringName(d.get("stuff", &""))
-	if LADDER.has(stuff):
+	if UiRules.LADDER.has(stuff):
 		UiSlate.heading(self, Vector2i(x0, y), "hardness", right)
 		_draw_ladder(Vector2i(x0 + 12, y + UiTheme.LINE + 2), stuff)
 		y += UiTheme.LINE * 2 + 16
-		var against := against_held(id, stuff)
+		var against := UiRules.against_held(inventory.held if inventory != null else &"", id)
 		if against != "":
 			UiDraw.text(self, Vector2i(x0 + 12, y - 8), against, UiTheme.TEXT_DIM)
 			y += UiTheme.LINE
@@ -431,37 +429,18 @@ func _facts(id: StringName, count: int) -> PackedStringArray:
 	return out
 
 
-## The chosen tool's rung against the one in hand, in words: what choosing it
-## would change. "" when it is the one in hand, or nothing in hand is on the
-## ladder.
-func against_held(id: StringName, stuff: StringName) -> String:
-	var held := inventory.held if inventory != null else &""
-	if held == &"" or held == id:
-		return ""
-	var in_hand := LADDER.find(Items.stuff(held))
-	if in_hand < 0:
-		return ""
-	var here := LADDER.find(stuff)
-	var name := UiRules.item_name(held)
-	if here > in_hand:
-		return "harder than your %s: it takes what %s cannot" % [name, LADDER[in_hand]]
-	if here < in_hand:
-		return "softer than your %s" % name
-	return "as hard as your %s" % name
-
-
 func _draw_ladder(at: Vector2i, stuff: StringName) -> void:
 	var x := at.x
-	for i in LADDER.size():
-		var word := String(LADDER[i])
+	for i in UiRules.LADDER.size():
+		var word := String(UiRules.LADDER[i])
 		var w := UiFont.width(word)
-		var mine := LADDER[i] == stuff
+		var mine := UiRules.LADDER[i] == stuff
 		if mine:
 			UiDraw.rect(self, Rect2i(x - 6, at.y - 4, w + 12, UiTheme.LINE + 2), UiTheme.GLASS_LIT)
 			UiSlate.brackets(self, Rect2i(x - 6, at.y - 4, w + 12, UiTheme.LINE + 2), UiTheme.BRIGHT, 6)
 		UiDraw.text(self, Vector2i(x, at.y), word, UiTheme.BRIGHT if mine else UiTheme.TEXT_DIM)
 		x += w
-		if i < LADDER.size() - 1:
+		if i < UiRules.LADDER.size() - 1:
 			for k in 3:
 				UiDraw.px(self, x + 16 + k * 6, at.y + 10, UiTheme.FAINT)
 			x += 48
