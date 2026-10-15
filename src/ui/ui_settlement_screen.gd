@@ -108,9 +108,7 @@ func _on_confirm(row: Dictionary) -> void:
 
 
 func _draw() -> void:
-	# The slate itself is lit rather than a tab: the holding has no key on the
-	# status strip, as dev mode's page has none.
-	draw_frame(&"")
+	draw_frame()
 	var L := UiSlate.LIST
 	UiSlate.title(self, L, "HOLDING")
 	UiSlate.spare(self)

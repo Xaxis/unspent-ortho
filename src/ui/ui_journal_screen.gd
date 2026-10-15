@@ -207,9 +207,7 @@ func section() -> StringName:
 # --- drawing -------------------------------------------------------------------
 
 func _draw() -> void:
-	# No tab of its own on the status strip, as the holding has none: the slate
-	# itself is lit.
-	draw_frame(&"")
+	draw_frame()
 	var L := UiSlate.LIST
 	UiSlate.title(self, L, "JOURNAL")
 	UiSlate.spare(self)
