@@ -43,13 +43,12 @@ near boulder,stone_ore
 walk 0,0 0.05
 press use 0.1
 await took 6
-# Open ground near the village, asked for by name: the first press asks, the
-# second lays the fire. Marked, to come back to.
+# Open ground near the village, asked for by name: one press lays the fire. A
+# second press, beside a fire now, is a meal or a night's sleep (Survival
+# `_fallback`), so it is not made. Marked, to come back to.
 ground grass
 mark fire
 walk -1,0 0.08
-press use 0.1
-wait 0.3
 press use 0.1
 await made 4
 wait 0.5
