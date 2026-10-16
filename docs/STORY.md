@@ -172,6 +172,8 @@ choice is scored; saying nothing is always an answer.
 ## What the mechanics are, in the story
 
 - Waking in the surf: released from the black site offshore; Maren pulls him out.
+- Maren's fire: his to sit by, never to work at (her village left alone); his first
+  fire is his own, down the shore (2026-10-15).
 - The slate: machine parts he can read because he wrote the first of them.
 - Reading a machine: its code at first, its memories later.
 - The signet: his 2029 credentials, still valid on the oldest machines.

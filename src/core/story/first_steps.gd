@@ -24,9 +24,9 @@ extends RefCounted
 ## and the key row never disagree.
 const STEPS: Array[Dictionary] = [
 	{"key": &"talk", "text": "Talk to Maren", "act": &"use", "target": &"maren"},
-	{"key": &"driftwood", "text": "Gather driftwood on the beach", "need": 3, "act": &"use", "target": &"driftwood"},
-	{"key": &"stones", "text": "Gather stones from a boulder", "need": 2, "act": &"use", "target": &"stone"},
-	{"key": &"fire", "text": "Build a campfire on open ground", "act": &"use", "target": &""},
+	{"key": &"driftwood", "text": "Gather driftwood on the beach for your own fire", "need": 3, "act": &"use", "target": &"driftwood"},
+	{"key": &"stones", "text": "Gather stones from a boulder to ring the fire", "need": 2, "act": &"use", "target": &"stone"},
+	{"key": &"fire", "text": "Build your own campfire on open ground", "act": &"use", "target": &""},
 	{"key": &"wood", "text": "Gather more wood to burn into charcoal", "need": 4, "act": &"use", "target": &"driftwood"},
 	{"key": &"charcoal", "text": "Burn the wood into charcoal at your fire", "act": &"craft", "target": &"fire"},
 	{"key": &"haft", "text": "Carve a handle at your fire", "act": &"craft", "target": &"fire"},

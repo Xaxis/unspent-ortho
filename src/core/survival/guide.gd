@@ -902,6 +902,10 @@ const FIRE_NEAR := 12.0
 
 static func _fire(game: Game) -> WorldProp:
 	var best := Survival.fire_near(game, FIRE_NEAR)
+	# Maren's fire is not his to work (Survival.keepers_fire): the goal never sends
+	# him to it, and it never counts as the fire he has laid.
+	if best != null and WorldProp.same(best, Survival.keepers_fire(game)):
+		best = null
 	var p := game.player.pos
 	for q in SurvivalState.of(game).built:
 		if q.kind != PropKind.FIRE or game.world.depleted.has(q.id):

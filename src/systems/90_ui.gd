@@ -183,11 +183,29 @@ func open_screen(n: StringName, switched: bool = false) -> bool:
 	_opened_frame = Engine.get_process_frames()
 	if n == &"pause":
 		get_tree().paused = true
+	if n == &"crafting" and Survival.at_keepers_fire(game):
+		s.say(keepers_line())
 	game.hud.visible = false
 	return true
 
 
+## What Maren's fire says to him when he would work at it (Survival.keepers_fire):
+## hers while she stands by it, the game's flat line while she is away.
+func keepers_line() -> String:
+	var hers := Survival.keepers_fire(game)
+	for sys: GameSystem in game.systems:
+		if sys.name != "49_cast":
+			continue
+		for row: Dictionary in (sys.get("people") as Array):
+			if row.get("character") == &"maren" and row.get("model") != null and hers != null \
+					and (row.pos as Vector2).distance_to(hers.pos) < KEEPER_BY:
+				return String(StoryContent.KEEPERS_FIRE["hers"])
+	return String(StoryContent.KEEPERS_FIRE["away"])
+
+
 const NEAR_LINE := "Not with that so close."
+## Tiles from her fire within which Maren is by it and says its refusal herself.
+const KEEPER_BY := 8.0
 
 
 ## "" if app `n` can open now, else one plain line why not. Home opens beside
@@ -209,7 +227,20 @@ func why_not_open(n: StringName) -> String:
 		var here := UiLink.stations_here(game)
 		if here.is_empty() and not game.options.ui_demo:
 			return "Nothing here to make things at."
+		# At her fire with nothing of his own to make: her fire says why, rather
+		# than an empty page with the reason in its corner.
+		if Survival.at_keepers_fire(game) and not _anything_to_make(here):
+			return keepers_line()
 	return ""
+
+
+## Whether any recipe he knows can be made at one of `here`'s stations.
+func _anything_to_make(here: Array[StringName]) -> bool:
+	for st in here:
+		for r in Crafting.recipes_at(st):
+			if Crafting.known(game.inventory, r):
+				return true
+	return false
 
 
 ## Put app `n` on the glass in place of the app on top, without the slate sleeping.

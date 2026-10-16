@@ -143,8 +143,9 @@ static func now_real() -> float:
 static func stations_near(game: Game) -> Array[StringName]:
 	var p := game.player.pos
 	var found: Array = [] # [distance, StringName]
+	var hers := keepers_fire(game)
 	for q in game.query.reach_near(p, STATION_REACH + 2.0):
-		if not STATION_KINDS.has(q.kind) or game.world.depleted.has(q.id):
+		if not STATION_KINDS.has(q.kind) or game.world.depleted.has(q.id) or WorldProp.same(q, hers):
 			continue
 		var d := game.query.edge_to(q, p)
 		if d > STATION_REACH:
@@ -158,6 +159,55 @@ static func stations_near(game: Game) -> Array[StringName]:
 			out.append(f[1])
 	out.append(&"hand")
 	return out
+
+
+## How far from a village's middle its square's fire stands (gen_settle lays the
+## square's fire, bench and lamp inside this).
+const SQUARE := 5.0
+
+
+## THE FIRE-KEEPER'S FIRE: the fire in the square of the village he wakes beside,
+## the one the story casts Maren at (StorySlot `home`: the village nearest the
+## spawn). It warms him and is slept by like any fire, but it is not his to work:
+## she wants her village left alone (docs/STORY.md), and a man come up out of the
+## sea working at her fire is what brings them looking. He lays his own. Null where
+## the world has no such fire.
+static var _hers_key: Array = []
+static var _hers: WorldProp = null
+
+
+static func keepers_fire(game: Game) -> WorldProp:
+	var w := game.world
+	if w == null or w.villages.is_empty() or game.query == null:
+		return null
+	# Asked every frame (the HUD's hint, through stations_near); it moves only when
+	# the world's props or what he has built or spent do.
+	var key := [w.get_instance_id(), w.prop_count(), w.depleted.size(), SurvivalState.of(game).built.size()]
+	if key == _hers_key:
+		return _hers
+	_hers_key = key
+	_hers = _find_keepers_fire(game)
+	return _hers
+
+
+static func _find_keepers_fire(game: Game) -> WorldProp:
+	var w := game.world
+	var home: Dictionary = w.villages[0]
+	for v: Dictionary in w.villages:
+		if (v.pos as Vector2).distance_to(w.spawn) < (home.pos as Vector2).distance_to(w.spawn):
+			home = v
+	var kinds: Array[int] = [PropKind.FIRE]
+	var q := game.query.nearest_prop(home.pos, SQUARE, kinds)
+	if q == null or w.depleted.has(q.id) or SurvivalState.of(game).built.any(func(b: WorldProp) -> bool: return WorldProp.same(b, q)):
+		return null
+	return q
+
+
+## Standing at her fire with no station of his own in reach: making is not
+## refused, only her fire's part in it, and the page says why.
+static func at_keepers_fire(game: Game) -> bool:
+	var hers := keepers_fire(game)
+	return hers != null and game.query.edge_to(hers, game.player.pos) <= STATION_REACH and not stations_near(game).has(&"fire")
 
 
 static func station_near(game: Game) -> StringName:

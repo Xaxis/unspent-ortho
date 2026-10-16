@@ -4359,7 +4359,7 @@ const TALKS := {
 			# Her lead (docs/ROADMAP.md, step 2): the first hour's work and why, and
 			# the camp at the end of it. The guide says it back (StoryContent.LEAD).
 			&"lead": {
-				"says": ["A fire before dark. Charcoal off it for a pick. The pick for the iron in the slabs.", "The crew past the old works pay for iron. Take it to them. Not them to me."],
+				"says": ["Dry off by mine. Then lay your own before dark, down the shore from the houses.", "You'll be asked after. Not at my fire, you won't.", "Charcoal off yours for a pick. The crew past the old works pay for iron. Take it to them. Not them to me."],
 				"beats": [&"marens_lead"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
@@ -5948,9 +5948,18 @@ const WAKE := {
 # recipe. The game's register, terse. Never a key, never a coordinate: `{at}`
 # is the fire's name (Guide.fire_name). Before she has said it, the guide says
 # the plain line. `camp` is where the goal turns toward the crew's camp.
+## What Maren's fire says to a man who would work at it (Survival.keepers_fire):
+## hers while she is by it, the game's flat line while she is away. He may sit by
+## it; he may not work at it (her village left alone, docs/STORY.md).
+const KEEPERS_FIRE := {
+	"hers": "Sit by it all you like. Work at your own.",
+	"away": "It is Maren's fire, not yours to work at.",
+}
+
+
 const LEAD := {
-	&"fire_gather": "A fire before dark, for charcoal: three driftwood and two stones.",
-	&"fire_lay": "A fire before dark, for charcoal: lay it on open ground.",
+	&"fire_gather": "Your own fire before dark, away from hers: three driftwood, two stones.",
+	&"fire_lay": "Your own fire before dark, away from hers: lay it on open ground.",
 	&"charcoal_gather": "Charcoal for the pick: four driftwood or dead wood, at {at}.",
 	&"charcoal_set": "Charcoal for the pick, for the iron: set it going at {at}.",
 	&"haft": "A handle for the pick, whittled from wood.",

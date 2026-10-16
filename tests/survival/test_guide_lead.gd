@@ -11,8 +11,11 @@ func test_the_goal_is_her_lead_once_she_has_given_it() -> void:
 	Story.forget()
 	var g := Sx.game(tree, ["--seed=1", "--size=128", "--hour=10", "--weather=clear:0"])
 	await process_frames(2)
-	# Charcoal in hand by the village fire: the want is the haft, a line her lead
-	# words differently (her charcoal lines already said why, and are the same).
+	# Charcoal in hand by a fire of his own (hers in the village is not his to
+	# work, Survival.keepers_fire): the want is the haft, a line her lead words
+	# differently (her charcoal lines already said why, and are the same).
+	@warning_ignore("return_value_discarded")
+	Survival.build(g, &"fire", true)
 	g.inventory.add(&"charcoal", 2)
 	eq(Guide.goal(g), "", "before her lead, no line")
 	@warning_ignore("return_value_discarded")
