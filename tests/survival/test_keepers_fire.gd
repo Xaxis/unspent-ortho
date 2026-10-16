@@ -13,9 +13,10 @@ func test_her_fire_warms_him_but_is_not_his_to_work() -> void:
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.LEAD_BEAT)
 	var g := Fx.flat(80)
-	g.world.villages.append({"pos": g.player.pos + Vector2(3, 0), "country": Country.COAST, "name": "home"})
 	var hers := Fx.put(g, PropKind.FIRE, Vector2(4, 0))
-	check(WorldProp.same(Survival.keepers_fire(g), hers), "the fire in the square of the village he wakes beside is hers")
+	# What 49_cast records as it casts her at her fire.
+	SurvivalState.of(g).keepers_fire = hers
+	check(WorldProp.same(Survival.keepers_fire(g), hers), "the fire the story keeps her at is hers")
 	Fx.face(g, hers)
 	check(WorldProp.same(Survival.fire_near(g), hers), "it warms him")
 	check(not Survival.stations_near(g).has(&"fire"), "but it is no station of his: %s" % str(Survival.stations_near(g)))
@@ -31,7 +32,7 @@ func test_her_fire_warms_him_but_is_not_his_to_work() -> void:
 	Story.forget()
 
 
-## In a real start the fire in the square beside the spawn is hers, and the
+## In a real start the cast records the fire she is kept at, and the
 ## making page opened at it says why it is not his: in her words while she is by
 ## it, the game's while she is away.
 func test_making_at_her_fire_says_why_not() -> void:

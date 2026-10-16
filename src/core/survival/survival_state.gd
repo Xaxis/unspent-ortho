@@ -22,6 +22,9 @@ var woke_at := 0.0
 var wet_until := -INF
 ## Stations the player put in the world, in order.
 var built: Array[WorldProp] = []
+## Maren's fire, where the story keeps her (49_cast sets it as it casts her; see
+## Survival.keepers_fire). Never his, so never in `built`; null where there is none.
+var keepers_fire: WorldProp = null
 ## Real-seconds accumulator for the regrowth sweep.
 var sweep_in := 0.0
 ## Work left at stations to finish in world time: station prop id -> {prop,

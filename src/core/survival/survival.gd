@@ -161,44 +161,15 @@ static func stations_near(game: Game) -> Array[StringName]:
 	return out
 
 
-## How far from a village's middle its square's fire stands (gen_settle lays the
-## square's fire, bench and lamp inside this).
-const SQUARE := 5.0
-
-
-## THE FIRE-KEEPER'S FIRE: the fire in the square of the village he wakes beside,
-## the one the story casts Maren at (StorySlot `home`: the village nearest the
-## spawn). It warms him and is slept by like any fire, but it is not his to work:
-## she wants her village left alone (docs/STORY.md), and a man come up out of the
-## sea working at her fire is what brings them looking. He lays his own. Null where
-## the world has no such fire.
-static var _hers_key: Array = []
-static var _hers: WorldProp = null
-
-
+## THE FIRE-KEEPER'S FIRE: the fire the story keeps Maren at, in the village he
+## wakes beside (49_cast records it as it casts her: SurvivalState.keepers_fire).
+## It warms him and is slept by like any fire, but it is not his to work: she
+## wants her village left alone (docs/STORY.md), and a man come up out of the sea
+## working at her fire is what brings them looking. He lays his own. Null where
+## the story keeps her at no fire, or it is gone.
 static func keepers_fire(game: Game) -> WorldProp:
-	var w := game.world
-	if w == null or w.villages.is_empty() or game.query == null:
-		return null
-	# Asked every frame (the HUD's hint, through stations_near); it moves only when
-	# the world's props or what he has built or spent do.
-	var key := [w.get_instance_id(), w.prop_count(), w.depleted.size(), SurvivalState.of(game).built.size()]
-	if key == _hers_key:
-		return _hers
-	_hers_key = key
-	_hers = _find_keepers_fire(game)
-	return _hers
-
-
-static func _find_keepers_fire(game: Game) -> WorldProp:
-	var w := game.world
-	var home: Dictionary = w.villages[0]
-	for v: Dictionary in w.villages:
-		if (v.pos as Vector2).distance_to(w.spawn) < (home.pos as Vector2).distance_to(w.spawn):
-			home = v
-	var kinds: Array[int] = [PropKind.FIRE]
-	var q := game.query.nearest_prop(home.pos, SQUARE, kinds)
-	if q == null or w.depleted.has(q.id) or SurvivalState.of(game).built.any(func(b: WorldProp) -> bool: return WorldProp.same(b, q)):
+	var q := SurvivalState.of(game).keepers_fire
+	if q == null or game.world.depleted.has(q.id):
 		return null
 	return q
 

@@ -167,11 +167,7 @@ func test_the_goal_names_the_fire_it_sends_the_player_to() -> void:
 	Story.forget()
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.LEAD_BEAT)
-	var g := Fx.flat(80)
-	# Not the village he wakes beside: that one's fire is Maren's, and the goal
-	# never sends him to it (test_keepers_fire).
-	g.world.villages.append({"pos": g.world.spawn, "country": Country.COAST, "name": "home"})
-	g.player.place(g.world.spawn + Vector2(15, 0))
+	var g := Fx.flat()
 	g.world.villages.append({"pos": g.player.pos + Vector2(4, 0), "country": Country.COAST, "name": "v"})
 	var village_fire := Fx.put(g, PropKind.FIRE, Vector2(5, 0))
 	check(Guide.goal(g).contains("at the village fire"), "the village's own: %s" % Guide.goal(g))

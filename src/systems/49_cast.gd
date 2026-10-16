@@ -133,6 +133,7 @@ func _cast(with_people := true) -> void:
 	if game == null or game.world == null:
 		return
 	placed = StoryPlan.cast(game.world).duplicate()
+	_keepers_fire()
 	_read_gates()
 	_place_crossing()
 	if not with_people:
@@ -158,6 +159,18 @@ func _cast(with_people := true) -> void:
 		# 2026-09-26). Walking up now only puts the made figure in the tree.
 		_dress(row, c)
 		people.append(row)
+
+
+## How far from where the story keeps her a fire is still hers.
+const KEEPER_FIRE_NEAR := 8.0
+
+
+## The fire the story keeps Maren at (her slot, `home`): hers, not his to work
+## (Survival.keepers_fire reads what this records).
+func _keepers_fire() -> void:
+	var at: StringName = StoryCast.get_def(&"maren").at if StoryCast.get_def(&"maren") != null else &""
+	var kinds: Array[int] = [PropKind.FIRE]
+	SurvivalState.of(game).keepers_fire = game.query.nearest_prop(placed[at].pos, KEEPER_FIRE_NEAR, kinds) if placed.has(at) else null
 
 
 ## The first time he stands on the next leg's body (the archive's), it is heard
